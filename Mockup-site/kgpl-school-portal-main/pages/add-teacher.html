@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Teacher — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight">GHSS ERP</div><div class="text-[11px] text-slate-400">Admin Panel</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="sidebar-link" href="admin-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <div class="sidebar-section-label">Academics</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Students</a>
+    <a class="sidebar-link active" href="add-teacher.html"><i data-lucide="users"></i>Teachers</a>
+    <a class="sidebar-link" href="class-teacher-assign.html"><i data-lucide="user-cog"></i>Class Teacher</a>
+    <a class="sidebar-link" href="subject-teacher-assign.html"><i data-lucide="book-user"></i>Subject Teachers</a>
+    <a class="sidebar-link" href="teacher-timetable.html"><i data-lucide="calendar-clock"></i>Teacher Timetable</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="bar-chart-3"></i>Result Analysis</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <a class="sidebar-link" href="class-scorecard.html"><i data-lucide="trophy"></i>Class Scorecards</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance</a>
+    <a class="sidebar-link" href="complaints.html"><i data-lucide="message-circle"></i>Complaints</a>
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link" href="certificate-generator.html"><i data-lucide="file-badge"></i>Certificates</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link" href="home.html"><i data-lucide="globe"></i>School Website</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><a href="admin-dashboard.html">Dashboard</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span class="current">Teachers</span></div>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <button class="btn-icon btn-ghost border border-slate-200 relative"><i data-lucide="bell" class="w-4.5 h-4.5"></i><span class="notif-dot"></span></button>
+      <div class="avatar" id="admin-avatar">RK</div>
+    </div>
+  </header>
+
+  <main class="p-7 max-w-6xl">
+    <div class="flex items-center justify-between mb-7">
+      <div><h1 class="text-h1">Teachers</h1><p class="text-body mt-1">Add a new staff member. Their login is created automatically.</p></div>
+      <button class="btn btn-primary" onclick="openAddForm()"><i data-lucide="user-plus" class="w-4 h-4"></i>Add Teacher</button>
+    </div>
+
+    <form id="add-form" class="card p-7 mb-7 hidden space-y-5">
+      <h3 class="text-h3" id="form-title">Add New Teacher</h3>
+      <div class="grid lg:grid-cols-[140px_1fr] gap-6">
+        <div class="flex flex-col items-center gap-2.5">
+          <label for="t-file" class="cursor-pointer">
+            <div id="t-photo-empty" class="w-28 h-28 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 text-slate-400">
+              <i data-lucide="camera" class="w-6 h-6"></i>
+            </div>
+            <img id="t-photo-preview" class="hidden w-28 h-28 rounded-full object-cover border border-slate-200" alt="Preview">
+          </label>
+          <input type="file" id="t-file" accept="image/*" class="hidden">
+          <span class="text-caption text-center">Photo shown to students on their Subject Teachers panel</span>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-5 self-start">
+          <div class="field-group"><input class="field-input" id="t-name" placeholder=" " required><label class="field-label">Full Name</label></div>
+          <div class="field-group">
+            <select class="field-input" id="t-subject">
+              <option>Mathematics</option><option>Science</option><option>English</option><option>Tamil</option>
+              <option>Social Science</option><option>Physical Education</option><option>Physics</option><option>Chemistry</option><option>Biology</option><option>Computer Science</option>
+            </select>
+            <label class="field-label">Primary Subject</label>
+          </div>
+          <div class="field-group sm:col-span-2"><input class="field-input" id="t-phone" placeholder=" " pattern="[0-9]{10}"><label class="field-label">Mobile Number</label></div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('add-form').classList.add('hidden')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="form-submit-btn"><i data-lucide="check" class="w-4 h-4"></i>Save &amp; Create Login</button>
+      </div>
+    </form>
+
+    <div id="new-cred" class="hidden credential-card mb-7">
+      <div class="flex items-center gap-2 mb-4 relative z-10"><i data-lucide="key-round" class="w-4.5 h-4.5"></i><h3 class="font-bold">Teacher Login Created</h3></div>
+      <div class="grid sm:grid-cols-2 gap-4 relative z-10">
+        <div><div class="text-xs text-white/50 mb-1">Employee ID</div><div class="credential-field" id="cred-id">—</div></div>
+        <div><div class="text-xs text-white/50 mb-1">Temporary Password</div><div class="credential-field" id="cred-pw">—</div></div>
+      </div>
+    </div>
+
+    <div class="card p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="text-h3">All Teachers</h3>
+        <input class="search-input" id="search" placeholder="Search teachers…" oninput="renderList()">
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Teacher</th><th>Subject</th><th>Employee ID</th><th>Class Teacher Of</th><th>Phone</th><th colspan="2"></th></tr></thead>
+        <tbody id="teacher-rows"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const admin = Session.requireRole('admin');
+if (admin){ document.getElementById('admin-avatar').textContent = admin.initials || 'A'; }
+
+function renderList(){
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  const list = getTeachers().filter(t => t.name.toLowerCase().includes(q) || t.subject.toLowerCase().includes(q));
+  document.getElementById('teacher-rows').innerHTML = list.map(t => `
+    <tr>
+      <td class="flex items-center gap-2.5">${t.photo ? `<img src="${t.photo}" class="rounded-full object-cover" style="width:32px;height:32px">` : `<div class="avatar" style="width:32px;height:32px;font-size:11px;background:${t.color}">${t.initials}</div>`}${escapeHtml(t.name)}</td>
+      <td>${escapeHtml(t.subject)}</td>
+      <td class="font-mono text-xs">${t.employeeId}</td>
+      <td>${t.assignedClass ? `<span class="badge badge-success">${classLabel(t.assignedClass)}</span>` : '<span class="badge badge-neutral">—</span>'}</td>
+      <td>${t.phone||'—'}</td>
+      <td><button class="btn btn-sm btn-outline" onclick="openEditForm('${t.id}')"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button></td>
+      <td><button class="btn btn-sm btn-outline" style="color:#DC2626;border-color:#DC2626" onclick="removeTeacher('${t.id}','${escapeHtml(t.name)}')"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></td>
+    </tr>`).join('') || `<tr><td colspan="7" class="text-center text-slate-400 py-8">No teachers found.</td></tr>`;
+  lucide.createIcons();
+}
+renderList();
+
+window.removeTeacher = function(id, name){
+  if (!confirm(`Remove ${name}? This also clears any Class Teacher / Subject Teacher assignments they hold. This cannot be undone.`)) return;
+  deleteTeacher(id);
+  renderList();
+};
+
+let pendingPhoto = null;
+let editingTeacherId = null;
+
+function resetForm(){
+  document.getElementById('add-form').reset();
+  document.getElementById('t-photo-preview').classList.add('hidden');
+  document.getElementById('t-photo-empty').classList.remove('hidden');
+  pendingPhoto = null;
+  editingTeacherId = null;
+}
+
+window.openAddForm = function(){
+  resetForm();
+  document.getElementById('form-title').textContent = 'Add New Teacher';
+  document.getElementById('form-submit-btn').innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>Save &amp; Create Login';
+  document.getElementById('add-form').classList.remove('hidden');
+  lucide.createIcons();
+};
+
+window.openEditForm = function(id){
+  const t = getTeachers().find(x=>x.id===id);
+  if (!t) return;
+  resetForm();
+  editingTeacherId = id;
+  document.getElementById('t-name').value = t.name;
+  document.getElementById('t-subject').value = t.subject;
+  document.getElementById('t-phone').value = t.phone || '';
+  if (t.photo){
+    pendingPhoto = t.photo;
+    document.getElementById('t-photo-preview').src = t.photo;
+    document.getElementById('t-photo-preview').classList.remove('hidden');
+    document.getElementById('t-photo-empty').classList.add('hidden');
+  }
+  document.getElementById('form-title').textContent = 'Edit Teacher — ' + t.name;
+  document.getElementById('form-submit-btn').innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>Save Changes';
+  document.getElementById('add-form').classList.remove('hidden');
+  document.getElementById('add-form').scrollIntoView({behavior:'smooth'});
+  lucide.createIcons();
+};
+
+document.getElementById('t-file').addEventListener('change', async function(){
+  if (!this.files || !this.files[0]) return;
+  pendingPhoto = await fileToBase64(this.files[0]);
+  document.getElementById('t-photo-preview').src = pendingPhoto;
+  document.getElementById('t-photo-preview').classList.remove('hidden');
+  document.getElementById('t-photo-empty').classList.add('hidden');
+});
+
+document.getElementById('add-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  const name = document.getElementById('t-name').value.trim();
+  if (!name) return;
+  const data = {
+    name,
+    subject: document.getElementById('t-subject').value,
+    phone: document.getElementById('t-phone').value,
+    photo: pendingPhoto
+  };
+  if (editingTeacherId){
+    updateTeacher(editingTeacherId, data);
+    resetForm();
+    document.getElementById('add-form').classList.add('hidden');
+    renderList();
+    return;
+  }
+  const t = addTeacher(data);
+  document.getElementById('cred-id').textContent = t.employeeId;
+  document.getElementById('cred-pw').textContent = t.password;
+  document.getElementById('new-cred').classList.remove('hidden');
+  resetForm();
+  document.getElementById('add-form').classList.add('hidden');
+  renderList();
+  lucide.createIcons();
+});
+</script>
+</body>
+</html>

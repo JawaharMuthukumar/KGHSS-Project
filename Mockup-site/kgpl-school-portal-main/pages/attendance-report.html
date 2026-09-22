@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance Report — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+<style>
+@media print{
+  body *{ visibility:hidden; }
+  #report-print, #report-print *{ visibility:visible; }
+  #report-print{ position:absolute; top:0; left:0; width:100%; }
+  .no-print{ display:none !important; }
+  .print-only{ display:block !important; }
+}
+</style>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight" id="sidebar-title">GHSS ERP</div><div class="text-[11px] text-slate-400" id="sidebar-sub">Admin Panel</div></div>
+  </div>
+  <nav class="sidebar-nav" id="nav-admin">
+    <a class="sidebar-link" href="admin-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <div class="sidebar-section-label">Academics</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Students</a>
+    <a class="sidebar-link" href="add-teacher.html"><i data-lucide="users"></i>Teachers</a>
+    <a class="sidebar-link" href="class-teacher-assign.html"><i data-lucide="user-cog"></i>Class Teacher</a>
+    <a class="sidebar-link" href="subject-teacher-assign.html"><i data-lucide="book-user"></i>Subject Teachers</a>
+    <a class="sidebar-link" href="teacher-timetable.html"><i data-lucide="calendar-clock"></i>Teacher Timetable</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="bar-chart-3"></i>Result Analysis</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <a class="sidebar-link" href="class-scorecard.html"><i data-lucide="trophy"></i>Class Scorecards</a>
+    <a class="sidebar-link active" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance</a>
+    <a class="sidebar-link" href="complaints.html"><i data-lucide="message-circle"></i>Complaints</a>
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link" href="certificate-generator.html"><i data-lucide="file-badge"></i>Certificates</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link" href="home.html"><i data-lucide="globe"></i>School Website</a>
+  </nav>
+  <nav class="sidebar-nav hidden" id="nav-teacher">
+    <a class="sidebar-link" href="teacher-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <a class="sidebar-link" href="take-attendance.html"><i data-lucide="calendar-check"></i>Take Attendance</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="pencil-line"></i>Enter Marks</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <div class="sidebar-section-label" id="my-class-label">My Class</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Class Students</a>
+    <a class="sidebar-link" href="teacher-add-student.html"><i data-lucide="user-round-plus"></i>Add Student</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link active" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance Report</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><span class="current">Attendance</span></div>
+    </div>
+    <div class="flex items-center gap-2.5"><div class="avatar" id="user-avatar">U</div></div>
+  </header>
+
+  <main class="p-7 max-w-[1440px]">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-7">
+      <div><h1 class="text-h1">Attendance Report</h1><p class="text-body mt-1">Class-wise and student-wise attendance percentage, based on records added by each Class Teacher.</p></div>
+      <button class="btn btn-primary no-print" id="print-btn"><i data-lucide="printer" class="w-4 h-4"></i>Print / Save as PDF</button>
+    </div>
+
+    <div class="tab-list mb-7 no-print">
+      <button class="tab-item active" id="tab-btn-class" onclick="switchTab('class')">Class-wise</button>
+      <button class="tab-item" id="tab-btn-student" onclick="switchTab('student')">Student-wise</button>
+    </div>
+
+    <div class="card p-6 mb-7 no-print hidden" id="admin-unlock-card">
+      <div class="font-semibold text-sm mb-1" style="color:var(--text-900)">Unlock a Submitted Month</div>
+      <p class="text-caption mb-5">Once a Class Teacher saves a month's attendance it locks automatically. Unlock a specific class/month here only when a genuine correction is needed.</p>
+      <div class="flex flex-wrap items-end gap-4 mb-5">
+        <div class="field-group" style="width:220px">
+          <select class="field-input" id="unlock-class-select"></select>
+          <label class="field-label">Class</label>
+        </div>
+        <div class="field-group" style="width:200px">
+          <input type="month" class="field-input" id="unlock-month">
+          <label class="field-label">Month</label>
+        </div>
+      </div>
+      <div id="unlock-status" class="flex items-center justify-between gap-3 p-3.5 rounded-xl2 border border-slate-200"></div>
+    </div>
+
+    <div class="card p-6 mb-7 no-print" id="month-picker-card">
+      <div class="flex flex-wrap items-end gap-4">
+        <div class="field-group" style="width:200px">
+          <input type="month" class="field-input" id="report-month">
+          <label class="field-label">Month</label>
+        </div>
+        <p class="text-caption mb-2">Pick a month to see that month's working days, present &amp; absent — the tables below also show the overall (all-months) summary.</p>
+      </div>
+    </div>
+
+    <div id="report-print">
+
+    <!-- ============ Class-wise ============ -->
+    <div id="tab-classwise">
+      <div class="card p-6 mb-6">
+        <div class="hidden print-only mb-4">
+          <div class="text-xs font-bold tracking-widest text-slate-500 uppercase">Government Higher Secondary School, Kangayampalayam</div>
+          <div class="text-lg font-bold">Class-wise Attendance Report</div>
+        </div>
+        <div class="font-semibold text-sm mb-1" style="color:var(--text-900)">Monthly — <span id="cw-month-label">—</span></div>
+        <p class="text-caption mb-5">Total working days, and present/absent counts for every class, for the selected month.</p>
+        <table class="data-table w-full">
+          <thead><tr><th>Class</th><th>Students</th><th>Working Days</th><th>Total Present</th><th>Total Absent</th><th>Attendance %</th></tr></thead>
+          <tbody id="class-rows-monthly"></tbody>
+        </table>
+      </div>
+      <div class="card p-6">
+        <div class="font-semibold text-sm mb-1" style="color:var(--text-900)">Overall — Months Marked &amp; Average Attendance</div>
+        <p class="text-caption mb-5">Cumulative across every month marked so far.</p>
+        <table class="data-table w-full">
+          <thead><tr><th>Class</th><th>Students</th><th>Months Marked</th><th>Average Attendance %</th></tr></thead>
+          <tbody id="class-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ Student-wise ============ -->
+    <div id="tab-studentwise" class="hidden">
+      <div class="card p-6 mb-6 no-print" id="class-picker-wrap">
+        <div class="field-group" style="width:240px">
+          <select class="field-input" id="sw-class-select"></select>
+          <label class="field-label">Class</label>
+        </div>
+      </div>
+      <div class="card p-6 mb-6">
+        <div class="hidden print-only mb-4">
+          <div class="text-xs font-bold tracking-widest text-slate-500 uppercase">Government Higher Secondary School, Kangayampalayam</div>
+          <div class="text-lg font-bold" id="student-report-title">Student-wise Attendance Report</div>
+        </div>
+        <div class="font-semibold text-sm mb-1" style="color:var(--text-900)">Monthly — <span id="sw-month-label">—</span></div>
+        <p class="text-caption mb-5">Present &amp; absent days for the selected month.</p>
+        <table class="data-table w-full">
+          <thead><tr><th>Student</th><th>Register No.</th><th>Present Days</th><th>Absent Days</th><th>Attendance %</th></tr></thead>
+          <tbody id="student-rows-monthly"></tbody>
+        </table>
+      </div>
+      <div class="card p-6">
+        <div class="font-semibold text-sm mb-1" style="color:var(--text-900)">Overall — Present Days &amp; Attendance %</div>
+        <p class="text-caption mb-5">Attendance % = total present days ÷ total working days, across all months marked.</p>
+        <table class="data-table w-full">
+          <thead><tr><th>Student</th><th>Register No.</th><th>Months Marked</th><th>Total Working Days</th><th>Present Days</th><th>Attendance %</th></tr></thead>
+          <tbody id="student-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const session = Session.get();
+if (!session || (session.role!=='admin' && session.role!=='teacher')) window.location.href = 'gateway.html';
+const isTeacher = session.role === 'teacher';
+document.getElementById('user-avatar').textContent = session.initials || initials(session.name);
+
+let lockedClass = null;
+if (isTeacher){
+  document.getElementById('nav-admin').classList.add('hidden');
+  document.getElementById('nav-teacher').classList.remove('hidden');
+  document.getElementById('sidebar-sub').textContent = 'Teacher Portal';
+  const db0 = SchoolDB.get();
+  const teacher0 = db0.teachers.find(t => t.id === session.id);
+  lockedClass = teacher0 ? teacher0.assignedClass : null;
+  if (lockedClass) document.getElementById('my-class-label').textContent = 'My Class · ' + classLabel(lockedClass).replace('Class ','');
+} else {
+  document.getElementById('admin-unlock-card').classList.remove('hidden');
+  const unlockClassSelect = document.getElementById('unlock-class-select');
+  const unlockMonthInput = document.getElementById('unlock-month');
+  unlockClassSelect.innerHTML = CLASS_LIST.map(c => `<option value="${c.code}">Class ${c.label}</option>`).join('');
+  unlockMonthInput.value = new Date().toISOString().slice(0,7);
+
+  function renderUnlockStatus(){
+    const classCode = unlockClassSelect.value;
+    const month = unlockMonthInput.value;
+    const rec = getMonthlyAttendance(classCode, month);
+    const locked = isMonthLocked(classCode, month);
+    const statusText = !rec ? 'Not marked yet' : (locked ? 'Locked — submitted' : 'Unlocked');
+    document.getElementById('unlock-status').innerHTML = `
+      <div><div class="font-semibold text-sm">${monthLabel(month)}</div><div class="text-caption">${statusText}</div></div>
+      ${locked ? `<button class="btn btn-sm btn-outline" onclick="doUnlock()"><i data-lucide="lock-open" class="w-3.5 h-3.5"></i>Unlock</button>` : ''}
+    `;
+    lucide.createIcons();
+  }
+  window.doUnlock = function(){
+    unlockMonthlyAttendance(unlockClassSelect.value, unlockMonthInput.value);
+    renderUnlockStatus();
+  };
+  unlockClassSelect.addEventListener('change', renderUnlockStatus);
+  unlockMonthInput.addEventListener('change', renderUnlockStatus);
+  renderUnlockStatus();
+}
+
+function switchTab(tab){
+  document.getElementById('tab-classwise').classList.toggle('hidden', tab !== 'class');
+  document.getElementById('tab-studentwise').classList.toggle('hidden', tab !== 'student');
+  document.getElementById('tab-btn-class').classList.toggle('active', tab === 'class');
+  document.getElementById('tab-btn-student').classList.toggle('active', tab === 'student');
+}
+
+function renderClassWise(){
+  const report = schoolAttendanceReport();
+  const rows = lockedClass ? report.filter(r => r.code === lockedClass) : report;
+  document.getElementById('class-rows').innerHTML = rows.map(r => `
+    <tr>
+      <td class="font-semibold" style="color:var(--text-900)">Class ${r.label}</td>
+      <td>${r.studentCount}</td>
+      <td>${r.totalMonthsMarked}</td>
+      <td class="font-semibold ${r.avgPct===null?'':'text-success'}">${r.avgPct!==null ? r.avgPct.toFixed(1)+'%' : '—'}</td>
+    </tr>`).join('') || `<tr><td colspan="4" class="text-center text-slate-400 py-8">No attendance marked yet.</td></tr>`;
+}
+
+function renderClassWiseMonthly(){
+  const month = reportMonthInput.value;
+  document.getElementById('cw-month-label').textContent = monthLabel(month);
+  const report = schoolMonthlyAttendanceReport(month);
+  const rows = lockedClass ? report.filter(r => r.code === lockedClass) : report;
+  document.getElementById('class-rows-monthly').innerHTML = rows.map(r => `
+    <tr>
+      <td class="font-semibold" style="color:var(--text-900)">Class ${r.label}</td>
+      <td>${r.studentCount}</td>
+      <td>${r.totalDays!=null ? r.totalDays : '—'}</td>
+      <td>${r.marked ? r.presentTotal : '—'}</td>
+      <td>${r.marked ? r.absentTotal : '—'}</td>
+      <td class="font-semibold ${r.avgPct===null?'':'text-success'}">${r.avgPct!==null ? r.avgPct.toFixed(1)+'%' : '—'}</td>
+    </tr>`).join('') || `<tr><td colspan="6" class="text-center text-slate-400 py-8">No classes found.</td></tr>`;
+}
+
+const swClassSelect = document.getElementById('sw-class-select');
+if (lockedClass){
+  document.getElementById('class-picker-wrap').classList.add('hidden');
+  swClassSelect.innerHTML = `<option value="${lockedClass}">Class ${classLabel(lockedClass).replace('Class ','')}</option>`;
+} else {
+  swClassSelect.innerHTML = CLASS_LIST.map(c => `<option value="${c.code}">Class ${c.label}</option>`).join('');
+}
+
+function renderStudentWise(){
+  const code = swClassSelect.value;
+  const stats = classAttendanceStats(code);
+  document.getElementById('student-report-title').textContent = 'Student-wise Attendance Report — Class ' + classLabel(code).replace('Class ','');
+  document.getElementById('student-rows').innerHTML = stats.rows.length ? stats.rows.map(r => `
+    <tr>
+      <td class="flex items-center gap-2.5"><div class="avatar" style="width:28px;height:28px;font-size:10px">${initials(r.student.name)}</div>${escapeHtml(r.student.name)}</td>
+      <td class="font-mono text-xs">${r.student.regno}</td>
+      <td>${r.totalMonths}</td>
+      <td>${r.totalDays}</td>
+      <td>${r.presentDays}</td>
+      <td class="font-semibold ${r.pct===null?'':(r.pct>=75?'text-success':'text-danger')}">${r.pct!==null ? r.pct.toFixed(1)+'%' : '—'}</td>
+    </tr>`).join('') : `<tr><td colspan="6" class="text-center text-slate-400 py-8">No students in this class.</td></tr>`;
+}
+
+function renderStudentWiseMonthly(){
+  const code = swClassSelect.value;
+  const month = reportMonthInput.value;
+  document.getElementById('sw-month-label').textContent = monthLabel(month) + ' — Class ' + classLabel(code).replace('Class ','');
+  const stats = classMonthlyAttendance(code, month);
+  document.getElementById('student-rows-monthly').innerHTML = stats.rows.length ? stats.rows.map(r => `
+    <tr>
+      <td class="flex items-center gap-2.5"><div class="avatar" style="width:28px;height:28px;font-size:10px">${initials(r.student.name)}</div>${escapeHtml(r.student.name)}</td>
+      <td class="font-mono text-xs">${r.student.regno}</td>
+      <td>${r.present!=null ? r.present : '—'}</td>
+      <td>${r.absent!=null ? r.absent : '—'}</td>
+      <td class="font-semibold ${r.pct===null?'':(r.pct>=75?'text-success':'text-danger')}">${r.pct!==null ? r.pct.toFixed(1)+'%' : '—'}</td>
+    </tr>`).join('') : `<tr><td colspan="5" class="text-center text-slate-400 py-8">No students in this class.</td></tr>`;
+}
+
+const reportMonthInput = document.getElementById('report-month');
+reportMonthInput.value = getLatestAttendanceMonth(lockedClass || undefined) || new Date().toISOString().slice(0,7);
+reportMonthInput.addEventListener('change', () => { renderClassWiseMonthly(); renderStudentWiseMonthly(); });
+swClassSelect.addEventListener('change', () => { renderStudentWise(); renderStudentWiseMonthly(); });
+document.getElementById('print-btn').addEventListener('click', () => window.print());
+
+renderClassWise();
+renderClassWiseMonthly();
+renderStudentWise();
+renderStudentWiseMonthly();
+</script>
+</body>
+</html>

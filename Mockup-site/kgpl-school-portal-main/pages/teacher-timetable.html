@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teacher Timetable — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight">GHSS ERP</div><div class="text-[11px] text-slate-400">Admin Panel</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="sidebar-link" href="admin-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <div class="sidebar-section-label">Academics</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Students</a>
+    <a class="sidebar-link" href="add-teacher.html"><i data-lucide="users"></i>Teachers</a>
+    <a class="sidebar-link" href="class-teacher-assign.html"><i data-lucide="user-cog"></i>Class Teacher</a>
+    <a class="sidebar-link" href="subject-teacher-assign.html"><i data-lucide="book-user"></i>Subject Teachers</a>
+    <a class="sidebar-link active" href="teacher-timetable.html"><i data-lucide="calendar-clock"></i>Teacher Timetable</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="bar-chart-3"></i>Result Analysis</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <a class="sidebar-link" href="class-scorecard.html"><i data-lucide="trophy"></i>Class Scorecards</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance</a>
+    <a class="sidebar-link" href="complaints.html"><i data-lucide="message-circle"></i>Complaints</a>
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link" href="certificate-generator.html"><i data-lucide="file-badge"></i>Certificates</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link" href="home.html"><i data-lucide="globe"></i>School Website</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><a href="admin-dashboard.html">Dashboard</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span class="current">Teacher Timetable</span></div>
+    </div>
+    <div class="flex items-center gap-2.5"><div class="avatar" id="user-avatar">U</div></div>
+  </header>
+
+  <main class="p-7 max-w-[1440px]">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-7">
+      <div><h1 class="text-h1">Teacher Timetable</h1><p class="text-body mt-1">Assign each teacher's weekly periods — which class and subject they teach, and when.</p></div>
+      <select id="teacher-select" class="field-input" style="width:260px;padding:10px 14px"></select>
+    </div>
+
+    <div class="card p-6">
+      <div class="flex items-center justify-between gap-4 mb-5">
+        <div class="font-semibold text-sm" id="grid-title" style="color:var(--text-900)">—</div>
+        <button class="btn btn-primary" id="save-btn"><i data-lucide="check" class="w-4 h-4"></i>Save Timetable</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="data-table" style="min-width:900px">
+          <thead>
+            <tr id="grid-head"></tr>
+          </thead>
+          <tbody id="grid-body"></tbody>
+        </table>
+      </div>
+      <p class="text-xs text-slate-400 mt-4">Enter what the teacher is teaching in each slot, e.g. "9B · Maths" — leave a cell blank for a free period.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const session = Session.get();
+if (!session || session.role!=='admin') window.location.href = 'gateway.html';
+document.getElementById('user-avatar').textContent = session.initials || initials(session.name);
+
+const db = SchoolDB.get();
+const teacherSelect = document.getElementById('teacher-select');
+const teachersList = getTeachers();
+teacherSelect.innerHTML = teachersList.map(t => `<option value="${t.id}">${escapeHtml(t.name)} — ${escapeHtml(t.subject)}</option>`).join('');
+
+document.getElementById('grid-head').innerHTML = '<th>Period</th>' + TIMETABLE_DAYS.map(d => `<th>${d}</th>`).join('');
+
+let currentGrid = [];
+
+function renderGrid(teacherId){
+  const teacher = db.teachers.find(t => t.id === teacherId);
+  document.getElementById('grid-title').textContent = teacher ? `${teacher.name} — ${teacher.subject}` : '—';
+  currentGrid = getTeacherTimetable(teacherId);
+  document.getElementById('grid-body').innerHTML = Array.from({length: TIMETABLE_PERIODS}, (_, p) => `
+    <tr>
+      <td class="font-semibold" style="color:var(--text-900)">Period ${p+1}</td>
+      ${TIMETABLE_DAYS.map((_, d) => `<td><input type="text" class="field-input tt-cell" data-day="${d}" data-period="${p}" style="padding:8px 10px;font-size:13px" value="${escapeHtml(currentGrid[d][p] || '')}" placeholder="e.g. 9B · Maths"></td>`).join('')}
+    </tr>`).join('');
+}
+
+teacherSelect.addEventListener('change', () => renderGrid(teacherSelect.value));
+if (db.teachers.length) renderGrid(teacherSelect.value);
+
+document.getElementById('save-btn').addEventListener('click', () => {
+  const teacherId = teacherSelect.value;
+  if (!teacherId) return;
+  document.querySelectorAll('.tt-cell').forEach(input => {
+    const d = parseInt(input.dataset.day, 10), p = parseInt(input.dataset.period, 10);
+    currentGrid[d][p] = input.value.trim();
+  });
+  setTeacherTimetable(teacherId, currentGrid);
+  alert('Timetable saved for ' + (db.teachers.find(t=>t.id===teacherId)||{}).name);
+});
+</script>
+</body>
+</html>

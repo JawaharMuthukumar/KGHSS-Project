@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight">GHSS ERP</div><div class="text-[11px] text-slate-400">Admin Panel</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="sidebar-link active" href="admin-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <div class="sidebar-section-label">Academics</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Students</a>
+    <a class="sidebar-link" href="add-teacher.html"><i data-lucide="users"></i>Teachers</a>
+    <a class="sidebar-link" href="class-teacher-assign.html"><i data-lucide="user-cog"></i>Class Teacher</a>
+    <a class="sidebar-link" href="subject-teacher-assign.html"><i data-lucide="book-user"></i>Subject Teachers</a>
+    <a class="sidebar-link" href="teacher-timetable.html"><i data-lucide="calendar-clock"></i>Teacher Timetable</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="bar-chart-3"></i>Result Analysis</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <a class="sidebar-link" href="class-scorecard.html"><i data-lucide="trophy"></i>Class Scorecards</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance</a>
+    <a class="sidebar-link" href="complaints.html"><i data-lucide="message-circle"></i>Complaints</a>
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link" href="certificate-generator.html"><i data-lucide="file-badge"></i>Certificates</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link" href="home.html"><i data-lucide="globe"></i>School Website</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><span class="current">Dashboard</span></div>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <button class="btn-icon btn-ghost border border-slate-200 relative"><i data-lucide="bell" class="w-4.5 h-4.5"></i><span class="notif-dot"></span></button>
+      <div class="avatar" id="admin-avatar">RK</div>
+    </div>
+  </header>
+
+  <main class="p-7 max-w-[1440px]">
+    <div class="mb-7">
+      <h1 class="text-h1" id="welcome-msg">Welcome back</h1>
+      <p class="text-body mt-1">Government Higher Secondary School, Kangayampalayam — overview for today.</p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <div class="stat-card">
+        <div class="stat-icon mb-3" style="background:var(--secondary-light)"><i data-lucide="graduation-cap" class="w-5 h-5 text-secondary"></i></div>
+        <div class="text-2xl font-extrabold" id="kpi-students">0</div><div class="text-caption">Total Students</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon mb-3" style="background:var(--success-light)"><i data-lucide="users" class="w-5 h-5 text-success"></i></div>
+        <div class="text-2xl font-extrabold" id="kpi-teachers">0</div><div class="text-caption">Total Teachers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon mb-3" style="background:var(--warning-light)"><i data-lucide="user-cog" class="w-5 h-5" style="color:#B45309"></i></div>
+        <div class="text-2xl font-extrabold" id="kpi-assigned">0/14</div><div class="text-caption">Classes with Class Teacher</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon mb-3" style="background:var(--primary-light)"><i data-lucide="megaphone" class="w-5 h-5 text-primary"></i></div>
+        <div class="text-2xl font-extrabold" id="kpi-notices">0</div><div class="text-caption">Active Notices</div>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 card p-7">
+        <h3 class="text-h3 mb-5">Quick Actions</h3>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <a href="add-teacher.html" class="card card-hover p-5 flex items-center gap-3"><i data-lucide="user-plus" class="w-5 h-5 text-primary"></i><span class="font-semibold text-sm">Add Teacher</span></a>
+          <a href="class-teacher-assign.html" class="card card-hover p-5 flex items-center gap-3"><i data-lucide="user-cog" class="w-5 h-5 text-primary"></i><span class="font-semibold text-sm">Assign Class Teacher</span></a>
+          <a href="subject-teacher-assign.html" class="card card-hover p-5 flex items-center gap-3"><i data-lucide="book-user" class="w-5 h-5 text-primary"></i><span class="font-semibold text-sm">View Class Details</span></a>
+          <a href="class-scorecard.html" class="card card-hover p-5 flex items-center gap-3"><i data-lucide="trophy" class="w-5 h-5 text-primary"></i><span class="font-semibold text-sm">View Scorecards</span></a>
+          <a href="certificate-generator.html" class="card card-hover p-5 flex items-center gap-3"><i data-lucide="file-badge" class="w-5 h-5 text-primary"></i><span class="font-semibold text-sm">Generate Certificate</span></a>
+          <a href="gallery.html" class="card card-hover p-5 flex items-center gap-3"><i data-lucide="images" class="w-5 h-5 text-primary"></i><span class="font-semibold text-sm">Manage Gallery</span></a>
+          <a href="student-profile.html" class="card card-hover p-5 flex items-center gap-3"><i data-lucide="graduation-cap" class="w-5 h-5 text-primary"></i><span class="font-semibold text-sm">Browse Students</span></a>
+        </div>
+      </div>
+
+      <div class="card p-7">
+        <h3 class="text-h3 mb-5">Class Teacher Coverage</h3>
+        <div id="coverage-list" class="space-y-2.5"></div>
+        <a href="class-teacher-assign.html" class="btn btn-outline btn-sm w-full justify-center mt-4">Manage Assignments <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></a>
+      </div>
+    </div>
+
+    <div class="card p-7 mt-6">
+      <div class="flex items-center justify-between mb-1">
+        <h3 class="text-h3">Notices &amp; Circulars</h3>
+        <button class="btn btn-sm btn-outline" onclick="document.getElementById('notice-form').classList.toggle('hidden')"><i data-lucide="plus" class="w-3.5 h-3.5"></i>New Notice</button>
+      </div>
+      <p class="text-caption mb-5">"Website" notices appear only on the public school website. "Students"/"Teachers"/"All" stay inside their portal — the public site never shows them.</p>
+      <form id="notice-form" class="hidden mb-5 p-4 rounded-xl border border-dashed border-slate-300 space-y-3">
+        <input class="field-input" id="notice-title" placeholder="Notice title">
+        <textarea class="field-input" id="notice-body" rows="2" placeholder="Notice details"></textarea>
+        <div class="field-group" style="max-width:220px">
+          <select class="field-input" id="notice-audience">
+            <option value="students">Students Only (Internal)</option>
+            <option value="teachers">Teachers Only (Internal)</option>
+            <option value="all">All (Students &amp; Teachers, Internal)</option>
+            <option value="website">Website (Public)</option>
+          </select>
+          <label class="field-label">Audience</label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Publish to Website</button>
+      </form>
+      <div id="notice-admin-list" class="space-y-3"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const admin = Session.requireRole('admin');
+if (admin){
+  document.getElementById('admin-avatar').textContent = admin.initials || 'A';
+  document.getElementById('welcome-msg').textContent = 'Welcome back, ' + admin.name;
+}
+
+function refresh(){
+  const db = SchoolDB.get();
+  document.getElementById('kpi-students').textContent = db.students.length;
+  document.getElementById('kpi-teachers').textContent = db.teachers.length;
+  document.getElementById('kpi-assigned').textContent = `${Object.keys(db.assignments).length}/${CLASS_LIST.length}`;
+  document.getElementById('kpi-notices').textContent = db.notices.length;
+
+  const classes = getClassesWithCounts();
+  document.getElementById('coverage-list').innerHTML = classes.map(c => {
+    const tid = db.assignments[c.code];
+    const t = tid ? db.teachers.find(x=>x.id===tid) : null;
+    return `<div class="flex items-center justify-between text-sm py-1.5 border-b border-slate-100 last:border-0">
+      <span class="font-medium text-slate-700">Class ${c.label}</span>
+      ${t ? `<span class="badge badge-success text-[10px]">${escapeHtml(t.name)}</span>` : `<span class="badge badge-neutral text-[10px]">Unassigned</span>`}
+    </div>`;
+  }).join('');
+
+  const AUDIENCE_LABEL = { all:'All (Internal)', students:'Students Only', teachers:'Teachers Only', website:'Website (Public)' };
+  document.getElementById('notice-admin-list').innerHTML = db.notices.map(n => `
+    <div class="flex items-start justify-between gap-3 p-4 rounded-xl border border-slate-200">
+      <div><div class="font-semibold text-sm flex items-center gap-2">${escapeHtml(n.title)}<span class="badge badge-info text-[10px]">${AUDIENCE_LABEL[n.audience]||'All'}</span></div><div class="text-caption mt-1">${escapeHtml(n.body)}</div><div class="text-[11px] text-slate-400 mt-1">${n.date}</div></div>
+    </div>`).join('');
+}
+refresh();
+
+document.getElementById('notice-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  const title = document.getElementById('notice-title').value.trim();
+  const body = document.getElementById('notice-body').value.trim();
+  if (!title) return;
+  const audience = document.getElementById('notice-audience').value;
+  addNotice({ title, body, audience });
+  document.getElementById('notice-title').value = '';
+  document.getElementById('notice-body').value = '';
+  document.getElementById('notice-audience').value = 'all';
+  document.getElementById('notice-form').classList.add('hidden');
+  refresh();
+});
+</script>
+</body>
+</html>

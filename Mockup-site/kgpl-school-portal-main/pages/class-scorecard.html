@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Scorecards — School ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight">GHSS ERP</div><div class="text-[11px] text-slate-400">Admin Panel</div></div>
+  </div>
+    <nav class="sidebar-nav">
+    <a class="sidebar-link" href="admin-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <div class="sidebar-section-label">Academics</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Students</a>
+    <a class="sidebar-link" href="add-teacher.html"><i data-lucide="users"></i>Teachers</a>
+    <a class="sidebar-link" href="class-teacher-assign.html"><i data-lucide="user-cog"></i>Class Teacher</a>
+    <a class="sidebar-link" href="subject-teacher-assign.html"><i data-lucide="book-user"></i>Subject Teachers</a>
+    <a class="sidebar-link" href="teacher-timetable.html"><i data-lucide="calendar-clock"></i>Teacher Timetable</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="bar-chart-3"></i>Result Analysis</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <a class="sidebar-link active" href="class-scorecard.html"><i data-lucide="trophy"></i>Class Scorecards</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance</a>
+    <a class="sidebar-link" href="complaints.html"><i data-lucide="message-circle"></i>Complaints</a>
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link" href="certificate-generator.html"><i data-lucide="file-badge"></i>Certificates</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link" href="home.html"><i data-lucide="globe"></i>School Website</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><a href="admin-dashboard.html">Dashboard</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span class="current">Class Scorecards</span></div>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <button class="btn-icon btn-ghost border border-slate-200 relative"><i data-lucide="bell" class="w-4.5 h-4.5"></i><span class="notif-dot"></span></button>
+      <div class="avatar" id="admin-avatar">RK</div>
+    </div>
+  </header>
+
+  <main class="p-7 max-w-[1440px]">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-7">
+      <div><h1 class="text-h1">Class-wise Scorecards</h1><p class="text-body mt-1">Term 1, 2026 · Top 5 rank holders per class, visible school-wide.</p></div>
+      <button class="btn btn-outline"><i data-lucide="download" class="w-4 h-4"></i>Export All</button>
+    </div>
+
+    <!-- Class selector chips -->
+    <div class="flex flex-wrap gap-2 mb-7" id="class-chip-row"></div>
+
+    <div class="grid lg:grid-cols-3 gap-5 mb-6">
+      <div class="stat-card"><div class="text-caption mb-1">Class Average</div><div class="text-3xl font-extrabold" id="stat-avg">78.4%</div></div>
+      <div class="stat-card"><div class="text-caption mb-1">Pass Percentage</div><div class="text-3xl font-extrabold text-success" id="stat-pass">96.4%</div></div>
+      <div class="stat-card"><div class="text-caption mb-1">Total Students</div><div class="text-3xl font-extrabold" id="stat-total">56</div></div>
+    </div>
+
+    <div class="card p-6">
+      <div class="flex items-center gap-2 mb-5">
+        <i data-lucide="trophy" class="w-5 h-5" style="color:#F59E0B"></i>
+        <h3 class="text-h3">Top 5 Rank Holders — <span id="rank-class-label" class="text-primary">Class 10 – A</span></h3>
+      </div>
+      <div class="space-y-3" id="rank-list"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const admin = Session.requireRole('admin');
+if (admin){ document.getElementById('admin-avatar').textContent = admin.initials || 'A'; }
+
+const classes = getClassesWithCounts();
+const TERM = 'Term 1';
+
+let activeCode = classes.find(c=>c.total>0)?.code || classes[0].code;
+const chipRow = document.getElementById('class-chip-row');
+chipRow.innerHTML = classes.map(c => `<div class="filter-chip" data-code="${c.code}" onclick="selectClass('${c.code}')" style="padding:8px 16px;border-radius:999px;font-size:13.5px;font-weight:600;border:1px solid var(--border);cursor:pointer;">${c.label}</div>`).join('');
+function styleChips(){
+  document.querySelectorAll('#class-chip-row > div').forEach(el=>{
+    const active = el.dataset.code === activeCode;
+    el.style.background = active ? '#0F4C81' : '#fff';
+    el.style.color = active ? '#fff' : '#64748B';
+    el.style.borderColor = active ? '#0F4C81' : '#E5E7EB';
+  });
+}
+function selectClass(code){
+  activeCode = code;
+  const c = classes.find(x=>x.code===code);
+  document.getElementById('rank-class-label').textContent = 'Class ' + c.label;
+  document.getElementById('stat-total').textContent = c.total;
+  const sc = classScorecard(code, TERM);
+  document.getElementById('stat-avg').textContent = sc.graded ? sc.avg.toFixed(1) + '%' : '—';
+  document.getElementById('stat-pass').textContent = sc.graded ? sc.passPct.toFixed(1) + '%' : '—';
+  const medalColors = ['#F59E0B','#94A3B8','#B45309','#0F4C81','#2563EB'];
+  if (!sc.top5.length){
+    document.getElementById('rank-list').innerHTML = `<div class="text-center py-10 text-slate-400">
+      <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2"></i>
+      <p class="text-sm">No marks entered yet for this class. Once a teacher records ${TERM} marks, rankings will appear here automatically.</p>
+    </div>`;
+  } else {
+    document.getElementById('rank-list').innerHTML = sc.top5.map((r,i)=>`
+      <div class="flex items-center gap-4 p-3.5 rounded-xl2 border border-slate-200">
+        <div class="rank-medal" style="background:${medalColors[i]}">${i+1}</div>
+        <div class="avatar" style="background:${medalColors[i%medalColors.length]}">${initials(r.student.name)}</div>
+        <div class="flex-1">
+          <div class="font-semibold text-sm text-slate-900">${escapeHtml(r.student.name)}</div>
+          <div class="text-caption">Reg. No. ${r.student.regno}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-lg font-extrabold text-primary">${r.avg.toFixed(1)}%</div>
+          <div class="text-caption">Average</div>
+        </div>
+      </div>`).join('');
+  }
+  styleChips();
+  lucide.createIcons();
+}
+selectClass(activeCode);
+</script>
+</body>
+</html>

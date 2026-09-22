@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Details — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight">GHSS ERP</div><div class="text-[11px] text-slate-400">Admin Panel</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="sidebar-link" href="admin-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <div class="sidebar-section-label">Academics</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Students</a>
+    <a class="sidebar-link" href="add-teacher.html"><i data-lucide="users"></i>Teachers</a>
+    <a class="sidebar-link" href="class-teacher-assign.html"><i data-lucide="user-cog"></i>Class Teacher</a>
+    <a class="sidebar-link active" href="subject-teacher-assign.html"><i data-lucide="book-user"></i>Subject Teachers</a>
+    <a class="sidebar-link" href="teacher-timetable.html"><i data-lucide="calendar-clock"></i>Teacher Timetable</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="bar-chart-3"></i>Result Analysis</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <a class="sidebar-link" href="class-scorecard.html"><i data-lucide="trophy"></i>Class Scorecards</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance</a>
+    <a class="sidebar-link" href="complaints.html"><i data-lucide="message-circle"></i>Complaints</a>
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link" href="certificate-generator.html"><i data-lucide="file-badge"></i>Certificates</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link" href="home.html"><i data-lucide="globe"></i>School Website</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><a href="admin-dashboard.html">Dashboard</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span class="current">Class Details</span></div>
+    </div>
+    <div class="flex items-center gap-2.5"><div class="avatar" id="admin-avatar">RK</div></div>
+  </header>
+
+  <main class="p-7 max-w-[1400px]">
+    <div class="mb-7">
+      <h1 class="text-h1">Class Details</h1>
+      <p class="text-body mt-1">Click a class to see its Class Teacher and who teaches each subject. This is exactly what students see on their own "Subject Teachers" panel.</p>
+    </div>
+
+    <div id="class-grid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 mb-8"></div>
+
+    <div class="card p-7">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="text-h3" id="detail-title">Select a class</h3>
+        <span class="text-caption" id="save-status"></span>
+      </div>
+
+      <div id="class-teacher-block" class="mb-6"></div>
+
+      <div class="font-semibold text-sm mb-3" style="color:var(--text-900)">Subject Teachers</div>
+      <div id="subject-rows" class="space-y-3"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const admin = Session.requireRole('admin');
+if (admin){ document.getElementById('admin-avatar').textContent = admin.initials || 'A'; }
+
+const classes = getClassesWithCounts();
+const teachers = getTeachers();
+let selectedClass = classes[0] ? classes[0].code : null;
+
+function renderGrid(){
+  const db = SchoolDB.get();
+  document.getElementById('class-grid').innerHTML = classes.map(c => {
+    const teacherId = db.assignments[c.code];
+    const t = teacherId ? db.teachers.find(x=>x.id===teacherId) : null;
+    const active = c.code === selectedClass;
+    return `<div class="class-tile ${t ? 'class-tile-assigned' : 'class-tile-unassigned'}" style="${active ? 'outline:2px solid var(--secondary);outline-offset:2px' : ''}" onclick="selectClass('${c.code}')">
+      <div class="class-num mb-1">${c.label}</div>
+      ${c.sub ? `<div class="text-[11px] text-slate-400 mb-1">${c.sub}</div>` : ''}
+      <div class="text-[11px] font-semibold ${t ? 'text-success' : 'text-slate-400'}">${t ? escapeHtml(t.name.split(' ').slice(0,2).join(' ')) : 'Unassigned'}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderClassTeacherBlock(){
+  const db = SchoolDB.get();
+  const teacherId = db.assignments[selectedClass];
+  const t = teacherId ? db.teachers.find(x=>x.id===teacherId) : null;
+  document.getElementById('class-teacher-block').innerHTML = t ? `
+    <div class="flex flex-wrap items-center gap-4 p-4 rounded-xl2 border border-slate-200" style="background:#F8FAFC">
+      ${t.photo ? `<img src="${t.photo}" class="rounded-full object-cover" style="width:52px;height:52px">` : `<div class="avatar" style="width:52px;height:52px;font-size:15px;background:${t.color}">${t.initials}</div>`}
+      <div class="flex-1" style="min-width:180px">
+        <div class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-0.5">Class Teacher</div>
+        <div class="font-bold text-base">${escapeHtml(t.name)}</div>
+        <div class="text-caption">${escapeHtml(t.subject)} · ${t.phone ? t.phone : 'No phone on file'}</div>
+      </div>
+      <a href="class-teacher-assign.html" class="btn btn-sm btn-outline">Change</a>
+    </div>` : `
+    <div class="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl2 border border-dashed border-slate-300">
+      <div class="text-sm text-slate-500">No Class Teacher assigned yet for this class.</div>
+      <a href="class-teacher-assign.html" class="btn btn-sm btn-primary">Assign Class Teacher</a>
+    </div>`;
+}
+
+function renderRows(){
+  document.getElementById('detail-title').textContent = 'Class ' + classLabel(selectedClass).replace('Class ','');
+  renderClassTeacherBlock();
+  const rows = getSubjectTeachersForClass(selectedClass);
+  document.getElementById('subject-rows').innerHTML = rows.map(r => `
+    <div class="flex items-center justify-between gap-4 p-3.5 rounded-xl2 border border-slate-200">
+      <div class="flex items-center gap-3">
+        ${r.teacher && r.teacher.photo ? `<img src="${r.teacher.photo}" class="rounded-full object-cover" style="width:34px;height:34px">` : `<div class="avatar" style="width:34px;height:34px;font-size:11px;background:${r.teacher ? r.teacher.color : '#94A3B8'}">${r.teacher ? r.teacher.initials : '—'}</div>`}
+        <div class="font-semibold text-sm">${escapeHtml(r.subject)}</div>
+      </div>
+      <select class="field-input" style="width:260px;padding:8px 12px" data-subject="${escapeHtml(r.subject)}" onchange="onAssign(this)">
+        <option value="">— Not Assigned —</option>
+        ${teachers.map(t => `<option value="${t.id}" ${r.teacher && r.teacher.id===t.id ? 'selected' : ''}>${escapeHtml(t.name)} (${escapeHtml(t.subject)})</option>`).join('')}
+      </select>
+    </div>`).join('');
+  lucide.createIcons();
+}
+
+window.selectClass = function(code){
+  selectedClass = code;
+  renderGrid();
+  renderRows();
+};
+
+window.onAssign = function(sel){
+  const subject = sel.dataset.subject;
+  assignSubjectTeacher(selectedClass, subject, sel.value || null);
+  renderRows();
+  const status = document.getElementById('save-status');
+  status.textContent = 'Saved ✓';
+  setTimeout(()=>{ status.textContent=''; }, 1500);
+};
+
+renderGrid();
+if (selectedClass) renderRows();
+</script>
+</body>
+</html>

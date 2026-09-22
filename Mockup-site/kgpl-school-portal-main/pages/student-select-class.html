@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Select Your Class — Student Portal</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="text-white min-h-screen">
+<div class="aurora-bg"><div class="aurora-grid"></div></div>
+
+<div class="relative z-10 min-h-screen flex flex-col">
+  <header class="top-toolbar flex items-center justify-between px-6 lg:px-10">
+    <a href="gateway.html" class="flex items-center gap-2 text-sm text-white/70 hover:text-white"><i data-lucide="arrow-left" class="w-4 h-4"></i>All Portals</a>
+    <a href="home.html" class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-secondary to-primary flex items-center justify-center font-bold text-xs">GS</div>
+    </a>
+  </header>
+
+  <main class="flex-1 flex flex-col items-center justify-center px-6 py-14">
+    <div class="text-center max-w-lg mb-10 fade-up">
+      <div class="portal-icon mx-auto mb-5" style="background:linear-gradient(135deg,#F59E0B,#DC2626)"><i data-lucide="graduation-cap" class="w-6 h-6 text-white"></i></div>
+      <h1 class="text-3xl font-extrabold mb-2">Which class are you in?</h1>
+      <p class="text-white/55">Select your class and section to continue to sign in.</p>
+    </div>
+
+    <div class="w-full max-w-5xl space-y-10 fade-up">
+      <!-- Classes 6-10, two sections each -->
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-widest text-white/40 mb-4">Classes 6 – 10 · Section A / B</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <!-- generated for 6-10 -->
+          <a href="student-login.html?class=6A" class="glass-card p-5 text-center hover:-translate-y-1 transition"><div class="text-2xl font-extrabold">6<span class="text-secondary">A</span></div><div class="text-[11px] text-white/50 mt-1"><span id="count-6A">…</span> students</div></a>
+          <a href="student-login.html?class=6B" class="glass-card p-5 text-center hover:-translate-y-1 transition"><div class="text-2xl font-extrabold">6<span class="text-secondary">B</span></div><div class="text-[11px] text-white/50 mt-1"><span id="count-6B">…</span> students</div></a>
+          <a href="student-login.html?class=7A" class="glass-card p-5 text-center hover:-translate-y-1 transition"><div class="text-2xl font-extrabold">7<span class="text-secondary">A</span></div><div class="text-[11px] text-white/50 mt-1"><span id="count-7A">…</span> students</div></a>
+          <a href="student-login.html?class=7B" class="glass-card p-5 text-center hover:-translate-y-1 transition"><div class="text-2xl font-extrabold">7<span class="text-secondary">B</span></div><div class="text-[11px] text-white/50 mt-1"><span id="count-7B">…</span> students</div></a>
+          <a href="student-login.html?class=8A" class="glass-card p-5 text-center hover:-translate-y-1 transition"><div class="text-2xl font-extrabold">8<span class="text-secondary">A</span></div><div class="text-[11px] text-white/50 mt-1"><span id="count-8A">…</span> students</div></a>
+          <a href="student-login.html?class=8B" class="glass-card p-5 text-center hover:-translate-y-1 transition"><div class="text-2xl font-extrabold">8<span class="text-secondary">B</span></div><div class="text-[11px] text-white/50 mt-1"><span id="count-8B">…</span> students</div></a>
+          <a href="student-login.html?class=9A" class="glass-card p-5 text-center hover:-translate-y-1 transition"><div class="text-2xl font-extrabold">9<span class="text-secondary">A</span></div><div class="text-[11px] text-white/50 mt-1"><span id="count-9A">…</span> students</div></a>
+          <a href="student-login.html?class=9B" class="glass-card p-5 text-center hover:-translate-y-1 transition"><div class="text-2xl font-extrabold">9<span class="text-secondary">B</span></div><div class="text-[11px] text-white/50 mt-1"><span id="count-9B">…</span> students</div></a>
+          <a href="student-login.html?class=10A" class="glass-card p-5 text-center hover:-translate-y-1 transition"><div class="text-2xl font-extrabold">10<span class="text-secondary">A</span></div><div class="text-[11px] text-white/50 mt-1"><span id="count-10A">…</span> students</div></a>
+          <a href="student-login.html?class=10B" class="glass-card p-5 text-center hover:-translate-y-1 transition"><div class="text-2xl font-extrabold">10<span class="text-secondary">B</span></div><div class="text-[11px] text-white/50 mt-1"><span id="count-10B">…</span> students</div></a>
+        </div>
+      </div>
+
+      <!-- Classes 11-12, groups -->
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-widest text-white/40 mb-4">Classes 11 &amp; 12 · Groups</h2>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <a href="student-login.html?class=11-G1" class="glass-card p-5 text-center hover:-translate-y-1 transition">
+            <div class="text-xl font-extrabold">11 <span class="text-secondary">·</span> Group I</div><div class="text-[11px] text-white/50 mt-1">Maths · <span id="count-11-G1">…</span> students</div>
+          </a>
+          <a href="student-login.html?class=11-G2" class="glass-card p-5 text-center hover:-translate-y-1 transition">
+            <div class="text-xl font-extrabold">11 <span class="text-secondary">·</span> Group II</div><div class="text-[11px] text-white/50 mt-1">Biology · <span id="count-11-G2">…</span> students</div>
+          </a>
+          <a href="student-login.html?class=12-G1" class="glass-card p-5 text-center hover:-translate-y-1 transition">
+            <div class="text-xl font-extrabold">12 <span class="text-secondary">·</span> Group I</div><div class="text-[11px] text-white/50 mt-1">Maths · <span id="count-12-G1">…</span> students</div>
+          </a>
+          <a href="student-login.html?class=12-G2" class="glass-card p-5 text-center hover:-translate-y-1 transition">
+            <div class="text-xl font-extrabold">12 <span class="text-secondary">·</span> Group II</div><div class="text-[11px] text-white/50 mt-1">Biology · <span id="count-12-G2">…</span> students</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+lucide.createIcons();
+const classes = getClassesWithCounts();
+const idMap = { '11-G1':'11G1', '11-G2':'11G2', '12-G1':'12G1', '12-G2':'12G2' };
+document.querySelectorAll('[id^="count-"]').forEach(el => {
+  const key = el.id.replace('count-','');
+  const code = idMap[key] || key;
+  const c = classes.find(x=>x.code===code);
+  el.textContent = c ? c.total : 0;
+});
+</script>
+</body>
+</html>

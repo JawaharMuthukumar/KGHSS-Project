@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teacher Dashboard — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight">GHSS ERP</div><div class="text-[11px] text-slate-400">Teacher Portal</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="sidebar-link active" href="teacher-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <a class="sidebar-link" href="take-attendance.html"><i data-lucide="calendar-check"></i>Take Attendance</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="pencil-line"></i>Enter Marks</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <div class="sidebar-section-label" id="my-class-label">My Class</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Class Students</a>
+    <a class="sidebar-link" href="teacher-add-student.html"><i data-lucide="user-round-plus"></i>Add Student</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance Report</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="#my-timetable-card" onclick="document.getElementById('my-timetable-card').scrollIntoView({behavior:'smooth'})"><i data-lucide="calendar-clock"></i>My Timetable</a>
+    <a class="sidebar-link" href="#cert-requests-card" onclick="document.getElementById('cert-requests-card').scrollIntoView({behavior:'smooth'})"><i data-lucide="file-badge"></i>Certificate Requests<span id="cert-req-count-badge" class="hidden ml-auto"></span></a>
+    <a class="sidebar-link" href="#class-notices-card" onclick="document.getElementById('class-notices-card').scrollIntoView({behavior:'smooth'})"><i data-lucide="megaphone"></i>Class Notices</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><span class="current">Dashboard</span></div>
+    </div>
+    <div class="flex items-center gap-2.5"><div class="avatar" id="teacher-avatar" style="background:#2563EB">T</div></div>
+  </header>
+
+  <main class="p-7 max-w-[1440px]">
+    <div class="mb-7">
+      <h1 class="text-h1" id="welcome-msg">Welcome</h1>
+      <p class="text-body mt-1" id="welcome-sub">Government Higher Secondary School, Kangayampalayam</p>
+    </div>
+
+    <div id="no-class-banner" class="card p-6 mb-7 hidden">
+      <div class="flex items-center gap-3 text-slate-500"><i data-lucide="info" class="w-5 h-5" style="color:#F59E0B"></i>You are not currently assigned as a Class Teacher. You can still enter subject marks once assigned to a class by the Headmaster.</div>
+    </div>
+
+    <div class="grid sm:grid-cols-3 gap-5 mb-8">
+      <div class="stat-card"><div class="stat-icon mb-3" style="background:var(--secondary-light)"><i data-lucide="users" class="w-5 h-5 text-secondary"></i></div><div class="text-2xl font-extrabold" id="kpi-strength">0</div><div class="text-caption">Class Strength</div></div>
+      <div class="stat-card"><div class="stat-icon mb-3" style="background:var(--success-light)"><i data-lucide="percent" class="w-5 h-5 text-success"></i></div><div class="text-2xl font-extrabold" id="kpi-avg">—</div><div class="text-caption">Class Average (Term 1)</div></div>
+      <div class="stat-card"><div class="stat-icon mb-3" style="background:var(--warning-light)"><i data-lucide="trophy" class="w-5 h-5" style="color:#B45309"></i></div><div class="text-2xl font-extrabold" id="kpi-top">—</div><div class="text-caption">Top Scorer</div></div>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-6 mb-7">
+      <a href="teacher-add-student.html" class="card card-hover p-6 flex items-center gap-3"><i data-lucide="user-round-plus" class="w-5 h-5 text-primary"></i><span class="font-semibold text-sm">Add Student to My Class</span></a>
+      <a href="result-analysis.html" class="card card-hover p-6 flex items-center gap-3"><i data-lucide="pencil-line" class="w-5 h-5 text-primary"></i><span class="font-semibold text-sm">Enter Term Marks</span></a>
+      <a href="student-profile.html" class="card card-hover p-6 flex items-center gap-3"><i data-lucide="graduation-cap" class="w-5 h-5 text-primary"></i><span class="font-semibold text-sm">View Class Students</span></a>
+    </div>
+
+    <div class="card p-7 mb-7" id="school-notices-card">
+      <h3 class="text-h3 mb-5">School Notices</h3>
+      <div id="school-notices-list" class="space-y-3"></div>
+    </div>
+
+    <div class="card p-7 mb-7" id="cert-requests-card">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="text-h3">Certificate Requests</h3>
+        <span class="badge badge-warning" id="pending-count-badge" style="display:none"></span>
+      </div>
+      <p class="text-caption mb-5" style="margin-top:-12px">Approve a request to unlock the download for that student. Nothing downloads until you accept it.</p>
+      <div id="cert-requests-list" class="space-y-3"></div>
+    </div>
+
+    <div class="card p-7 mb-7">
+      <h3 class="text-h3 mb-5">My Class — Top Performers</h3>
+      <div id="rank-list" class="space-y-3"></div>
+    </div>
+
+    <div class="card p-7 mb-7" id="my-timetable-card">
+      <div class="flex items-center justify-between gap-3 mb-5">
+        <h3 class="text-h3">My Weekly Timetable</h3>
+        <span class="text-caption">Assigned by the Headmaster — read only</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="data-table" style="min-width:900px">
+          <thead><tr id="my-tt-head"></tr></thead>
+          <tbody id="my-tt-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card p-7" id="class-notices-card">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="text-h3">Class Notices</h3>
+        <button class="btn btn-sm btn-outline" id="notice-toggle-btn" onclick="document.getElementById('notice-form').classList.toggle('hidden')"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Post Notice</button>
+      </div>
+      <p class="text-caption mb-5" style="margin-top:-12px">Homework, information or reminders — students in the class you pick see it on their Notice Board, tagged with your name and subject.</p>
+      <form id="notice-form" class="hidden mb-5 p-4 rounded-xl border border-dashed border-slate-300 space-y-3">
+        <div class="field-group" style="max-width:280px">
+          <select class="field-input" id="notice-class"></select>
+          <label class="field-label">Class</label>
+        </div>
+        <input class="field-input" id="notice-title" placeholder="Notice title">
+        <textarea class="field-input" id="notice-body" rows="3" placeholder="Homework or information for this class"></textarea>
+        <button type="submit" class="btn btn-primary btn-sm">Post to Class Notice Board</button>
+      </form>
+      <div id="class-notices-list" class="space-y-3"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const teacher = Session.requireRole('teacher');
+if (teacher){
+  document.getElementById('teacher-avatar').textContent = teacher.initials || 'T';
+  document.getElementById('welcome-msg').textContent = 'Welcome, ' + teacher.name;
+
+  const schoolNotices = getNoticesForAudience('teacher');
+  document.getElementById('school-notices-list').innerHTML = schoolNotices.length ? schoolNotices.map(n => `
+    <div class="p-4 rounded-xl2 border border-slate-200">
+      <div class="font-semibold text-sm">${escapeHtml(n.title)}</div>
+      <div class="text-caption mt-1">${escapeHtml(n.body)}</div>
+      <div class="text-[11px] text-slate-400 mt-1.5">${n.date}</div>
+    </div>`).join('') : `<p class="text-caption text-center py-8">No notices from the Admin yet.</p>`;
+
+  document.getElementById('my-tt-head').innerHTML = '<th>Period</th>' + TIMETABLE_DAYS.map(d => `<th>${d}</th>`).join('');
+  const myTt = getTeacherTimetable(teacher.id);
+  document.getElementById('my-tt-body').innerHTML = Array.from({length: TIMETABLE_PERIODS}, (_, p) => `
+    <tr>
+      <td class="font-semibold" style="color:var(--text-900)">Period ${p+1}</td>
+      ${TIMETABLE_DAYS.map((_, d) => `<td class="text-sm text-slate-500">${escapeHtml(myTt[d][p] || '—')}</td>`).join('')}
+    </tr>`).join('');
+  if (teacher.assignedClass){
+    document.getElementById('welcome-sub').textContent = 'Class Teacher — ' + classLabel(teacher.assignedClass);
+    document.getElementById('my-class-label').textContent = 'My Class · ' + classLabel(teacher.assignedClass).replace('Class ','');
+    const sc = classScorecard(teacher.assignedClass, 'Term 1');
+    document.getElementById('kpi-strength').textContent = sc.total;
+    document.getElementById('kpi-avg').textContent = sc.graded ? sc.avg.toFixed(1)+'%' : '—';
+    document.getElementById('kpi-top').textContent = sc.top5[0] ? sc.top5[0].student.name.split(' ')[0] : '—';
+    const medalColors = ['#F59E0B','#94A3B8','#B45309','#0F4C81','#2563EB'];
+    document.getElementById('rank-list').innerHTML = sc.top5.length ? sc.top5.map((r,i)=>`
+      <div class="flex items-center gap-4 p-3.5 rounded-xl2 border border-slate-200">
+        <div class="rank-medal" style="background:${medalColors[i]}">${i+1}</div>
+        <div class="avatar" style="background:${medalColors[i%medalColors.length]}">${initials(r.student.name)}</div>
+        <div class="flex-1"><div class="font-semibold text-sm text-slate-900">${escapeHtml(r.student.name)}</div><div class="text-caption">Reg. No. ${r.student.regno}</div></div>
+        <div class="text-lg font-extrabold text-primary">${r.avg.toFixed(1)}%</div>
+      </div>`).join('') : `<p class="text-caption text-center py-8">No marks entered yet. <a href="result-analysis.html" class="text-secondary font-semibold">Enter marks →</a></p>`;
+  } else {
+    document.getElementById('no-class-banner').classList.remove('hidden');
+    document.getElementById('welcome-sub').textContent = 'No class currently assigned';
+    document.getElementById('rank-list').innerHTML = `<p class="text-caption text-center py-8">Assign a class to see rankings here.</p>`;
+  }
+
+  /* ---- Certificate Requests (class teacher approval) ---- */
+  const STATUS_BADGE = {
+    pending: '<span class="badge badge-warning"><span class="badge-dot"></span>Pending</span>',
+    approved: '<span class="badge badge-success"><span class="badge-dot"></span>Approved</span>',
+    rejected: '<span class="badge badge-danger"><span class="badge-dot"></span>Rejected</span>',
+  };
+  function renderCertRequests(){
+    const reqs = getAllRequestsForTeacher(teacher.id).sort((a,b)=> (a.status==='pending'?0:1) - (b.status==='pending'?0:1));
+    const pendingCount = reqs.filter(r=>r.status==='pending').length;
+    const pendingBadge = document.getElementById('pending-count-badge');
+    if (pendingCount){ pendingBadge.style.display='inline-flex'; pendingBadge.textContent = pendingCount + ' pending'; }
+    else { pendingBadge.style.display='none'; }
+    const navBadge = document.getElementById('cert-req-count-badge');
+    if (pendingCount){ navBadge.classList.remove('hidden'); navBadge.textContent = pendingCount; navBadge.className='ml-auto text-[11px] font-bold bg-warning text-white rounded-full px-2 py-0.5'; }
+    else { navBadge.classList.add('hidden'); }
+
+    document.getElementById('cert-requests-list').innerHTML = reqs.length ? reqs.map(r => {
+      const st = getStudent(r.studentId);
+      return `
+      <div class="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl2 border border-slate-200">
+        <div class="flex items-center gap-3">
+          <div class="avatar" style="background:#2563EB">${initials(st ? st.name : '?')}</div>
+          <div>
+            <div class="font-semibold text-sm">${escapeHtml(st ? st.name : 'Unknown student')} <span class="text-caption font-normal">· ${st ? st.regno : ''}</span></div>
+            <div class="text-caption">${escapeHtml(CERT_TYPE_LABEL[r.type] || r.type)} · Requested ${r.requestDate}${r.note ? ' · "'+escapeHtml(r.note)+'"' : ''}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5">
+          ${STATUS_BADGE[r.status] || ''}
+          ${r.status === 'pending' ? `
+            <button class="btn btn-sm btn-primary" onclick="decideRequest('${r.id}', true)"><i data-lucide="check" class="w-3.5 h-3.5"></i>Accept</button>
+            <button class="btn btn-sm btn-outline" style="color:#DC2626;border-color:#DC2626" onclick="decideRequest('${r.id}', false)"><i data-lucide="x" class="w-3.5 h-3.5"></i>Reject</button>
+          ` : ''}
+        </div>
+      </div>`;
+    }).join('') : `<p class="text-caption text-center py-8">No certificate requests from your class yet.</p>`;
+    lucide.createIcons();
+  }
+  window.decideRequest = function(reqId, approve){
+    decideCertificateRequest(reqId, approve, teacher.name);
+    renderCertRequests();
+  };
+  renderCertRequests();
+
+  /* ---- Class Notices — every teacher can post; a Class Teacher is locked to their own class, a subject teacher picks one. ---- */
+  const noticeClassSelect = document.getElementById('notice-class');
+  if (teacher.assignedClass){
+    noticeClassSelect.innerHTML = `<option value="${teacher.assignedClass}">My Class — ${classLabel(teacher.assignedClass)}</option>`;
+    noticeClassSelect.disabled = true;
+  } else {
+    noticeClassSelect.innerHTML = getClassesWithCounts().map(c => `<option value="${c.code}">${c.label}</option>`).join('');
+  }
+
+  function renderClassNotices(){
+    const notices = getClassNoticesByTeacher(teacher.id);
+    document.getElementById('class-notices-list').innerHTML = notices.length ? notices.map(n => `
+      <div class="p-4 rounded-xl2 border border-slate-200">
+        <div class="flex items-center justify-between gap-3">
+          <div class="font-semibold text-sm">${escapeHtml(n.title)}</div>
+          <span class="badge badge-info text-[10px]">${classLabel(n.classCode)}</span>
+        </div>
+        <div class="text-caption mt-1">${escapeHtml(n.body)}</div>
+        <div class="text-[11px] text-slate-400 mt-1.5">${new Date(n.postedAt).toLocaleString()}</div>
+      </div>`).join('') : `<p class="text-caption text-center py-8">No notices posted yet.</p>`;
+  }
+  renderClassNotices();
+  document.getElementById('notice-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    const title = document.getElementById('notice-title').value.trim();
+    const body = document.getElementById('notice-body').value.trim();
+    const classCode = noticeClassSelect.value;
+    if (!title || !classCode) return;
+    addClassNotice({ classCode, title, body, teacherId: teacher.id, teacherName: teacher.name, subject: teacher.subject });
+    document.getElementById('notice-title').value = '';
+    document.getElementById('notice-body').value = '';
+    document.getElementById('notice-form').classList.add('hidden');
+    renderClassNotices();
+  });
+}
+</script>
+</body>
+</html>

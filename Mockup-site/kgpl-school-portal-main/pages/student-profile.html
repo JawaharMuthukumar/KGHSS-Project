@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Students — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight" id="sidebar-title">GHSS ERP</div><div class="text-[11px] text-slate-400" id="sidebar-sub">Admin Panel</div></div>
+  </div>
+  <nav class="sidebar-nav" id="nav-admin">
+    <a class="sidebar-link" href="admin-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <div class="sidebar-section-label">Academics</div>
+    <a class="sidebar-link active" href="student-profile.html"><i data-lucide="graduation-cap"></i>Students</a>
+    <a class="sidebar-link" href="add-teacher.html"><i data-lucide="users"></i>Teachers</a>
+    <a class="sidebar-link" href="class-teacher-assign.html"><i data-lucide="user-cog"></i>Class Teacher</a>
+    <a class="sidebar-link" href="subject-teacher-assign.html"><i data-lucide="book-user"></i>Subject Teachers</a>
+    <a class="sidebar-link" href="teacher-timetable.html"><i data-lucide="calendar-clock"></i>Teacher Timetable</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="bar-chart-3"></i>Result Analysis</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <a class="sidebar-link" href="class-scorecard.html"><i data-lucide="trophy"></i>Class Scorecards</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance</a>
+    <a class="sidebar-link" href="complaints.html"><i data-lucide="message-circle"></i>Complaints</a>
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link" href="certificate-generator.html"><i data-lucide="file-badge"></i>Certificates</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link" href="home.html"><i data-lucide="globe"></i>School Website</a>
+  </nav>
+  <nav class="sidebar-nav hidden" id="nav-teacher">
+    <a class="sidebar-link" href="teacher-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <a class="sidebar-link" href="take-attendance.html"><i data-lucide="calendar-check"></i>Take Attendance</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="pencil-line"></i>Enter Marks</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <div class="sidebar-section-label" id="my-class-label">My Class</div>
+    <a class="sidebar-link active" href="student-profile.html"><i data-lucide="graduation-cap"></i>Class Students</a>
+    <a class="sidebar-link" href="teacher-add-student.html"><i data-lucide="user-round-plus"></i>Add Student</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance Report</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><span class="current">Students</span></div>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <div class="avatar" id="user-avatar">U</div>
+    </div>
+  </header>
+
+  <main class="p-7 max-w-[1440px]">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div><h1 class="text-h1">Students</h1><p class="text-body mt-1">Browse students and view individual profiles, marks &amp; attendance.</p></div>
+      <div class="flex items-center gap-3">
+        <select id="class-filter" class="field-input" style="width:220px;padding:10px 14px"></select>
+        <input class="search-input" id="search" placeholder="Search by name or reg. no…" oninput="renderTable()">
+      </div>
+    </div>
+
+    <div class="card p-6">
+      <table class="data-table">
+        <thead><tr><th>Student</th><th>Class</th><th>Register No.</th><th>Gender</th><th>Avg (Term 1)</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- Profile drawer -->
+<div id="drawer-backdrop" class="fixed inset-0 bg-slate-900/50 z-40 hidden" onclick="closeDrawer()"></div>
+<div id="drawer" class="fixed top-0 right-0 bottom-0 w-full sm:w-[460px] bg-white z-50 shadow-2xl translate-x-full transition-transform duration-300 flex flex-col">
+  <div class="p-6 border-b border-slate-200 flex items-center justify-between">
+    <h3 class="text-h3">Student Profile</h3>
+    <button class="btn-icon btn-ghost border border-slate-200" onclick="closeDrawer()"><i data-lucide="x" class="w-4 h-4"></i></button>
+  </div>
+  <div class="flex-1 overflow-y-auto p-6">
+    <div class="flex items-center gap-4 mb-6">
+      <div class="avatar" style="width:56px;height:56px;font-size:18px" id="p-avatar">—</div>
+      <div><div class="font-bold text-lg" id="p-name">—</div><div class="text-caption" id="p-class">—</div></div>
+    </div>
+    <div class="tab-list mb-5">
+      <div class="tab-item active" data-tab="profile" onclick="switchTab('profile')">Profile</div>
+      <div class="tab-item" data-tab="results" onclick="switchTab('results')">Results</div>
+    </div>
+    <div id="tab-profile" class="space-y-3 text-sm">
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Register No.</span><span class="font-medium" id="p-regno">—</span></div>
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Admission No.</span><span class="font-medium" id="p-admno">—</span></div>
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Gender</span><span class="font-medium" id="p-gender">—</span></div>
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Date of Birth</span><span class="font-medium" id="p-dob">—</span></div>
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Blood Group</span><span class="font-medium" id="p-blood">—</span></div>
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Father's Name</span><span class="font-medium" id="p-father">—</span></div>
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Mother's Name</span><span class="font-medium" id="p-mother">—</span></div>
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Parent Mobile</span><span class="font-medium" id="p-phone">—</span></div>
+      <div class="flex justify-between py-2"><span class="text-slate-500">Address</span><span class="font-medium text-right" id="p-addr">—</span></div>
+    </div>
+    <div id="tab-results" class="hidden space-y-2" id="p-results"></div>
+  </div>
+</div>
+
+<script>
+lucide.createIcons();
+const session = Session.get();
+if (!session || (session.role!=='admin' && session.role!=='teacher')) window.location.href = 'gateway.html';
+const isTeacher = session.role === 'teacher';
+document.getElementById('user-avatar').textContent = session.initials || initials(session.name);
+
+if (isTeacher){
+  document.getElementById('nav-admin').classList.add('hidden');
+  document.getElementById('nav-teacher').classList.remove('hidden');
+  document.getElementById('sidebar-sub').textContent = 'Teacher Portal';
+  document.getElementById('my-class-label').textContent = session.assignedClass ? 'My Class · ' + classLabel(session.assignedClass).replace('Class ','') : 'My Class';
+}
+
+const classFilter = document.getElementById('class-filter');
+const classes = getClassesWithCounts();
+if (isTeacher && session.assignedClass){
+  classFilter.innerHTML = `<option value="${session.assignedClass}">${classLabel(session.assignedClass)}</option>`;
+  classFilter.disabled = true;
+} else {
+  classFilter.innerHTML = `<option value="">All Classes</option>` + classes.map(c=>`<option value="${c.code}">${c.label} (${c.total})</option>`).join('');
+}
+
+function renderTable(){
+  const db = SchoolDB.get();
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  const filterClass = classFilter.value;
+  let list = db.students.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if (isTeacher && session.assignedClass) list = list.filter(s=>s.class===session.assignedClass);
+  else if (filterClass) list = list.filter(s=>s.class===filterClass);
+  if (q) list = list.filter(s=>s.name.toLowerCase().includes(q) || s.regno.toLowerCase().includes(q));
+
+  document.getElementById('rows').innerHTML = list.map(s => {
+    const avg = studentAverage(s.id, 'Term 1');
+    return `<tr class="cursor-pointer" onclick="openProfile('${s.id}')">
+      <td class="flex items-center gap-2.5"><div class="avatar" style="width:32px;height:32px;font-size:11px">${initials(s.name)}</div>${escapeHtml(s.name)}</td>
+      <td>${classLabel(s.class)}</td>
+      <td class="font-mono text-xs">${s.regno}</td>
+      <td>${s.gender||'—'}</td>
+      <td>${avg!==null ? avg.toFixed(1)+'%' : '—'}</td>
+      <td><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" class="text-center text-slate-400 py-8">No students found.</td></tr>`;
+  lucide.createIcons();
+}
+classFilter.addEventListener('change', renderTable);
+renderTable();
+
+function switchTab(tab){
+  document.querySelectorAll('.tab-item').forEach(el=>el.classList.toggle('active', el.dataset.tab===tab));
+  document.getElementById('tab-profile').classList.toggle('hidden', tab!=='profile');
+  document.getElementById('tab-results').classList.toggle('hidden', tab!=='results');
+}
+function openProfile(id){
+  const s = getStudent(id);
+  if (!s) return;
+  document.getElementById('p-avatar').textContent = initials(s.name);
+  document.getElementById('p-name').textContent = s.name;
+  document.getElementById('p-class').textContent = classLabel(s.class);
+  document.getElementById('p-regno').textContent = s.regno;
+  document.getElementById('p-admno').textContent = s.admissionNo || '—';
+  document.getElementById('p-gender').textContent = s.gender || '—';
+  document.getElementById('p-dob').textContent = s.dob || '—';
+  document.getElementById('p-blood').textContent = s.bloodGroup || '—';
+  document.getElementById('p-father').textContent = s.father || '—';
+  document.getElementById('p-mother').textContent = s.mother || '—';
+  document.getElementById('p-phone').textContent = s.parentPhone || '—';
+  document.getElementById('p-addr').textContent = s.address || '—';
+
+  const marks = getMarksForStudent(s.id, 'Term 1');
+  document.getElementById('tab-results').innerHTML = marks.length ? marks.map(m => `
+    <div class="flex items-center justify-between p-3 rounded-lg border border-slate-200">
+      <span class="text-sm font-medium">${escapeHtml(m.subject)}</span>
+      <span class="font-bold text-primary">${m.score}/${m.max}</span>
+    </div>`).join('') : `<p class="text-caption text-center py-6">No marks recorded yet.</p>`;
+
+  switchTab('profile');
+  document.getElementById('drawer-backdrop').classList.remove('hidden');
+  document.getElementById('drawer').classList.remove('translate-x-full');
+}
+function closeDrawer(){
+  document.getElementById('drawer-backdrop').classList.add('hidden');
+  document.getElementById('drawer').classList.add('translate-x-full');
+}
+</script>
+</body>
+</html>

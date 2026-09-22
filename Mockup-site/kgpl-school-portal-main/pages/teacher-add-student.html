@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Student — Class Teacher</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight">GHSS ERP</div><div class="text-[11px] text-slate-400">Teacher Portal</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="sidebar-link" href="teacher-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <a class="sidebar-link" href="take-attendance.html"><i data-lucide="calendar-check"></i>Take Attendance</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="pencil-line"></i>Enter Marks</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <div class="sidebar-section-label" id="my-class-label">My Class</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Class Students</a>
+    <a class="sidebar-link active" href="teacher-add-student.html"><i data-lucide="user-round-plus"></i>Add Student</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance Report</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><a href="teacher-dashboard.html">Dashboard</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span class="current">Add Student</span></div>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <button class="btn-icon btn-ghost border border-slate-200 relative"><i data-lucide="bell" class="w-4.5 h-4.5"></i><span class="notif-dot"></span></button>
+      <div class="avatar" id="teacher-avatar" style="background:#2563EB">PS</div>
+    </div>
+  </header>
+
+  <main class="p-7 max-w-5xl">
+    <div class="flex items-center justify-between mb-7">
+      <div>
+        <h1 class="text-h1" id="page-title">Add Student</h1>
+        <p class="text-body mt-1">You can only add students to your assigned class. Login access is created automatically.</p>
+      </div>
+      <span class="badge badge-info"><i data-lucide="lock" class="w-3 h-3"></i><span id="teacher-badge">Class Teacher</span></span>
+    </div>
+
+    <div id="no-class-notice" class="card p-6 mb-6 hidden">
+      <div class="flex items-center gap-3 text-slate-500"><i data-lucide="alert-triangle" class="w-5 h-5" style="color:#F59E0B"></i>You are not currently assigned as a Class Teacher, so you cannot add students. Contact the Headmaster to be assigned a class.</div>
+    </div>
+
+    <form class="space-y-6" id="add-student-form">
+      <!-- Photo + basic -->
+      <div class="card p-7">
+        <h3 class="text-h3 mb-5 flex items-center gap-2"><i data-lucide="user-circle" class="w-5 h-5 text-primary"></i>Student Details</h3>
+        <div class="grid lg:grid-cols-[160px_1fr] gap-8">
+          <div class="flex flex-col items-center gap-3">
+            <div class="w-32 h-32 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 text-slate-400">
+              <i data-lucide="camera" class="w-7 h-7"></i>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline w-full justify-center"><i data-lucide="upload" class="w-3.5 h-3.5"></i>Upload Photo</button>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-5">
+            <div class="field-group"><input class="field-input" placeholder=" " id="sname" required><label class="field-label" for="sname">Full Name</label></div>
+            <div class="field-group"><input class="field-input" placeholder=" " id="rollno"><label class="field-label" for="rollno">Roll Number</label></div>
+            <div class="field-group">
+              <select class="field-input" id="gender"><option></option><option>Male</option><option>Female</option><option>Other</option></select>
+              <label class="field-label">Gender</label>
+            </div>
+            <div class="field-group"><input type="date" class="field-input" placeholder=" " id="dob"><label class="field-label" for="dob">Date of Birth</label></div>
+            <div class="field-group">
+              <select class="field-input" id="bloodGroup"><option></option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select>
+              <label class="field-label">Blood Group</label>
+            </div>
+            <div class="field-group">
+              <select class="field-input" id="community"><option value="OTH">OTH</option><option value="BC">BC</option><option value="BCM">BCM</option><option value="MBC">MBC</option><option value="SC">SC</option><option value="SCA">SCA</option><option value="ST">ST</option></select>
+              <label class="field-label">Community</label>
+            </div>
+            <div class="field-group">
+              <select class="field-input" id="medium"><option value="TM">Tamil Medium</option><option value="EM">English Medium</option></select>
+              <label class="field-label">Medium</label>
+            </div>
+            <div class="field-group"><input class="field-input" id="classLabel" value="—" disabled style="background:#F8FAFC;color:#64748B"><label class="field-label" style="top:-9px;font-size:12px;font-weight:600;color:#64748B">Class / Section</label></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Identifiers -->
+      <div class="card p-7">
+        <h3 class="text-h3 mb-5 flex items-center gap-2"><i data-lucide="id-card" class="w-5 h-5 text-primary"></i>Identification Numbers</h3>
+        <div class="grid sm:grid-cols-3 gap-5">
+          <div class="field-group"><input class="field-input" placeholder=" " id="admno"><label class="field-label" for="admno">Admission Number (optional — auto-generated if blank)</label></div>
+          <div class="field-group"><input class="field-input" placeholder=" " id="emis"><label class="field-label" for="emis">EMIS Number</label></div>
+          <div class="field-group"><input class="field-input" placeholder=" " id="umis"><label class="field-label" for="umis">UMIS Number</label></div>
+        </div>
+      </div>
+
+      <!-- Parent details -->
+      <div class="card p-7">
+        <h3 class="text-h3 mb-5 flex items-center gap-2"><i data-lucide="users" class="w-5 h-5 text-primary"></i>Parent / Guardian Details</h3>
+        <div class="grid sm:grid-cols-2 gap-5">
+          <div class="field-group"><input class="field-input" placeholder=" " id="father"><label class="field-label" for="father">Father's Name</label></div>
+          <div class="field-group"><input class="field-input" placeholder=" " id="mother"><label class="field-label" for="mother">Mother's Name</label></div>
+          <div class="field-group sm:col-span-2">
+            <input class="field-input" placeholder=" " id="pphone" required pattern="[0-9]{10}" oninput="syncPassword(this.value)">
+            <label class="field-label" for="pphone">Parent's Mobile Number</label>
+            <div class="field-hint">This number becomes the student's login password automatically.</div>
+          </div>
+          <div class="field-group sm:col-span-2"><input class="field-input" placeholder=" " id="addr"><label class="field-label" for="addr">Residential Address</label></div>
+        </div>
+      </div>
+
+      <!-- Auto-generated login preview -->
+      <div class="credential-card">
+        <div class="flex items-center gap-2 mb-4 relative z-10"><i data-lucide="key-round" class="w-4.5 h-4.5"></i><h3 class="font-bold">Student Login — Generated Automatically</h3></div>
+        <div class="grid sm:grid-cols-2 gap-4 relative z-10">
+          <div>
+            <div class="text-xs text-white/50 mb-1">Register Number (Login ID)</div>
+            <div class="credential-field" id="preview-regno">GHSS/2026/——</div>
+          </div>
+          <div>
+            <div class="text-xs text-white/50 mb-1">Password (Parent's Mobile)</div>
+            <div class="credential-field" id="preview-pw">Not entered yet</div>
+          </div>
+        </div>
+        <p class="text-xs text-white/50 mt-4 relative z-10 flex items-center gap-1.5"><i data-lucide="info" class="w-3.5 h-3.5"></i>Register Number is generated on save. Students can change their password after first login.</p>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center justify-end gap-3 sticky bottom-0 bg-bg/80 backdrop-blur py-4">
+        <button type="reset" class="btn btn-ghost">Reset</button>
+        <a href="teacher-dashboard.html" class="btn btn-outline">Cancel</a>
+        <button type="submit" class="btn btn-primary"><i data-lucide="check" class="w-4 h-4"></i>Save &amp; Create Login</button>
+      </div>
+    </form>
+
+    <!-- Success card (hidden until save) -->
+    <div id="success-card" class="hidden mt-6">
+      <div class="credential-card">
+        <div class="flex items-center gap-2 mb-4 relative z-10"><i data-lucide="check-circle-2" class="w-5 h-5 text-success"></i><h3 class="font-bold">Student Added — Login Created</h3></div>
+        <div class="grid sm:grid-cols-2 gap-4 relative z-10">
+          <div>
+            <div class="text-xs text-white/50 mb-1">Register Number (Login ID)</div>
+            <div class="credential-field" id="final-regno">—</div>
+          </div>
+          <div>
+            <div class="text-xs text-white/50 mb-1">Password (Parent's Mobile)</div>
+            <div class="credential-field" id="final-pw">—</div>
+          </div>
+        </div>
+        <a href="teacher-add-student.html" class="btn btn-secondary mt-5 relative z-10"><i data-lucide="user-round-plus" class="w-4 h-4"></i>Add Another Student</a>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const teacher = Session.requireRole('teacher');
+if (teacher){
+  document.getElementById('teacher-avatar').textContent = teacher.initials || 'T';
+  if (!teacher.assignedClass){
+    document.getElementById('no-class-notice').classList.remove('hidden');
+    document.getElementById('add-student-form').classList.add('hidden');
+    document.getElementById('teacher-badge').textContent = 'No class assigned';
+  } else {
+    const label = classLabel(teacher.assignedClass);
+    document.getElementById('page-title').textContent = 'Add Student — ' + label.replace('Class ','');
+    document.getElementById('teacher-badge').textContent = 'Class Teacher: ' + teacher.name;
+    document.getElementById('classLabel').value = label;
+    document.getElementById('my-class-label').textContent = 'My Class · ' + label.replace('Class ','');
+    const n = SchoolDB.get().meta.regCounter;
+    document.getElementById('preview-regno').textContent = `GHSS/2026/${String(n).padStart(4,'0')}`;
+  }
+}
+
+function syncPassword(val){
+  document.getElementById('preview-pw').textContent = val ? val : 'Not entered yet';
+}
+
+document.getElementById('add-student-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  if (!teacher || !teacher.assignedClass) return;
+  const student = addStudent({
+    name: document.getElementById('sname').value,
+    gender: document.getElementById('gender').value,
+    dob: document.getElementById('dob').value,
+    bloodGroup: document.getElementById('bloodGroup').value,
+    community: document.getElementById('community').value,
+    medium: document.getElementById('medium').value,
+    classCode: teacher.assignedClass,
+    admissionNo: document.getElementById('admno').value,
+    emisNo: document.getElementById('emis').value,
+    umisNo: document.getElementById('umis').value,
+    father: document.getElementById('father').value,
+    mother: document.getElementById('mother').value,
+    parentPhone: document.getElementById('pphone').value,
+    address: document.getElementById('addr').value
+  });
+  document.getElementById('final-regno').textContent = student.regno;
+  document.getElementById('final-pw').textContent = student.password;
+  document.getElementById('add-student-form').classList.add('hidden');
+  document.getElementById('success-card').classList.remove('hidden');
+  lucide.createIcons();
+});
+</script>
+</body>
+</html>

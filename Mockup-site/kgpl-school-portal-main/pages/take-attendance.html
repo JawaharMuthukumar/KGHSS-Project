@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Take Attendance — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight">GHSS ERP</div><div class="text-[11px] text-slate-400">Teacher Portal</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="sidebar-link" href="teacher-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <a class="sidebar-link active" href="take-attendance.html"><i data-lucide="calendar-check"></i>Take Attendance</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="pencil-line"></i>Enter Marks</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <div class="sidebar-section-label" id="my-class-label">My Class</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Class Students</a>
+    <a class="sidebar-link" href="teacher-add-student.html"><i data-lucide="user-round-plus"></i>Add Student</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance Report</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><span class="current">Take Attendance</span></div>
+    </div>
+    <div class="flex items-center gap-2.5"><div class="avatar" id="user-avatar">U</div></div>
+  </header>
+
+  <main class="p-7 max-w-[1440px]">
+
+    <div id="no-class-view" class="hidden card p-14 text-center max-w-xl">
+      <i data-lucide="calendar-x" class="w-10 h-10 mx-auto mb-4 text-slate-300"></i>
+      <div class="font-semibold text-slate-500">You are not assigned as a Class Teacher yet.</div>
+      <p class="text-sm text-slate-400 mt-1.5">Only a Class Teacher can take attendance. Ask the Admin to assign you to a class.</p>
+    </div>
+
+    <div id="attendance-view" class="hidden">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+        <div><h1 class="text-h1">Take Attendance</h1><p class="text-body mt-1" id="page-sub">—</p></div>
+        <div class="flex items-end gap-3">
+          <div class="field-group" style="width:170px">
+            <input type="month" class="field-input" id="att-month">
+            <label class="field-label">Month</label>
+          </div>
+          <div class="field-group" style="width:170px">
+            <input type="number" class="field-input" id="total-days" min="1" max="31" placeholder=" ">
+            <label class="field-label">Total Working Days</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3 mb-7">
+        <span class="text-caption" id="month-status"></span>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-5 mb-6">
+        <div class="stat-card"><div class="text-caption mb-1">Total Students</div><div class="text-2xl font-extrabold" id="s-total">—</div></div>
+        <div class="stat-card"><div class="text-caption mb-1">Total Working Days</div><div class="text-2xl font-extrabold" id="s-days">—</div></div>
+        <div class="stat-card"><div class="text-caption mb-1">Class Average Attendance</div><div class="text-2xl font-extrabold text-success" id="s-avg">—</div></div>
+      </div>
+
+      <div class="card p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+          <div class="font-semibold text-sm" style="color:var(--text-900)" id="rows-title">Enter present days for each student</div>
+          <div class="flex gap-2.5" id="rows-actions">
+            <button class="btn btn-ghost" id="mark-all-present"><i data-lucide="check-check" class="w-4 h-4"></i>Mark All Present (Full Month)</button>
+            <button class="btn btn-primary" id="save-btn"><i data-lucide="check" class="w-4 h-4"></i>Save Attendance</button>
+          </div>
+        </div>
+        <div id="att-rows" class="space-y-2.5"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const teacher = Session.requireRole('teacher');
+if (teacher){
+  document.getElementById('user-avatar').textContent = teacher.initials || initials(teacher.name);
+  const db = SchoolDB.get();
+  const teacherRec = db.teachers.find(t => t.id === teacher.id);
+  const assignedClass = teacherRec ? teacherRec.assignedClass : null;
+
+  if (!assignedClass){
+    document.getElementById('no-class-view').classList.remove('hidden');
+  } else {
+    document.getElementById('attendance-view').classList.remove('hidden');
+    document.getElementById('my-class-label').textContent = 'My Class · ' + classLabel(assignedClass).replace('Class ','');
+    document.getElementById('page-sub').textContent = 'Class ' + classLabel(assignedClass).replace('Class ','') + ' — enter total working days and each student\'s present days for the month.';
+
+    const students = getStudentsByClass(assignedClass);
+    const monthInput = document.getElementById('att-month');
+    const totalDaysInput = document.getElementById('total-days');
+    monthInput.value = new Date().toISOString().slice(0,7);
+
+    let presentMap = {};
+    let monthLocked = false;
+
+    function currentTotalDays(){
+      return totalDaysInput.value ? Number(totalDaysInput.value) : null;
+    }
+
+    function computeAbsent(present, days){
+      if (days==null || present==null || present==='') return '—';
+      return Math.max(0, days - Number(present));
+    }
+
+    function updateStats(){
+      const days = currentTotalDays();
+      document.getElementById('s-total').textContent = students.length;
+      document.getElementById('s-days').textContent = days!=null ? days : '—';
+      if (days){
+        const pcts = students.map(s => presentMap[s.id]!=null ? (presentMap[s.id]/days*100) : null).filter(x=>x!==null);
+        const avg = pcts.length ? pcts.reduce((a,b)=>a+b,0)/pcts.length : null;
+        document.getElementById('s-avg').textContent = avg!==null ? avg.toFixed(1)+'%' : '—';
+      } else {
+        document.getElementById('s-avg').textContent = '—';
+      }
+    }
+
+    function updateMonthStatus(){
+      const existing = getMonthlyAttendance(assignedClass, monthInput.value);
+      monthLocked = isMonthLocked(assignedClass, monthInput.value);
+      document.getElementById('month-status').textContent = monthLocked
+        ? '🔒 Attendance submitted and locked for ' + monthLabel(monthInput.value) + '. Ask the Admin to unlock it to make changes.'
+        : (existing ? 'Already marked for ' + monthLabel(monthInput.value) + ' — review or correct below.' : 'Not marked yet for ' + monthLabel(monthInput.value) + '.');
+      document.getElementById('rows-title').textContent = monthLocked ? 'Present days per student — locked' : 'Enter present days for each student';
+      document.getElementById('rows-actions').classList.toggle('hidden', monthLocked);
+      totalDaysInput.disabled = monthLocked;
+    }
+
+    function renderRows(){
+      const days = currentTotalDays();
+      document.getElementById('att-rows').innerHTML = students.map(s => {
+        const p = presentMap[s.id];
+        return `
+        <div class="flex items-center justify-between gap-3 p-3.5 rounded-xl2 border border-slate-200${monthLocked?' opacity-60':''}">
+          <div class="flex items-center gap-3">
+            <div class="avatar" style="width:32px;height:32px;font-size:11px">${initials(s.name)}</div>
+            <div><div class="font-semibold text-sm">${escapeHtml(s.name)}</div><div class="text-caption">${s.regno}</div></div>
+          </div>
+          <div class="flex items-center gap-5">
+            <div class="text-center">
+              <div class="text-caption mb-1">Present Days</div>
+              <input type="number" class="field-input att-present-input" style="padding:6px 10px;width:80px;text-align:center" min="0" max="${days!=null?days:31}" data-id="${s.id}" value="${p!=null?p:''}" ${monthLocked?'disabled':''}>
+            </div>
+            <div class="text-center" style="min-width:60px">
+              <div class="text-caption mb-1">Absent</div>
+              <div class="font-bold text-danger att-absent" data-id="${s.id}">${computeAbsent(p, days)}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('') || `<p class="text-caption text-center py-8">No students in this class yet.</p>`;
+      updateStats();
+    }
+
+    function loadForMonth(){
+      const existing = getMonthlyAttendance(assignedClass, monthInput.value);
+      presentMap = {};
+      if (existing){
+        totalDaysInput.value = existing.totalDays;
+        students.forEach(s => { presentMap[s.id] = existing.records[s.id] !== undefined ? existing.records[s.id] : null; });
+      } else {
+        totalDaysInput.value = '';
+        students.forEach(s => { presentMap[s.id] = null; });
+      }
+      updateMonthStatus();
+      renderRows();
+    }
+
+    monthInput.addEventListener('change', loadForMonth);
+    loadForMonth();
+
+    document.getElementById('att-rows').addEventListener('input', (e) => {
+      if (!e.target.classList.contains('att-present-input')) return;
+      const id = e.target.dataset.id;
+      const days = currentTotalDays();
+      let val = e.target.value;
+      if (val !== '' && days!=null && Number(val) > days){
+        val = String(days);
+        e.target.value = val;
+      }
+      if (val !== '' && Number(val) < 0){
+        val = '0';
+        e.target.value = val;
+      }
+      presentMap[id] = val === '' ? null : Number(val);
+      const absentEl = document.querySelector(`.att-absent[data-id="${id}"]`);
+      if (absentEl) absentEl.textContent = computeAbsent(presentMap[id], days);
+      updateStats();
+    });
+
+    totalDaysInput.addEventListener('input', () => {
+      if (monthLocked) return;
+      let days = currentTotalDays();
+      if (days!=null && days > 31){ days = 31; totalDaysInput.value = 31; }
+      document.querySelectorAll('.att-present-input').forEach(inp => {
+        inp.max = days!=null ? days : 31;
+        if (days!=null && inp.value !== '' && Number(inp.value) > days){
+          inp.value = days;
+          presentMap[inp.dataset.id] = days;
+        }
+      });
+      students.forEach(s => {
+        const absentEl = document.querySelector(`.att-absent[data-id="${s.id}"]`);
+        if (absentEl) absentEl.textContent = computeAbsent(presentMap[s.id], days);
+      });
+      updateStats();
+    });
+
+    document.getElementById('mark-all-present').addEventListener('click', () => {
+      if (monthLocked) return;
+      const days = currentTotalDays();
+      if (!days || days<1){ alert('Enter Total Working Days for the month first.'); return; }
+      students.forEach(s => { presentMap[s.id] = days; });
+      renderRows();
+    });
+
+    document.getElementById('save-btn').addEventListener('click', () => {
+      if (monthLocked) return;
+      const days = currentTotalDays();
+      if (!days || days<1){ alert('Enter Total Working Days for the month before saving.'); return; }
+      const inputs = document.querySelectorAll('.att-present-input');
+      const records = {};
+      let missing = false;
+      inputs.forEach(inp => {
+        if (inp.value === ''){ missing = true; return; }
+        let v = Number(inp.value);
+        if (v > days) v = days;
+        if (v < 0) v = 0;
+        records[inp.dataset.id] = v;
+      });
+      if (missing){ alert('Enter present days for every student before saving.'); return; }
+      markMonthlyAttendance(assignedClass, monthInput.value, days, records, teacher.id);
+      loadForMonth();
+      alert(`Attendance saved for ${monthLabel(monthInput.value)}. It is now locked and cannot be edited.`);
+    });
+  }
+}
+</script>
+</body>
+</html>

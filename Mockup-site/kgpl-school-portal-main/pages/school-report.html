@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School Reports — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+<style>
+@media print{
+  @page{ size: landscape; }
+  body *{ visibility:hidden; }
+  #report-print, #report-print *{ visibility:visible; }
+  #report-print{ position:absolute; top:0; left:0; width:100%; }
+  .no-print{ display:none !important; }
+  .print-only{ display:block !important; }
+}
+.consolidated-table th, .consolidated-table td{ text-align:center; }
+.consolidated-table td.name-cell, .consolidated-table th.name-cell{ text-align:left; }
+</style>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight" id="sidebar-title">GHSS ERP</div><div class="text-[11px] text-slate-400" id="sidebar-sub">Admin Panel</div></div>
+  </div>
+  <nav class="sidebar-nav" id="nav-admin">
+    <a class="sidebar-link" href="admin-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <div class="sidebar-section-label">Academics</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Students</a>
+    <a class="sidebar-link" href="add-teacher.html"><i data-lucide="users"></i>Teachers</a>
+    <a class="sidebar-link" href="class-teacher-assign.html"><i data-lucide="user-cog"></i>Class Teacher</a>
+    <a class="sidebar-link" href="subject-teacher-assign.html"><i data-lucide="book-user"></i>Subject Teachers</a>
+    <a class="sidebar-link" href="teacher-timetable.html"><i data-lucide="calendar-clock"></i>Teacher Timetable</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="bar-chart-3"></i>Result Analysis</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <a class="sidebar-link" href="class-scorecard.html"><i data-lucide="trophy"></i>Class Scorecards</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance</a>
+    <a class="sidebar-link" href="complaints.html"><i data-lucide="message-circle"></i>Complaints</a>
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link" href="certificate-generator.html"><i data-lucide="file-badge"></i>Certificates</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link active" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link" href="home.html"><i data-lucide="globe"></i>School Website</a>
+  </nav>
+  <nav class="sidebar-nav hidden" id="nav-teacher">
+    <a class="sidebar-link" href="teacher-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <a class="sidebar-link" href="take-attendance.html"><i data-lucide="calendar-check"></i>Take Attendance</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="pencil-line"></i>Enter Marks</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <div class="sidebar-section-label" id="my-class-label">My Class</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Class Students</a>
+    <a class="sidebar-link" href="teacher-add-student.html"><i data-lucide="user-round-plus"></i>Add Student</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance Report</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link active" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><span class="current">Reports</span></div>
+    </div>
+    <div class="flex items-center gap-2.5"><div class="avatar" id="user-avatar">U</div></div>
+  </header>
+
+  <main class="p-7 max-w-[1440px]">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-7">
+      <div><h1 class="text-h1">School Performance Reports</h1><p class="text-body mt-1">View and download class-wise and overall school performance — pass %, fail %, and section comparisons.</p></div>
+      <div class="flex items-center gap-3">
+        <select id="exam-select" class="field-input no-print" style="width:170px;padding:10px 14px"></select>
+        <button class="btn btn-primary no-print" id="print-btn"><i data-lucide="printer" class="w-4 h-4"></i>Print / Save as PDF</button>
+      </div>
+    </div>
+
+    <div class="tab-list mb-7 no-print">
+      <button class="tab-item active" id="tab-btn-class" onclick="switchTab('class')">Class Report</button>
+      <button class="tab-item" id="tab-btn-overall" onclick="switchTab('overall')">Overall School Report</button>
+      <button class="tab-item" id="tab-btn-exam" onclick="switchTab('exam')">Consolidated Report</button>
+    </div>
+
+    <div id="report-print">
+
+      <!-- ============ Class Report ============ -->
+      <div id="tab-class">
+        <div class="card p-6 mb-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="field-group no-print" style="width:240px">
+              <select class="field-input" id="class-select"></select>
+              <label class="field-label">Class</label>
+            </div>
+            <div class="hidden print-only">
+              <div class="text-xs font-bold tracking-widest text-slate-500 uppercase">Government Higher Secondary School, Kangayampalayam</div>
+              <div class="text-lg font-bold" id="class-report-title">Class Report</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid sm:grid-cols-4 gap-5 mb-6">
+          <div class="stat-card"><div class="text-caption mb-1">Total Students</div><div class="text-2xl font-extrabold" id="c-total">—</div></div>
+          <div class="stat-card"><div class="text-caption mb-1">Class Average</div><div class="text-2xl font-extrabold text-primary" id="c-avg">—</div></div>
+          <div class="stat-card"><div class="text-caption mb-1">Pass Percentage</div><div class="text-2xl font-extrabold text-success" id="c-pass">—</div></div>
+          <div class="stat-card"><div class="text-caption mb-1">Fail Percentage</div><div class="text-2xl font-extrabold text-danger" id="c-fail">—</div></div>
+        </div>
+
+        <div class="card p-6">
+          <div class="font-semibold text-sm mb-5" style="color:var(--text-900)">Every Student — Ranked by Average</div>
+          <table class="data-table w-full">
+            <thead><tr><th>Rank</th><th>Student</th><th>Register No.</th><th>Average</th><th>Result</th></tr></thead>
+            <tbody id="c-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ============ Overall Report ============ -->
+      <div id="tab-overall" class="hidden">
+        <div class="hidden print-only mb-6">
+          <div class="text-xs font-bold tracking-widest text-slate-500 uppercase">Government Higher Secondary School, Kangayampalayam</div>
+          <div class="text-lg font-bold" id="overall-report-title">Overall School Report</div>
+        </div>
+
+        <div class="grid sm:grid-cols-3 gap-5 mb-6">
+          <div class="stat-card"><div class="text-caption mb-1">School Average</div><div class="text-2xl font-extrabold text-primary" id="o-avg">—</div></div>
+          <div class="stat-card"><div class="text-caption mb-1">Highest Scoring Class</div><div class="text-2xl font-extrabold text-success" id="o-top-class">—</div></div>
+          <div class="stat-card"><div class="text-caption mb-1">Classes Graded</div><div class="text-2xl font-extrabold" id="o-graded-count">—</div></div>
+        </div>
+
+        <div class="card p-6 mb-6">
+          <div class="font-semibold text-sm mb-5" style="color:var(--text-900)">Every Class — Avg / Pass % / Fail %</div>
+          <table class="data-table w-full">
+            <thead><tr><th>Class</th><th>Total</th><th>Graded</th><th>Average</th><th>Pass %</th><th>Fail %</th><th>Topper</th></tr></thead>
+            <tbody id="o-rows"></tbody>
+          </table>
+        </div>
+
+        <div class="card p-6">
+          <div class="font-semibold text-sm mb-2" style="color:var(--text-900)">Section Comparison — Which Section Scored Higher</div>
+          <p class="text-caption mb-5">Compares same-grade sections (e.g. 6–A vs 6–B, or 11 Group I vs Group II) side by side.</p>
+          <table class="data-table w-full">
+            <thead><tr><th>Grade</th><th>Section / Group</th><th>Average</th><th>Higher Scoring</th></tr></thead>
+            <tbody id="sec-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ============ Exam Analysis ============ -->
+      <div id="tab-exam" class="hidden">
+        <div class="card p-6 mb-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="field-group no-print" style="width:240px">
+              <select class="field-input" id="exam-class-select"></select>
+              <label class="field-label">Class</label>
+            </div>
+            <div class="hidden print-only">
+              <div class="text-xs font-bold tracking-widest text-slate-500 uppercase">Government Higher Secondary School, Kangayampalayam</div>
+              <div class="text-lg font-bold" id="exam-report-title">Consolidated Report</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid sm:grid-cols-4 gap-5 mb-6">
+          <div class="stat-card"><div class="text-caption mb-1">Appeared</div><div class="text-2xl font-extrabold" id="e-appeared">—</div></div>
+          <div class="stat-card"><div class="text-caption mb-1">Passed (All Subjects)</div><div class="text-2xl font-extrabold text-success" id="e-passed">—</div></div>
+          <div class="stat-card"><div class="text-caption mb-1">Pass Percentage</div><div class="text-2xl font-extrabold text-primary" id="e-pass-pct">—</div></div>
+          <div class="stat-card"><div class="text-caption mb-1">School Topper</div><div class="text-lg font-extrabold" id="e-topper">—</div></div>
+        </div>
+
+        <div class="card p-6 mb-6">
+          <div class="font-semibold text-sm mb-1" style="color:var(--text-900)">Enrollment &amp; Result Summary</div>
+          <p class="text-caption mb-5">Roll, appeared, passed and pass % — split by medium of instruction and gender.</p>
+          <div style="overflow-x:auto">
+          <table class="data-table consolidated-table w-full">
+            <thead>
+              <tr>
+                <th rowspan="2" class="name-cell">Medium</th>
+                <th colspan="3">Roll</th>
+                <th colspan="3">Appeared</th>
+                <th colspan="3">Passed</th>
+                <th colspan="3">Pass %</th>
+              </tr>
+              <tr><th>M</th><th>F</th><th>Total</th><th>M</th><th>F</th><th>Total</th><th>M</th><th>F</th><th>Total</th><th>M</th><th>F</th><th>Total</th></tr>
+            </thead>
+            <tbody id="e-enrollment-rows"></tbody>
+          </table>
+          </div>
+        </div>
+
+        <div class="card p-6 mb-6">
+          <div class="font-semibold text-sm mb-5" style="color:var(--text-900)">Top Rank Holders — School Toppers</div>
+          <div id="e-toppers-empty" class="hidden text-center text-slate-400 py-8">No student has passed every subject yet for this class &amp; exam.</div>
+          <div style="overflow-x:auto">
+          <table class="data-table consolidated-table w-full hidden" id="e-toppers-table">
+            <thead><tr id="e-toppers-head"></tr></thead>
+            <tbody id="e-toppers-rows"></tbody>
+          </table>
+          </div>
+        </div>
+
+        <div class="card p-6 mb-6">
+          <div class="font-semibold text-sm mb-5" style="color:var(--text-900)">Subject-wise Result — Max / Min / Average / Pass %</div>
+          <table class="data-table w-full">
+            <thead><tr><th>Subject</th><th>Max</th><th>Min</th><th>Average</th><th>Appeared</th><th>Passed</th><th>Pass %</th></tr></thead>
+            <tbody id="e-subject-rows"></tbody>
+          </table>
+        </div>
+
+        <div class="card p-6 mb-6">
+          <div class="font-semibold text-sm mb-1" style="color:var(--text-900)">No. of Subjects Failed — Distribution</div>
+          <p class="text-caption mb-5">Among students who appeared, how many subjects each student failed — split by gender.</p>
+          <div style="overflow-x:auto">
+          <table class="data-table consolidated-table w-full">
+            <thead><tr id="e-failed-head"></tr></thead>
+            <tbody id="e-failed-rows"></tbody>
+          </table>
+          </div>
+        </div>
+
+        <div class="card p-6">
+          <div class="font-semibold text-sm mb-2" style="color:var(--text-900)">Marks Range Distribution</div>
+          <p class="text-caption mb-5">Number of students falling in each total-marks range (out of <span id="e-max-total">—</span>).</p>
+          <table class="data-table w-full">
+            <thead><tr><th>Range</th><th>Students</th><th style="width:50%">Distribution</th></tr></thead>
+            <tbody id="e-bin-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const session = Session.get();
+if (!session || (session.role!=='admin' && session.role!=='teacher')) window.location.href = 'gateway.html';
+const isTeacher = session.role === 'teacher';
+document.getElementById('user-avatar').textContent = session.initials || initials(session.name);
+if (isTeacher){
+  document.getElementById('nav-admin').classList.add('hidden');
+  document.getElementById('nav-teacher').classList.remove('hidden');
+  document.getElementById('sidebar-sub').textContent = 'Teacher Portal';
+  const db0 = SchoolDB.get();
+  const teacher0 = db0.teachers.find(t => t.id === session.id);
+  if (teacher0 && teacher0.assignedClass) document.getElementById('my-class-label').textContent = 'My Class · ' + classLabel(teacher0.assignedClass).replace('Class ','');
+}
+
+const EXAMS = ['Term 1','Quarterly','Term 2','Half Yearly','Term 3','Annual Exam'];
+const examSelect = document.getElementById('exam-select');
+examSelect.innerHTML = EXAMS.map(e => `<option>${e}</option>`).join('');
+
+const classSelect = document.getElementById('class-select');
+classSelect.innerHTML = CLASS_LIST.map(c => `<option value="${c.code}">Class ${c.label}</option>`).join('');
+
+const examClassSelect = document.getElementById('exam-class-select');
+examClassSelect.innerHTML = CLASS_LIST.map(c => `<option value="${c.code}">Class ${c.label}</option>`).join('');
+
+let activeTab = 'class';
+function switchTab(tab){
+  activeTab = tab;
+  document.getElementById('tab-class').classList.toggle('hidden', tab !== 'class');
+  document.getElementById('tab-overall').classList.toggle('hidden', tab !== 'overall');
+  document.getElementById('tab-exam').classList.toggle('hidden', tab !== 'exam');
+  document.getElementById('tab-btn-class').classList.toggle('active', tab === 'class');
+  document.getElementById('tab-btn-overall').classList.toggle('active', tab === 'overall');
+  document.getElementById('tab-btn-exam').classList.toggle('active', tab === 'exam');
+}
+
+function renderClassReport(){
+  const code = classSelect.value;
+  const exam = examSelect.value;
+  const sc = classScorecard(code, exam);
+  document.getElementById('class-report-title').textContent = 'Class ' + (CLASS_LIST.find(c=>c.code===code)||{}).label + ' — ' + exam + ' Report';
+  document.getElementById('c-total').textContent = sc.total;
+  document.getElementById('c-avg').textContent = sc.graded ? sc.avg.toFixed(1)+'%' : '—';
+  document.getElementById('c-pass').textContent = sc.graded ? sc.passPct.toFixed(1)+'%' : '—';
+  document.getElementById('c-fail').textContent = sc.graded ? sc.failPct.toFixed(1)+'%' : '—';
+  document.getElementById('c-rows').innerHTML = sc.all.length ? sc.all.map((r,i) => `
+    <tr>
+      <td class="font-semibold" style="color:var(--text-900)">#${i+1}</td>
+      <td>${escapeHtml(r.student.name)}</td>
+      <td>${r.student.regno}</td>
+      <td class="font-semibold">${r.avg.toFixed(1)}%</td>
+      <td class="${r.avg>=35?'text-success':'text-danger'} font-semibold">${r.avg>=35?'Pass':'Fail'}</td>
+    </tr>`).join('') : `<tr><td colspan="5" class="text-center text-slate-400 py-8">No marks entered for ${escapeHtml(exam)} yet.</td></tr>`;
+}
+
+const SECTION_LABEL = (r) => r.section && r.section.startsWith('Group') ? r.section : ('Section ' + r.section);
+
+function renderOverallReport(){
+  const exam = examSelect.value;
+  document.getElementById('overall-report-title').textContent = 'Overall School Report — ' + exam;
+  const report = schoolWideReport(exam);
+  const graded = report.filter(r=>r.graded>0);
+  const schoolAvg = graded.length ? graded.reduce((a,r)=>a+r.avg,0)/graded.length : 0;
+  document.getElementById('o-avg').textContent = graded.length ? schoolAvg.toFixed(1)+'%' : '—';
+  document.getElementById('o-graded-count').textContent = graded.length + ' / ' + report.length;
+  const topClass = graded.length ? graded.reduce((best,r)=> r.avg>best.avg?r:best, graded[0]) : null;
+  document.getElementById('o-top-class').textContent = topClass ? ('Class ' + topClass.label) : '—';
+
+  document.getElementById('o-rows').innerHTML = report.map(r => `
+    <tr>
+      <td class="font-semibold" style="color:var(--text-900)">Class ${r.label}</td>
+      <td>${r.total}</td>
+      <td>${r.graded}</td>
+      <td class="font-semibold">${r.graded ? r.avg.toFixed(1)+'%' : '—'}</td>
+      <td class="text-success">${r.graded ? r.passPct.toFixed(1)+'%' : '—'}</td>
+      <td class="text-danger">${r.graded ? r.failPct.toFixed(1)+'%' : '—'}</td>
+      <td>${r.topper ? escapeHtml(r.topper.name) : '—'}</td>
+    </tr>`).join('');
+
+  const comparisons = sectionComparison(exam);
+  document.getElementById('sec-rows').innerHTML = comparisons.map(g => g.sections.map((s, i) => `
+    <tr>
+      ${i===0 ? `<td class="font-semibold" style="color:var(--text-900)" rowspan="${g.sections.length}">Grade ${g.grade}</td>` : ''}
+      <td>${SECTION_LABEL(s)}</td>
+      <td class="font-semibold">${s.graded ? s.avg.toFixed(1)+'%' : '—'}</td>
+      <td>${g.higher === s.code ? '<span class="badge badge-success"><span class="badge-dot"></span>Higher Scoring</span>' : (s.graded ? '' : '<span class="text-caption">No marks yet</span>')}</td>
+    </tr>`).join('')).join('');
+}
+
+const MEDIUM_LABEL = { TM:'Tamil Medium', EM:'English Medium', TOTAL:'Total' };
+
+function renderExamAnalysis(){
+  const code = examClassSelect.value;
+  const term = examSelect.value;
+  const stats = subjectWiseStats(code, term);
+  const dist = marksDistribution(code, term);
+
+  document.getElementById('exam-report-title').textContent = 'Class ' + (CLASS_LIST.find(c=>c.code===code)||{}).label + ' — ' + term + ' Consolidated Result Analysis';
+  document.getElementById('e-appeared').textContent = stats.total.appeared;
+  document.getElementById('e-passed').textContent = stats.total.passed;
+  document.getElementById('e-pass-pct').textContent = stats.total.appeared ? stats.total.passPct.toFixed(0)+'%' : '—';
+  document.getElementById('e-topper').textContent = stats.topper ? `${escapeHtml(stats.topper.student.name)} (${stats.topper.total}/${stats.total.maxMarks})` : '—';
+
+  const enroll = enrollmentBreakdown(code, term);
+  const pct = v => v===null ? '—' : v.toFixed(0)+'%';
+  const enrollRow = (label, r, bold) => `
+    <tr${bold ? ' class="font-bold" style="background:var(--bg-100,#F8FAFC)"' : ''}>
+      <td class="name-cell">${label}</td>
+      <td>${r.M.roll}</td><td>${r.F.roll}</td><td>${r.TOT.roll}</td>
+      <td>${r.M.appeared}</td><td>${r.F.appeared}</td><td>${r.TOT.appeared}</td>
+      <td>${r.M.passed}</td><td>${r.F.passed}</td><td>${r.TOT.passed}</td>
+      <td>${pct(r.M.passPct)}</td><td>${pct(r.F.passPct)}</td><td class="font-semibold">${pct(r.TOT.passPct)}</td>
+    </tr>`;
+  document.getElementById('e-enrollment-rows').innerHTML =
+    enroll.rows.map(r => enrollRow(MEDIUM_LABEL[r.medium], r)).join('') +
+    enrollRow(MEDIUM_LABEL.TOTAL, enroll.total, true);
+
+  const toppers = classToppers(code, term, 3);
+  const reportSubjects = REPORT_SUBJECTS_FOR_CLASS(code);
+  const medalColors = ['#F59E0B','#94A3B8','#B45309'];
+  document.getElementById('e-toppers-empty').classList.toggle('hidden', toppers.length>0);
+  document.getElementById('e-toppers-table').classList.toggle('hidden', toppers.length===0);
+  if (toppers.length){
+    document.getElementById('e-toppers-head').innerHTML =
+      `<th>Rank</th><th class="name-cell">Student</th><th>Reg. No.</th>` +
+      reportSubjects.map(sub => `<th>${SUBJECT_ABBR[sub]||sub}</th>`).join('') +
+      `<th>Total</th>`;
+    document.getElementById('e-toppers-rows').innerHTML = toppers.map(t => `
+      <tr>
+        <td><span class="rank-medal" style="background:${medalColors[t.rank-1]||'#0F4C81'};display:inline-flex;align-items:center;justify-content:center;margin:0 auto">${t.rank}</span></td>
+        <td class="name-cell font-semibold" style="color:var(--text-900)">${escapeHtml(t.student.name)}</td>
+        <td>${t.student.regno}</td>
+        ${reportSubjects.map(sub => `<td>${sub in t.marksBySubject ? t.marksBySubject[sub] : '<span class="cmr-na">—</span>'}</td>`).join('')}
+        <td class="font-bold text-primary">${t.total}</td>
+      </tr>`).join('');
+  }
+
+  const hist = failedSubjectsHistogram(code, term);
+  const failedHeadCols = Array.from({length: hist.subjectCount}, (_,i) => `<th>Failed ${i+1}</th>`).join('');
+  document.getElementById('e-failed-head').innerHTML =
+    `<th class="name-cell">Gender</th>${failedHeadCols}<th>Passed (All)</th><th>Absent (Any)</th><th>Total Roll</th>`;
+  const failedRow = (label, r, bold) => `
+    <tr${bold ? ' class="font-bold" style="background:var(--bg-100,#F8FAFC)"' : ''}>
+      <td class="name-cell">${label}</td>
+      ${r.failedCounts.map(c=>`<td>${c}</td>`).join('')}
+      <td class="text-success">${r.passedCount}</td>
+      <td>${r.absentCount}</td>
+      <td class="font-semibold">${r.roll}</td>
+    </tr>`;
+  document.getElementById('e-failed-rows').innerHTML =
+    failedRow('Male', hist.Male) + failedRow('Female', hist.Female) + failedRow('Total', hist.Total, true);
+
+  const fmt = (v, suffix) => v===null || v===undefined ? '—' : (suffix ? v.toFixed(0)+suffix : v);
+  const rows = stats.subjects.map(s => `
+    <tr>
+      <td class="font-semibold" style="color:var(--text-900)">${escapeHtml(s.subject)}</td>
+      <td>${fmt(s.max)}</td>
+      <td>${fmt(s.min)}</td>
+      <td>${s.avg===null?'—':s.avg.toFixed(1)}</td>
+      <td>${s.appeared}</td>
+      <td class="text-success">${s.passed}</td>
+      <td class="font-semibold">${fmt(s.passPct,'%')}</td>
+    </tr>`);
+  rows.push(`
+    <tr class="font-bold" style="background:var(--bg-100,#F8FAFC)">
+      <td>Total (out of ${stats.total.maxMarks})</td>
+      <td>${fmt(stats.total.max)}</td>
+      <td>${fmt(stats.total.min)}</td>
+      <td>${stats.total.avg===null?'—':stats.total.avg.toFixed(2)}</td>
+      <td>${stats.total.appeared}</td>
+      <td class="text-success">${stats.total.passed}</td>
+      <td class="text-primary">${fmt(stats.total.passPct,'%')}</td>
+    </tr>`);
+  document.getElementById('e-subject-rows').innerHTML = stats.total.appeared ? rows.join('') :
+    `<tr><td colspan="7" class="text-center text-slate-400 py-8">No marks entered for ${escapeHtml(term)} yet.</td></tr>`;
+
+  document.getElementById('e-max-total').textContent = dist.maxTotal;
+  const maxCount = Math.max(1, ...dist.bins.map(b=>b.count));
+  const binRows = dist.bins.map(b => `
+    <tr>
+      <td>${b.from}–${b.to}</td>
+      <td class="font-semibold">${b.count}</td>
+      <td><div style="background:var(--primary,#0F4C81);height:10px;border-radius:5px;width:${(b.count/maxCount*100).toFixed(0)}%"></div></td>
+    </tr>`).join('');
+  document.getElementById('e-bin-rows').innerHTML = binRows + (dist.notGraded ?
+    `<tr><td class="text-caption">Not yet graded / absent</td><td class="font-semibold">${dist.notGraded}</td><td></td></tr>` : '');
+}
+
+function renderAll(){ renderClassReport(); renderOverallReport(); renderExamAnalysis(); }
+classSelect.addEventListener('change', renderClassReport);
+examClassSelect.addEventListener('change', renderExamAnalysis);
+examSelect.addEventListener('change', renderAll);
+document.getElementById('print-btn').addEventListener('click', () => window.print());
+renderAll();
+</script>
+</body>
+</html>

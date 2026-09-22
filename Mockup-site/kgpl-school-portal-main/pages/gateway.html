@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GHSS Portal — Sign In</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="text-white min-h-screen">
+
+<div class="aurora-bg"><div class="aurora-grid"></div></div>
+
+<div class="relative z-10 min-h-screen flex flex-col">
+  <!-- Top toolbar (no sidebar pre-login) -->
+  <header class="top-toolbar flex items-center justify-between px-6 lg:px-10">
+    <a href="home.html" class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-secondary to-primary flex items-center justify-center font-bold text-sm">GS</div>
+      <div class="hidden sm:block">
+        <div class="font-bold text-[15px] leading-tight">GHSS Kangayampalayam</div>
+        <div class="text-[11px] text-white/50">Government Higher Secondary School</div>
+      </div>
+    </a>
+    <nav class="flex items-center gap-2">
+      <a href="home.html" class="text-sm text-white/70 hover:text-white px-3.5 py-2 rounded-lg hover:bg-white/5 flex items-center gap-1.5"><i data-lucide="globe" class="w-4 h-4"></i><span class="hidden sm:inline">Public Website</span></a>
+    </nav>
+  </header>
+
+  <main class="flex-1 flex flex-col items-center justify-center px-6 py-16">
+    <div class="text-center max-w-xl mb-12 fade-up">
+      <span class="inline-flex items-center gap-2 text-xs font-semibold bg-white/8 border border-white/15 px-3.5 py-1.5 rounded-full mb-6">
+        <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Government of Tamil Nadu · School ERP
+      </span>
+      <h1 class="text-4xl lg:text-5xl font-extrabold leading-tight tracking-tight mb-4">
+        Welcome back to <span class="gradient-text">GHSS Portal</span>
+      </h1>
+      <p class="text-white/60 text-[16.5px]">Choose your portal to continue. One platform for the Headmaster, teaching staff, and every student.</p>
+    </div>
+
+    <!-- Portal tiles -->
+    <div class="grid sm:grid-cols-3 gap-5 w-full max-w-4xl fade-up">
+      <a href="admin-login.html" class="portal-tile">
+        <div class="portal-tile-inner">
+          <div class="portal-icon"><i data-lucide="shield" class="w-6 h-6 text-white"></i></div>
+          <div>
+            <h3 class="text-lg font-bold mb-1">Admin Portal</h3>
+            <p class="text-sm text-white/55">Headmaster, Asst. Headmaster &amp; Office Staff</p>
+          </div>
+          <div class="mt-auto pt-3 flex items-center gap-1.5 text-sm font-semibold text-secondary group-hover:gap-2.5">
+            Sign in <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </div>
+        </div>
+      </a>
+      <a href="teacher-login.html" class="portal-tile">
+        <div class="portal-tile-inner">
+          <div class="portal-icon" style="background:linear-gradient(135deg,#16A34A,#0F4C81)"><i data-lucide="users" class="w-6 h-6 text-white"></i></div>
+          <div>
+            <h3 class="text-lg font-bold mb-1">Teacher Portal</h3>
+            <p class="text-sm text-white/55">Subject &amp; Class Teacher Login</p>
+          </div>
+          <div class="mt-auto pt-3 flex items-center gap-1.5 text-sm font-semibold text-secondary">
+            Sign in <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </div>
+        </div>
+      </a>
+      <a href="student-select-class.html" class="portal-tile">
+        <div class="portal-tile-inner">
+          <div class="portal-icon" style="background:linear-gradient(135deg,#F59E0B,#DC2626)"><i data-lucide="graduation-cap" class="w-6 h-6 text-white"></i></div>
+          <div>
+            <h3 class="text-lg font-bold mb-1">Student Portal</h3>
+            <p class="text-sm text-white/55">Classes 6 to 12 · Select your class to begin</p>
+          </div>
+          <div class="mt-auto pt-3 flex items-center gap-1.5 text-sm font-semibold text-secondary">
+            Choose class <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="flex items-center gap-8 mt-14 text-white/40 text-xs fade-up" id="stat-row">
+      <span class="flex items-center gap-1.5"><i data-lucide="lock" class="w-3.5 h-3.5"></i>Encrypted Login</span>
+      <span class="flex items-center gap-1.5"><i data-lucide="server" class="w-3.5 h-3.5"></i><span id="stat-counts">Loading…</span></span>
+      <span class="flex items-center gap-1.5"><i data-lucide="badge-check" class="w-3.5 h-3.5"></i>EMIS Verified</span>
+    </div>
+
+    <button class="mt-8 text-xs text-white/50 hover:text-white flex items-center gap-1.5 fade-up" onclick="document.getElementById('demo-panel').classList.toggle('hidden')">
+      <i data-lucide="key-round" class="w-3.5 h-3.5"></i>This is a demo — show sample login credentials
+    </button>
+    <div id="demo-panel" class="hidden glass-card mt-4 p-6 w-full max-w-3xl text-sm fade-up">
+      <div class="grid sm:grid-cols-3 gap-5">
+        <div>
+          <div class="text-xs font-bold text-white/50 uppercase tracking-wide mb-2">Admin</div>
+          <div class="text-white/80">ID: <b>GHSS-HM-001</b></div>
+          <div class="text-white/80">Password: <b>admin</b></div>
+        </div>
+        <div>
+          <div class="text-xs font-bold text-white/50 uppercase tracking-wide mb-2">Teacher</div>
+          <div class="text-white/80">ID: <b>GHSS/T/101</b></div>
+          <div class="text-white/80">Password: <b>teacher</b></div>
+        </div>
+        <div>
+          <div class="text-xs font-bold text-white/50 uppercase tracking-wide mb-2">Student</div>
+          <div class="text-white/80">Class 10-B, Reg: <b id="demo-regno">—</b></div>
+          <div class="text-white/80">Password: <b id="demo-pw">—</b></div>
+        </div>
+      </div>
+      <p class="text-white/40 text-[11px] mt-4">Data is stored locally in this browser (no external server). Use the Admin portal to add real teachers &amp; students — new logins work immediately.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const db = SchoolDB.get();
+document.getElementById('stat-counts').textContent = `${db.students.length} Students · ${db.teachers.length} Teachers`;
+const sample = db.students.find(s=>s.class==='10B') || db.students[0];
+if(sample){ document.getElementById('demo-regno').textContent = sample.regno; document.getElementById('demo-pw').textContent = sample.password; }
+</script>
+</body>
+</html>

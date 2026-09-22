@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Dashboard — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight">GHSS ERP</div><div class="text-[11px] text-slate-400">Student Portal</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="sidebar-link active" href="student-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <a class="sidebar-link" href="#notices-section" onclick="openNoticeBoard()"><i data-lucide="megaphone"></i>Notice Board<span id="notice-dot" class="hidden" style="width:8px;height:8px;border-radius:9999px;background:var(--danger);margin-left:auto"></span></a>
+    <a class="sidebar-link" href="#results-section" onclick="document.getElementById('results-section').scrollIntoView({behavior:'smooth'})"><i data-lucide="bar-chart-3"></i>My Results</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>My Rank Card</a>
+    <a class="sidebar-link" href="#timetable-section" onclick="document.getElementById('timetable-section').scrollIntoView({behavior:'smooth'})"><i data-lucide="calendar-days"></i>Timetable</a>
+    <a class="sidebar-link" href="#certificates-section" onclick="document.getElementById('certificates-section').scrollIntoView({behavior:'smooth'})"><i data-lucide="file-badge"></i>Certificates</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><span class="current">Dashboard</span></div>
+    </div>
+    <div class="flex items-center gap-2.5"><div class="avatar" id="student-avatar" style="background:#F59E0B">S</div></div>
+  </header>
+
+  <main class="p-7 max-w-5xl">
+    <div class="mb-7">
+      <h1 class="text-h1" id="welcome-msg">Welcome</h1>
+      <p class="text-body mt-1" id="welcome-sub">—</p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <div class="stat-card"><div class="stat-icon mb-3" style="background:var(--secondary-light)"><i data-lucide="percent" class="w-5 h-5 text-secondary"></i></div><div class="text-2xl font-extrabold" id="kpi-avg">—</div><div class="text-caption">My Average (Term 1)</div></div>
+      <div class="stat-card"><div class="stat-icon mb-3" style="background:var(--warning-light)"><i data-lucide="medal" class="w-5 h-5" style="color:#B45309"></i></div><div class="text-2xl font-extrabold" id="kpi-rank">—</div><div class="text-caption">Class Rank</div></div>
+      <div class="stat-card"><div class="stat-icon mb-3" style="background:var(--success-light)"><i data-lucide="badge-check" class="w-5 h-5 text-success"></i></div><div class="text-2xl font-extrabold" id="kpi-status">—</div><div class="text-caption">Result Status</div></div>
+      <div class="stat-card"><div class="stat-icon mb-3" style="background:var(--success-light)"><i data-lucide="calendar-check" class="w-5 h-5 text-success"></i></div><div class="text-2xl font-extrabold" id="kpi-attendance">—</div><div class="text-caption" id="kpi-attendance-sub">Attendance</div></div>
+    </div>
+
+    <div class="card p-7 mb-6" id="notices-section">
+      <h3 class="text-h3 mb-5">Notice Board</h3>
+      <p class="text-caption mb-5" style="margin-top:-12px">Homework and information posted by your Class Teacher.</p>
+      <div id="notices-block" class="space-y-3"></div>
+    </div>
+
+    <div class="card p-7 mb-6" id="subject-teachers-section">
+      <h3 class="text-h3 mb-5">Subject Teachers</h3>
+      <p class="text-caption mb-5" style="margin-top:-12px">Who teaches what for your class.</p>
+      <div id="subject-teachers-block" class="grid sm:grid-cols-2 gap-3"></div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-6">
+      <div class="card p-7">
+        <h3 class="text-h3 mb-5">My Profile</h3>
+        <div class="space-y-2.5 text-sm" id="profile-block"></div>
+      </div>
+
+      <div class="card p-7" id="results-section">
+        <h3 class="text-h3 mb-5">Term 1 Results</h3>
+        <div id="results-block" class="space-y-2.5"></div>
+      </div>
+    </div>
+
+    <div class="card p-7 mt-6" id="timetable-section">
+      <div class="flex items-center justify-between gap-3 mb-5">
+        <h3 class="text-h3">My Class Timetable</h3>
+        <span class="text-caption" id="timetable-class-label"></span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="data-table" style="min-width:900px">
+          <thead><tr id="tt-head"></tr></thead>
+          <tbody id="tt-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card p-7 mt-6" id="certificates-section">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <div>
+          <h3 class="text-h3">Certificates</h3>
+          <p class="text-caption mt-1">Request a certificate — your class teacher must approve it before the download unlocks.</p>
+        </div>
+        <button class="btn btn-primary" id="btn-request-cert" onclick="document.getElementById('cert-request-form').classList.toggle('hidden')"><i data-lucide="file-plus-2" class="w-4 h-4"></i>Request Certificate</button>
+      </div>
+
+      <div id="no-teacher-note" class="hidden flex items-center gap-3 p-4 rounded-xl2 mb-5" style="background:var(--warning-light)">
+        <i data-lucide="info" class="w-4 h-4 shrink-0" style="color:#B45309"></i>
+        <span class="text-sm" style="color:#7A4A08">Your class doesn't have a class teacher assigned yet, so requests can't be routed for approval. Please check with the school office.</span>
+      </div>
+
+      <form id="cert-request-form" class="hidden grid sm:grid-cols-[1fr_1fr_auto] gap-4 items-end p-5 rounded-xl2 border border-slate-200 mb-6">
+        <div class="field-group">
+          <select class="field-input" id="req-type">
+            <option value="attendance">Attendance Certificate</option>
+            <option value="bonafide">Bonafide Certificate</option>
+            <option value="conduct">Conduct Certificate</option>
+          </select>
+          <label class="field-label">Certificate Type</label>
+        </div>
+        <div class="field-group">
+          <input class="field-input" id="req-note" placeholder=" ">
+          <label class="field-label">Reason / Note (optional)</label>
+        </div>
+        <button type="submit" class="btn btn-secondary justify-center"><i data-lucide="send" class="w-4 h-4"></i>Submit Request</button>
+      </form>
+
+      <div id="cert-requests-list" class="space-y-3"></div>
+    </div>
+  </main>
+</div>
+
+<button id="complaint-fab" class="hidden" style="position:fixed;bottom:24px;right:24px;z-index:50;width:56px;height:56px;border-radius:9999px;background:var(--secondary);color:#fff;box-shadow:0 8px 24px rgba(15,23,42,.25);align-items:center;justify-content:center;border:none;cursor:pointer" title="Message Admin">
+  <i data-lucide="message-circle" class="w-6 h-6"></i>
+  <span id="complaint-badge" class="hidden" style="position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:9999px;background:var(--danger);border:2px solid #fff"></span>
+</button>
+
+<div id="complaint-panel" class="card" style="display:none;position:fixed;bottom:92px;right:24px;z-index:50;width:340px;max-width:90vw;height:440px;flex-direction:column;padding:0;overflow:hidden">
+  <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+    <div>
+      <div class="font-semibold text-sm">Message Admin</div>
+      <div class="text-caption">Only the Admin sees these messages</div>
+    </div>
+    <button class="btn-icon btn-ghost" onclick="toggleComplaintPanel(false)"><i data-lucide="x" class="w-4 h-4"></i></button>
+  </div>
+  <div id="complaint-messages" class="flex-1" style="overflow-y:auto;padding:16px"></div>
+  <form id="complaint-form" class="flex items-center gap-2 p-3 border-t border-slate-200">
+    <input class="field-input flex-1" id="complaint-input" placeholder="Type your message…" autocomplete="off">
+    <button type="submit" class="btn-icon btn-primary"><i data-lucide="send" class="w-4 h-4"></i></button>
+  </form>
+</div>
+
+<script>
+lucide.createIcons();
+const session = Session.requireRole('student');
+if (session){
+  const s = getStudent(session.id);
+  if (s){
+    document.getElementById('student-avatar').textContent = initials(s.name);
+    document.getElementById('welcome-msg').textContent = 'Welcome, ' + s.name;
+    document.getElementById('welcome-sub').textContent = classLabel(s.class) + ' · Reg. No. ' + s.regno;
+
+    document.getElementById('profile-block').innerHTML = `
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Register No.</span><span class="font-medium">${s.regno}</span></div>
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Admission No.</span><span class="font-medium">${s.admissionNo||'—'}</span></div>
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Class</span><span class="font-medium">${classLabel(s.class)}</span></div>
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Father's Name</span><span class="font-medium">${s.father||'—'}</span></div>
+      <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Mother's Name</span><span class="font-medium">${s.mother||'—'}</span></div>
+      <div class="flex justify-between py-2"><span class="text-slate-500">Parent Mobile</span><span class="font-medium">${s.parentPhone||'—'}</span></div>
+    `;
+
+    /* ---- Notice Board — merges Class Notices (from any subject teacher) with Admin notices addressed to students ---- */
+    function renderNotices(){
+      const classNotices = getClassNotices(s.class).map(n => ({
+        title: n.title, body: n.body, postedAt: n.postedAt,
+        source: n.postedBy ? `${n.postedBy}${n.subject ? ' · '+n.subject : ''}` : 'Class Teacher',
+        badgeClass: 'badge-success'
+      }));
+      const adminNotices = getNoticesForAudience('student').map(n => ({
+        title: n.title, body: n.body, postedAt: n.postedAt,
+        source: 'School Notice · Admin',
+        badgeClass: 'badge-info'
+      }));
+      const notices = [...classNotices, ...adminNotices].sort((a,b)=> b.postedAt.localeCompare(a.postedAt));
+      document.getElementById('notices-block').innerHTML = notices.length ? notices.map(n => `
+        <div class="p-4 rounded-xl2 border border-slate-200">
+          <div class="flex items-center justify-between gap-3">
+            <div class="font-semibold text-sm">${escapeHtml(n.title)}</div>
+            <span class="badge ${n.badgeClass} text-[10px]">${escapeHtml(n.source)}</span>
+          </div>
+          ${n.body ? `<div class="text-caption mt-1">${escapeHtml(n.body)}</div>` : ''}
+          <div class="text-[11px] text-slate-400 mt-1.5">${new Date(n.postedAt).toLocaleString()}</div>
+        </div>`).join('') : `<p class="text-caption text-center py-8">No notices yet.</p>`;
+    }
+    function updateNoticeDot(){
+      document.getElementById('notice-dot').classList.toggle('hidden', !hasUnreadClassNotices(s.id));
+    }
+    window.openNoticeBoard = function(){
+      document.getElementById('notices-section').scrollIntoView({behavior:'smooth'});
+      markNoticesSeen(s.id);
+      updateNoticeDot();
+    };
+    renderNotices();
+    updateNoticeDot();
+
+    /* ---- Subject Teachers ---- */
+    const subjectTeachers = getSubjectTeachersForClass(s.class);
+    document.getElementById('subject-teachers-block').innerHTML = subjectTeachers.map(r => `
+      <div class="flex items-center gap-3 p-3.5 rounded-xl2 border border-slate-200">
+        ${r.teacher && r.teacher.photo ? `<img src="${r.teacher.photo}" class="rounded-full object-cover" style="width:40px;height:40px">` : `<div class="avatar" style="width:40px;height:40px;font-size:12px;background:${r.teacher ? r.teacher.color : '#94A3B8'}">${r.teacher ? r.teacher.initials : '?'}</div>`}
+        <div>
+          <div class="font-semibold text-sm">${escapeHtml(r.subject)}</div>
+          <div class="text-caption">${r.teacher ? escapeHtml(r.teacher.name) : 'Not assigned yet'}</div>
+        </div>
+      </div>`).join('');
+
+    const marks = getMarksForStudent(s.id, 'Term 1');
+    document.getElementById('results-block').innerHTML = marks.length ? marks.map(m => `
+      <div class="flex items-center justify-between p-3 rounded-lg border border-slate-200">
+        <span class="text-sm font-medium">${escapeHtml(m.subject)}</span>
+        <span class="font-bold ${m.score>=35?'text-primary':'text-danger'}">${m.score}/${m.max}</span>
+      </div>`).join('') : `<p class="text-caption text-center py-8">No marks entered yet for this term.</p>`;
+
+    const avg = studentAverage(s.id, 'Term 1');
+    document.getElementById('kpi-avg').textContent = avg!==null ? avg.toFixed(1)+'%' : '—';
+    document.getElementById('kpi-status').textContent = avg===null ? '—' : (avg>=35 ? 'Pass' : 'Needs Improvement');
+
+    document.getElementById('timetable-class-label').textContent = classLabel(s.class);
+    document.getElementById('tt-head').innerHTML = '<th>Period</th>' + TIMETABLE_DAYS.map(d => `<th>${d}</th>`).join('');
+    const ttGrid = getClassTimetable(s.class);
+    document.getElementById('tt-body').innerHTML = Array.from({length: TIMETABLE_PERIODS}, (_, p) => `
+      <tr>
+        <td class="font-semibold" style="color:var(--text-900)">Period ${p+1}</td>
+        ${TIMETABLE_DAYS.map((_, d) => `<td class="text-sm text-slate-500">${escapeHtml(ttGrid[d][p] || '—')}</td>`).join('')}
+      </tr>`).join('');
+
+    const rankInfo = studentRank(s.id, s.class, 'Term 1');
+    document.getElementById('kpi-rank').textContent = rankInfo ? `#${rankInfo.rank} of ${rankInfo.outOf}` : '—';
+
+    const attendance = studentAttendanceStats(s.id);
+    document.getElementById('kpi-attendance').textContent = attendance.pct!==null ? attendance.pct.toFixed(1)+'%' : '—';
+    document.getElementById('kpi-attendance-sub').textContent = attendance.totalMonths ? `Attendance · ${attendance.totalMonths} month${attendance.totalMonths===1?'':'s'} marked` : 'Attendance — not marked yet';
+
+    /* ---- Certificates ---- */
+    const dbNow = SchoolDB.get();
+    const hasClassTeacher = !!dbNow.assignments[s.class];
+    if (!hasClassTeacher){
+      document.getElementById('no-teacher-note').classList.remove('hidden');
+      document.getElementById('btn-request-cert').setAttribute('disabled','true');
+      document.getElementById('btn-request-cert').classList.add('opacity-50','cursor-not-allowed');
+    }
+
+    const STATUS_BADGE = {
+      pending: '<span class="badge badge-warning"><span class="badge-dot"></span>Pending Approval</span>',
+      approved: '<span class="badge badge-success"><span class="badge-dot"></span>Approved</span>',
+      rejected: '<span class="badge badge-danger"><span class="badge-dot"></span>Rejected</span>',
+    };
+
+    function renderCertRequests(){
+      const reqs = getStudentCertificateRequests(s.id);
+      document.getElementById('cert-requests-list').innerHTML = reqs.length ? reqs.map(r => `
+        <div class="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl2 border border-slate-200">
+          <div>
+            <div class="font-semibold text-sm">${escapeHtml(CERT_TYPE_LABEL[r.type] || r.type)}</div>
+            <div class="text-caption">Requested ${r.requestDate}${r.note ? ' · '+escapeHtml(r.note) : ''}</div>
+          </div>
+          <div class="flex items-center gap-3">
+            ${STATUS_BADGE[r.status] || ''}
+            ${r.status === 'approved'
+              ? `<a class="btn btn-sm btn-primary" href="certificate-generator.html?req=${r.id}" target="_blank"><i data-lucide="download" class="w-3.5 h-3.5"></i>Download</a>`
+              : r.status === 'pending'
+                ? `<span class="text-caption">Awaiting class teacher</span>`
+                : `<span class="text-caption">Contact your class teacher</span>`}
+          </div>
+        </div>`).join('') : `<p class="text-caption text-center py-8">No certificate requests yet.</p>`;
+      lucide.createIcons();
+    }
+    renderCertRequests();
+
+    document.getElementById('cert-request-form').addEventListener('submit', function(e){
+      e.preventDefault();
+      const type = document.getElementById('req-type').value;
+      const note = document.getElementById('req-note').value.trim();
+      requestCertificate(s.id, type, note);
+      this.reset();
+      this.classList.add('hidden');
+      renderCertRequests();
+    });
+
+    /* ---- Message Admin (complaint chat) ---- */
+    const complaintFab = document.getElementById('complaint-fab');
+    const complaintPanel = document.getElementById('complaint-panel');
+    const complaintBadge = document.getElementById('complaint-badge');
+    const complaintMessages = document.getElementById('complaint-messages');
+    complaintFab.classList.remove('hidden');
+    complaintFab.style.display = 'flex';
+    let complaintPollTimer = null;
+
+    function renderComplaintMessages(){
+      const t = getComplaintThread(s.id);
+      const messages = t ? t.messages : [];
+      complaintMessages.innerHTML = messages.length ? messages.map(m => `
+        <div style="display:flex;justify-content:${m.from==='student'?'flex-end':'flex-start'};margin-bottom:10px">
+          <div style="max-width:80%;padding:8px 14px;border-radius:14px;font-size:13px;${m.from==='student' ? 'background:var(--secondary);color:#fff' : 'background:#F1F5F9;color:#1E293B'}">
+            <div>${escapeHtml(m.text)}</div>
+            <div style="font-size:10px;margin-top:4px;opacity:.65">${new Date(m.at).toLocaleString()}</div>
+          </div>
+        </div>`).join('') : `<p class="text-caption text-center" style="padding:24px 0">Have a question or concern? Send a message here — only the Admin will see it, not your teacher.</p>`;
+      complaintMessages.scrollTop = complaintMessages.scrollHeight;
+      updateComplaintBadge();
+    }
+    function updateComplaintBadge(){
+      const t = getComplaintThread(s.id);
+      complaintBadge.classList.toggle('hidden', !(t && t.unreadForStudent));
+    }
+    window.toggleComplaintPanel = function(show){
+      complaintPanel.style.display = show ? 'flex' : 'none';
+      if (show){
+        markComplaintRead(s.id, 'student');
+        renderComplaintMessages();
+        if (!complaintPollTimer) complaintPollTimer = setInterval(renderComplaintMessages, 4000);
+      } else if (complaintPollTimer){
+        clearInterval(complaintPollTimer);
+        complaintPollTimer = null;
+      }
+    };
+    complaintFab.addEventListener('click', () => toggleComplaintPanel(complaintPanel.style.display === 'none'));
+    document.getElementById('complaint-form').addEventListener('submit', function(e){
+      e.preventDefault();
+      const input = document.getElementById('complaint-input');
+      const text = input.value.trim();
+      if (!text) return;
+      sendComplaintMessage(s.id, 'student', text);
+      input.value = '';
+      renderComplaintMessages();
+    });
+    updateComplaintBadge();
+    setInterval(updateComplaintBadge, 6000);
+  }
+}
+</script>
+</body>
+</html>

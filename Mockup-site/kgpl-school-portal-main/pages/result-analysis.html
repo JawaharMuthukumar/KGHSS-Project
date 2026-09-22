@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Result Analysis — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight" id="sidebar-title">GHSS ERP</div><div class="text-[11px] text-slate-400" id="sidebar-sub">Admin Panel</div></div>
+  </div>
+  <nav class="sidebar-nav" id="nav-admin">
+    <a class="sidebar-link" href="admin-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <div class="sidebar-section-label">Academics</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Students</a>
+    <a class="sidebar-link" href="add-teacher.html"><i data-lucide="users"></i>Teachers</a>
+    <a class="sidebar-link" href="class-teacher-assign.html"><i data-lucide="user-cog"></i>Class Teacher</a>
+    <a class="sidebar-link" href="subject-teacher-assign.html"><i data-lucide="book-user"></i>Subject Teachers</a>
+    <a class="sidebar-link" href="teacher-timetable.html"><i data-lucide="calendar-clock"></i>Teacher Timetable</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link active" href="result-analysis.html"><i data-lucide="bar-chart-3"></i>Result Analysis</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <a class="sidebar-link" href="class-scorecard.html"><i data-lucide="trophy"></i>Class Scorecards</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance</a>
+    <a class="sidebar-link" href="complaints.html"><i data-lucide="message-circle"></i>Complaints</a>
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link" href="certificate-generator.html"><i data-lucide="file-badge"></i>Certificates</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link" href="home.html"><i data-lucide="globe"></i>School Website</a>
+  </nav>
+  <nav class="sidebar-nav hidden" id="nav-teacher">
+    <a class="sidebar-link" href="teacher-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <a class="sidebar-link" href="take-attendance.html"><i data-lucide="calendar-check"></i>Take Attendance</a>
+    <a class="sidebar-link active" href="result-analysis.html"><i data-lucide="pencil-line"></i>Enter Marks</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <div class="sidebar-section-label" id="my-class-label">My Class</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Class Students</a>
+    <a class="sidebar-link" href="teacher-add-student.html"><i data-lucide="user-round-plus"></i>Add Student</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance Report</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><span class="current">Result Analysis</span></div>
+    </div>
+    <div class="flex items-center gap-2.5"><div class="avatar" id="user-avatar">U</div></div>
+  </header>
+
+  <main class="p-7 max-w-[1440px]">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-7">
+      <div><h1 class="text-h1" id="page-title">Result Analysis</h1><p class="text-body mt-1" id="page-sub">Term 1, 2026 · Enter marks and view class performance.</p></div>
+      <div class="flex items-center gap-3">
+        <select id="class-filter" class="field-input" style="width:200px;padding:10px 14px"></select>
+        <select id="term-filter" class="field-input" style="width:180px;padding:10px 14px">
+          <option>Term 1</option><option>Quarterly</option><option>Term 2</option><option>Half Yearly</option><option>Term 3</option><option>Annual Exam</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid sm:grid-cols-3 gap-5 mb-6">
+      <div class="stat-card"><div class="text-caption mb-1">Class Average</div><div class="text-3xl font-extrabold" id="stat-avg">—</div></div>
+      <div class="stat-card"><div class="text-caption mb-1">Pass Percentage</div><div class="text-3xl font-extrabold text-success" id="stat-pass">—</div></div>
+      <div class="stat-card"><div class="text-caption mb-1">Marks Entered</div><div class="text-3xl font-extrabold" id="stat-graded">0/0</div></div>
+    </div>
+
+    <div class="card p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="text-h3">Marks Entry — <span id="entry-class-label" class="text-primary">—</span></h3>
+        <button class="btn btn-primary btn-sm" id="save-btn" onclick="saveAllMarks()"><i data-lucide="save" class="w-3.5 h-3.5"></i>Save All Marks</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="data-table" id="marks-table">
+          <thead><tr id="marks-head"><th>Student</th></tr></thead>
+          <tbody id="marks-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const session = Session.get();
+if (!session || (session.role!=='admin' && session.role!=='teacher')) window.location.href = 'gateway.html';
+const isTeacher = session.role === 'teacher';
+document.getElementById('user-avatar').textContent = session.initials || initials(session.name);
+if (isTeacher){
+  document.getElementById('nav-admin').classList.add('hidden');
+  document.getElementById('nav-teacher').classList.remove('hidden');
+  document.getElementById('sidebar-sub').textContent = 'Teacher Portal';
+  document.getElementById('page-title').textContent = 'Enter Marks';
+  document.getElementById('my-class-label').textContent = session.assignedClass ? 'My Class · ' + classLabel(session.assignedClass).replace('Class ','') : 'My Class';
+}
+
+const classFilter = document.getElementById('class-filter');
+const termFilter = document.getElementById('term-filter');
+const classes = getClassesWithCounts();
+
+if (isTeacher && session.assignedClass){
+  classFilter.innerHTML = `<option value="${session.assignedClass}">${classLabel(session.assignedClass)}</option>`;
+  classFilter.disabled = true;
+} else if (isTeacher) {
+  classFilter.innerHTML = `<option value="">No class assigned</option>`;
+  classFilter.disabled = true;
+} else {
+  classFilter.innerHTML = classes.map(c=>`<option value="${c.code}">${c.label} (${c.total})</option>`).join('');
+}
+
+let currentSubjects = [];
+
+function renderEntry(){
+  const code = classFilter.value;
+  const term = termFilter.value;
+  document.getElementById('entry-class-label').textContent = code ? classLabel(code) : 'No class selected';
+  if (!code){
+    document.getElementById('marks-body').innerHTML = `<tr><td class="text-center text-slate-400 py-8">Select a class to view or enter marks.</td></tr>`;
+    document.getElementById('stat-avg').textContent = '—';
+    document.getElementById('stat-pass').textContent = '—';
+    document.getElementById('stat-graded').textContent = '0/0';
+    return;
+  }
+  currentSubjects = SUBJECTS_FOR_CLASS(code);
+  const students = getStudentsByClass(code);
+
+  document.getElementById('marks-head').innerHTML = '<th>Student</th>' + currentSubjects.map(s=>`<th>${s}</th>`).join('') + '<th>Average</th>';
+
+  document.getElementById('marks-body').innerHTML = students.map(s => {
+    const marks = getMarksForStudent(s.id, term);
+    const byName = {}; marks.forEach(m=>byName[m.subject]=m);
+    const cells = currentSubjects.map(sub => {
+      const m = byName[sub];
+      const absent = !!(m && m.absent);
+      const val = m && !absent ? m.score : '';
+      return `<td><div class="flex items-center gap-1.5">
+        <input type="number" min="0" max="100" class="field-input mark-input" style="padding:6px 10px;width:60px" data-student="${s.id}" data-subject="${sub}" value="${val}" ${absent?'disabled':''}>
+        <label class="flex items-center gap-1 text-[10px] text-slate-400" title="Mark Absent for this subject" style="white-space:nowrap">
+          <input type="checkbox" class="mark-absent" data-student="${s.id}" data-subject="${sub}" ${absent?'checked':''} onchange="toggleAbsentCell(this)">AB
+        </label>
+      </div></td>`;
+    }).join('');
+    const avg = marks.length ? (marks.reduce((a,m)=>a+m.score,0)/marks.length).toFixed(1) : '—';
+    return `<tr><td class="font-medium">${escapeHtml(s.name)}<div class="text-caption">${s.regno}</div></td>${cells}<td class="font-bold text-primary">${avg}${avg!=='—'?'%':''}</td></tr>`;
+  }).join('') || `<tr><td colspan="${currentSubjects.length+2}" class="text-center text-slate-400 py-8">No students in this class yet.</td></tr>`;
+
+  const sc = classScorecard(code, term);
+  document.getElementById('stat-avg').textContent = sc.graded ? sc.avg.toFixed(1)+'%' : '—';
+  document.getElementById('stat-pass').textContent = sc.graded ? sc.passPct.toFixed(1)+'%' : '—';
+  document.getElementById('stat-graded').textContent = `${sc.graded}/${sc.total}`;
+}
+classFilter.addEventListener('change', renderEntry);
+termFilter.addEventListener('change', renderEntry);
+renderEntry();
+
+window.toggleAbsentCell = function(cb){
+  const input = document.querySelector(`.mark-input[data-student="${cb.dataset.student}"][data-subject="${cb.dataset.subject}"]`);
+  input.disabled = cb.checked;
+  if (cb.checked) input.value = '';
+};
+
+function saveAllMarks(){
+  const term = termFilter.value;
+  const inputs = document.querySelectorAll('.mark-input');
+  const byStudent = {};
+  inputs.forEach(inp => {
+    const sid = inp.dataset.student, sub = inp.dataset.subject;
+    const absentCb = document.querySelector(`.mark-absent[data-student="${sid}"][data-subject="${sub}"]`);
+    const absent = !!(absentCb && absentCb.checked);
+    if (!absent && inp.value === '') return;
+    byStudent[sid] = byStudent[sid] || {};
+    byStudent[sid][sub] = { score: absent ? 0 : Number(inp.value), absent };
+  });
+  Object.entries(byStudent).forEach(([sid, scores]) => setMarks(sid, term, scores));
+  renderEntry();
+  const btn = document.getElementById('save-btn');
+  const original = btn.innerHTML;
+  btn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i>Saved!';
+  lucide.createIcons();
+  setTimeout(()=>{ btn.innerHTML = original; lucide.createIcons(); }, 1500);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rank Card — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+<style>
+@media print{
+  @page{ size: landscape; margin: 8mm; }
+  body *{ visibility:hidden; }
+  #ms-print, #ms-print *{ visibility:visible; }
+  #ms-print{ position:absolute; top:0; left:0; width:100%; }
+  body.print-all-mode #ms-print, body.print-all-mode #ms-print *{ visibility:hidden; }
+  body.print-all-mode #ms-print-all, body.print-all-mode #ms-print-all *{ visibility:visible; }
+  body.print-all-mode #ms-print-all{ position:absolute; top:0; left:0; width:100%; }
+  .rc-sheet{ page-break-after: always; }
+  .rc-sheet:last-child{ page-break-after: auto; }
+}
+body.locked-mode .sidebar{ display:none; }
+body.locked-mode .main-content{ margin-left:0; }
+#ms-print-all{ position:absolute; left:-99999px; top:0; width:1200px; }
+.rc-table{ border-collapse:collapse; width:100%; font-size:12.5px; }
+.rc-table th, .rc-table td{ border:1px solid #94A3B8; padding:6px 8px; text-align:center; vertical-align:middle; }
+.rc-table thead th{ background:#EFF4FA; }
+.rc-table td.rc-subject{ text-align:left; white-space:nowrap; }
+.rc-ta{ display:block; font-weight:700; }
+.rc-en{ display:block; font-size:10.5px; color:#64748B; font-weight:500; }
+.rc-table tr.rc-summary td, .rc-table tr.rc-summary th{ background:#F8FAFC; font-weight:700; }
+.rc-dash{ color:#CBD5E1; }
+.rc-table tr.rc-sign td, .rc-table tr.rc-sign th{ height:38px; }
+/* Compact variant — two rank cards per printed sheet to save paper. Labels collapse to a single
+   line (Tamil + English inline) instead of stacked, which is what actually keeps two cards within
+   one A4 landscape page — stacked two-line labels alone made a single card taller than half a page. */
+.rc-mini-card{ border:2px solid #0F4C81; padding:5px 10px; margin-bottom:3px; }
+.rc-mini-card .rc-table{ font-size:7.5px; line-height:1.15; }
+.rc-mini-card .rc-table th, .rc-mini-card .rc-table td{ padding:1px 3px; }
+.rc-mini-card .rc-ta{ display:inline; margin-right:3px; }
+.rc-mini-card .rc-en{ display:inline; font-size:6.5px; }
+.rc-mini-card .rc-table tr.rc-sign td, .rc-mini-card .rc-table tr.rc-sign th{ height:9px; }
+.rc-mini-card .rc-mini-title{ font-size:8.5px; font-weight:800; letter-spacing:.02em; }
+.rc-mini-card .rc-mini-sub{ font-size:7px; color:#64748B; }
+.rc-mini-card .rc-mini-info{ font-size:7.5px; }
+.rc-mini-card .flex.items-center.justify-between{ padding-bottom:2px; margin-bottom:2px; }
+.rc-mini-card .rc-mini-info{ margin-bottom:2px; }
+</style>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight" id="sidebar-title">GHSS ERP</div><div class="text-[11px] text-slate-400" id="sidebar-sub">Admin Panel</div></div>
+  </div>
+  <nav class="sidebar-nav" id="nav-admin">
+    <a class="sidebar-link" href="admin-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <div class="sidebar-section-label">Academics</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Students</a>
+    <a class="sidebar-link" href="add-teacher.html"><i data-lucide="users"></i>Teachers</a>
+    <a class="sidebar-link" href="class-teacher-assign.html"><i data-lucide="user-cog"></i>Class Teacher</a>
+    <a class="sidebar-link" href="subject-teacher-assign.html"><i data-lucide="book-user"></i>Subject Teachers</a>
+    <a class="sidebar-link" href="teacher-timetable.html"><i data-lucide="calendar-clock"></i>Teacher Timetable</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="bar-chart-3"></i>Result Analysis</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <a class="sidebar-link" href="class-scorecard.html"><i data-lucide="trophy"></i>Class Scorecards</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance</a>
+    <a class="sidebar-link" href="complaints.html"><i data-lucide="message-circle"></i>Complaints</a>
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link" href="certificate-generator.html"><i data-lucide="file-badge"></i>Certificates</a>
+    <a class="sidebar-link active" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link" href="home.html"><i data-lucide="globe"></i>School Website</a>
+  </nav>
+  <nav class="sidebar-nav hidden" id="nav-teacher">
+    <a class="sidebar-link" href="teacher-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <a class="sidebar-link" href="take-attendance.html"><i data-lucide="calendar-check"></i>Take Attendance</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="pencil-line"></i>Enter Marks</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <div class="sidebar-section-label" id="my-class-label">My Class</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Class Students</a>
+    <a class="sidebar-link" href="teacher-add-student.html"><i data-lucide="user-round-plus"></i>Add Student</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance Report</a>
+    <a class="sidebar-link active" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+  </nav>
+  <nav class="sidebar-nav hidden" id="nav-student">
+    <a class="sidebar-link" href="student-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <a class="sidebar-link" href="student-dashboard.html#results-section"><i data-lucide="bar-chart-3"></i>My Results</a>
+    <a class="sidebar-link active" href="marksheet.html"><i data-lucide="file-text"></i>My Rank Card</a>
+    <a class="sidebar-link" href="student-dashboard.html#certificates-section"><i data-lucide="file-badge"></i>Certificates</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><span class="current">Rank Card</span></div>
+    </div>
+    <div class="flex items-center gap-2.5"><div class="avatar" id="user-avatar">U</div></div>
+  </header>
+
+  <main class="p-7 max-w-[1440px]">
+    <div class="mb-7"><h1 class="text-h1">Rank Card</h1><p class="text-body mt-1">One card for the whole year — every exam's marks fill in its own column as soon as they're entered. Print or save it as a PDF anytime.</p></div>
+
+    <div id="empty-state" class="hidden card p-14 text-center max-w-xl">
+      <i data-lucide="file-x" class="w-10 h-10 mx-auto mb-4 text-slate-300"></i>
+      <div class="font-semibold text-slate-500" id="empty-title">Nothing to show yet</div>
+      <p class="text-sm text-slate-400 mt-1.5" id="empty-body"></p>
+    </div>
+
+    <div id="ms-content" class="grid lg:grid-cols-[340px_1fr] gap-6">
+      <div class="card p-6 space-y-5 no-print" id="control-panel">
+        <div class="field-group hidden" id="class-field">
+          <select class="field-input" id="m-class"></select>
+          <label class="field-label">Class</label>
+        </div>
+        <div class="field-group hidden" id="student-field">
+          <select class="field-input" id="m-student"></select>
+          <label class="field-label">Student</label>
+        </div>
+        <button class="btn btn-primary w-full justify-center" id="print-btn"><i data-lucide="printer" class="w-4 h-4"></i>Print / Save as PDF</button>
+        <p class="text-caption text-center">Use your browser's "Save as PDF" option in the print dialog.</p>
+        <button class="btn btn-secondary w-full justify-center hidden" id="print-all-btn"><i data-lucide="printer" class="w-4 h-4"></i>Print Whole Class</button>
+        <p class="text-caption text-center hidden" id="print-all-hint">2 students' rank cards per A4 sheet, to save paper.</p>
+      </div>
+
+      <div class="card p-8 overflow-x-auto">
+        <div id="ms-print" class="border-4 p-10" style="border-color:#0F4C81; min-height:520px;">
+          <div class="text-center mb-8" style="border-bottom:2px solid #0F4C81;padding-bottom:16px">
+            <div class="text-xs font-bold tracking-widest text-slate-500 uppercase">Government of Tamil Nadu · School Education Department</div>
+            <div class="text-2xl font-extrabold text-primary mt-1">அரசு மேல்நிலைப்பள்ளி, காங்கயம்பாளையம்</div>
+            <div class="text-sm font-semibold text-slate-600">Government Higher Secondary School, Kangayampalayam</div>
+            <div class="text-xs text-slate-500">Tiruppur District, Tamil Nadu</div>
+            <div class="text-lg font-bold mt-5 underline" id="ms-exam-title">தேர்வு அறிக்கை / RANK CARD</div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3 text-sm mb-6" id="ms-student-info"></div>
+
+          <div class="overflow-x-auto">
+            <table class="rc-table" id="ms-table">
+              <thead><tr id="ms-thead-row"></tr></thead>
+              <tbody id="ms-rows"></tbody>
+            </table>
+          </div>
+
+          <div class="mt-6 text-sm text-slate-500">Date: <span id="ms-date">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="ms-print-all"></div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const session = Session.get();
+if (!session || !['admin','teacher','student'].includes(session.role)) window.location.href = 'gateway.html';
+document.getElementById('user-avatar').textContent = session.initials || initials(session.name);
+
+const EXAMS = ['Term 1','Quarterly','Term 2','Half Yearly','Term 3','Annual Exam'];
+const EXAM_TA = {
+  'Term 1':'முதல் தேர்வு', 'Quarterly':'காலாண்டு தேர்வு', 'Term 2':'இரண்டாம் தேர்வு',
+  'Half Yearly':'அரையாண்டு தேர்வு', 'Term 3':'மூன்றாம் தேர்வு', 'Annual Exam':'ஆண்டு இறுதித் தேர்வு'
+};
+const SUBJECT_TA = {
+  'Tamil':'தமிழ்', 'English':'ஆங்கிலம்', 'Maths':'கணிதம்', 'Science':'அறிவியல்', 'Social Science':'சமூக அறிவியல்',
+  'Computer Science':'கணினி அறிவியல்', 'Biology':'உயிரியல்', 'Physics':'இயற்பியல்', 'Chemistry':'வேதியியல்'
+};
+
+function showEmpty(title, body){
+  document.getElementById('ms-content').classList.add('hidden');
+  document.getElementById('empty-state').classList.remove('hidden');
+  document.getElementById('empty-title').textContent = title;
+  document.getElementById('empty-body').textContent = body;
+}
+
+/* This student's total/max/pass-fail for one exam column — null if that exam hasn't been marked for them yet. */
+function examTotalFor(studentId, exam){
+  const marks = getMarksForStudent(studentId, exam);
+  if (!marks.length) return null;
+  return {
+    total: marks.reduce((a,m)=>a+m.score,0),
+    max: marks.reduce((a,m)=>a+m.max,0),
+    pass: marks.every(m => !m.absent && m.score>=35)
+  };
+}
+
+/* Builds the <thead> row + all <tbody> rows for one student's rank card table — shared by the
+   full single-card view and the compact two-per-sheet "print whole class" view. */
+function buildRankCardTable(s){
+  const subjects = SUBJECTS_FOR_CLASS(s.class);
+  const isSenior = s.class.startsWith('11') || s.class.startsWith('12');
+  const maxTotal = subjects.length * 100;
+  const cell = (html) => `<td>${html}</td>`;
+  const dash = '<span class="rc-dash">—</span>';
+
+  const thead = `
+    <th class="rc-subject"><span class="rc-ta">பாடம்</span><span class="rc-en">Subject</span></th>
+    ${EXAMS.map(e => `<th><span class="rc-ta">${EXAM_TA[e]}</span><span class="rc-en">${e}</span></th>`).join('')}
+  `;
+
+  let rows = '';
+
+  // One row per subject the student actually studies — each exam column shows that subject's mark once entered.
+  subjects.forEach(subject => {
+    rows += `<tr><td class="rc-subject"><span class="rc-ta">${SUBJECT_TA[subject]||subject}</span><span class="rc-en">${subject} (100)</span></td>`;
+    EXAMS.forEach(exam => {
+      const marks = getMarksForStudent(s.id, exam);
+      const m = marks.find(x => x.subject === subject);
+      if (!m) rows += cell(dash);
+      else if (m.absent) rows += cell('<span class="text-danger font-semibold">AB</span>');
+      else rows += cell(`<span class="${m.score>=35?'':'text-danger'} font-semibold">${m.score}</span>`);
+    });
+    rows += '</tr>';
+  });
+
+  // மொத்தம் / Total
+  rows += `<tr class="rc-summary"><th class="rc-subject"><span class="rc-ta">மொத்தம்</span><span class="rc-en">Total (${maxTotal})</span></th>`;
+  EXAMS.forEach(exam => {
+    const t = examTotalFor(s.id, exam);
+    rows += cell(t ? `${t.total} / ${t.max}` : dash);
+  });
+  rows += '</tr>';
+
+  // தகுதி / Result
+  rows += `<tr class="rc-summary"><th class="rc-subject"><span class="rc-ta">தகுதி</span><span class="rc-en">Result</span></th>`;
+  EXAMS.forEach(exam => {
+    const t = examTotalFor(s.id, exam);
+    rows += cell(t ? `<span class="${t.pass?'text-success':'text-danger'}">${t.pass?'தேர்ச்சி / Pass':'தோல்வி / Fail'}</span>` : dash);
+  });
+  rows += '</tr>';
+
+  // வகுப்பு தரவரிசை / Class Rank (this student)
+  rows += `<tr class="rc-summary"><th class="rc-subject"><span class="rc-ta">வகுப்பு தரவரிசை</span><span class="rc-en">Class Rank</span></th>`;
+  EXAMS.forEach(exam => {
+    const rankInfo = studentRank(s.id, s.class, exam);
+    rows += cell(rankInfo ? `#${rankInfo.rank} / ${rankInfo.outOf}` : dash);
+  });
+  rows += '</tr>';
+
+  // வகுப்பு முதல் மதிப்பெண் / Class Topper's Marks — whoever is 1st rank in the class for that exam, so
+  // every student's rank card carries the topper's marks alongside their own, for comparison.
+  rows += `<tr class="rc-summary"><th class="rc-subject"><span class="rc-ta">வகுப்பு முதல் மதிப்பெண்</span><span class="rc-en">Class Topper's Marks</span></th>`;
+  EXAMS.forEach(exam => {
+    const topper = classScorecard(s.class, exam).top5[0];
+    if (!topper) { rows += cell(dash); return; }
+    const t = examTotalFor(topper.student.id, exam);
+    rows += cell(t ? `${t.total} <span class="rc-en" style="display:inline">— ${escapeHtml(topper.student.name)}</span>` : dash);
+  });
+  rows += '</tr>';
+
+  // வருகை நாட்கள் / Attendance Days — not tracked per exam sitting, left blank for the class teacher to fill in by hand.
+  rows += `<tr class="rc-summary"><th class="rc-subject"><span class="rc-ta">வருகை நாட்கள்</span><span class="rc-en">Attendance Days</span></th>`;
+  EXAMS.forEach(() => { rows += cell(dash); });
+  rows += '</tr>';
+
+  // CUT OFF மதிப்பெண் — Std 11/12 only, not computed by the system yet; left blank for manual entry.
+  if (isSenior){
+    rows += `<tr class="rc-summary"><th class="rc-subject"><span class="rc-ta">CUT OFF மதிப்பெண்</span><span class="rc-en">Cut-off Marks</span></th>`;
+    EXAMS.forEach(() => { rows += cell(dash); });
+    rows += '</tr>';
+  }
+
+  // Signature rows — one blank slot per exam column, so once a result is uploaded and the student
+  // downloads/prints that column, the class teacher, headmaster and parent each sign off on it.
+  const signRow = (ta, en) => {
+    let r = `<tr class="rc-sign"><th class="rc-subject"><span class="rc-ta">${ta}</span><span class="rc-en">${en}</span></th>`;
+    EXAMS.forEach(() => { r += cell(''); });
+    return r + '</tr>';
+  };
+  rows += signRow('வகுப்பு ஆசிரியர் கையொப்பம்', 'Class Teacher Signature');
+  rows += signRow('தலைமை ஆசிரியர் கையொப்பம்', 'Headmaster Signature (C.Martin Devesagayam)');
+  rows += signRow('பெற்றோர் கையொப்பம்', "Parent's Signature");
+
+  return { thead, rows };
+}
+
+function studentInfoHTML(s){
+  return `
+    <div><span class="text-slate-400">பெயர் / Student Name:</span> <b>${escapeHtml(s.name)}</b></div>
+    <div><span class="text-slate-400">பதிவு எண் / Register No.:</span> <b>${s.regno}</b></div>
+    <div><span class="text-slate-400">வகுப்பு / Class:</span> <b>${classLabel(s.class)}</b></div>
+    <div><span class="text-slate-400">கல்வியாண்டு / Academic Year:</span> <b>2025–2026</b></div>
+  `;
+}
+
+function renderMarksheet(studentId){
+  const s = getStudent(studentId);
+  if (!s){ document.getElementById('ms-rows').innerHTML = ''; return; }
+  document.getElementById('ms-date').textContent = new Date().toISOString().slice(0,10);
+  document.getElementById('ms-student-info').innerHTML = studentInfoHTML(s);
+  const { thead, rows } = buildRankCardTable(s);
+  document.getElementById('ms-thead-row').innerHTML = thead;
+  document.getElementById('ms-rows').innerHTML = rows;
+}
+
+/* Compact single-student block used two-to-a-sheet by "Print Whole Class". */
+function buildMiniCard(s){
+  const { thead, rows } = buildRankCardTable(s);
+  return `
+    <div class="rc-mini-card">
+      <div class="flex items-center justify-between mb-1" style="border-bottom:1px solid #0F4C81;padding-bottom:4px">
+        <div>
+          <div class="rc-mini-title">அரசு மேல்நிலைப்பள்ளி, காங்கயம்பாளையம் · Govt. Hr. Sec. School, Kangayampalayam</div>
+          <div class="rc-mini-sub">தேர்வு அறிக்கை / RANK CARD — 2025–2026</div>
+        </div>
+      </div>
+      <div class="rc-mini-info flex flex-wrap gap-x-4 mb-1">
+        <div><span class="text-slate-400">பெயர்/Name:</span> <b>${escapeHtml(s.name)}</b></div>
+        <div><span class="text-slate-400">பதிவு எண்/Reg No:</span> <b>${s.regno}</b></div>
+        <div><span class="text-slate-400">வகுப்பு/Class:</span> <b>${classLabel(s.class)}</b></div>
+      </div>
+      <table class="rc-table"><thead><tr>${thead}</tr></thead><tbody>${rows}</tbody></table>
+    </div>
+  `;
+}
+
+/* Lays out every student in a class two-per-sheet (one on top, one below) so a full class's
+   rank cards can be printed without a page per student — the class teacher's "print all" flow. */
+function printAllForClass(classCode){
+  const students = getStudentsByClass(classCode);
+  if (!students.length) return;
+  let sheets = '';
+  for (let i=0; i<students.length; i+=2){
+    const pair = students.slice(i, i+2);
+    sheets += `<div class="rc-sheet">${pair.map(buildMiniCard).join('')}</div>`;
+  }
+  document.getElementById('ms-print-all').innerHTML = sheets;
+  document.body.classList.add('print-all-mode');
+  window.print();
+}
+window.addEventListener('afterprint', () => document.body.classList.remove('print-all-mode'));
+
+window.printMarksheet = function(){ window.print(); };
+document.getElementById('print-btn').addEventListener('click', () => printMarksheet());
+
+/* ---------------- Role branching ---------------- */
+if (session.role === 'student'){
+  document.body.classList.add('locked-mode');
+  document.getElementById('nav-admin').classList.add('hidden');
+  document.getElementById('nav-student').classList.remove('hidden');
+  document.getElementById('sidebar-sub').textContent = 'Student Portal';
+  const s = getStudent(session.id);
+  if (!s){ showEmpty('Profile Not Found', 'Your student record could not be located.'); }
+  else { renderMarksheet(s.id); }
+
+} else if (session.role === 'teacher'){
+  document.getElementById('nav-admin').classList.add('hidden');
+  document.getElementById('nav-teacher').classList.remove('hidden');
+  document.getElementById('sidebar-sub').textContent = 'Teacher Portal';
+  const db = SchoolDB.get();
+  const teacher = db.teachers.find(t => t.id === session.id);
+  const assignedClass = teacher ? teacher.assignedClass : null;
+  document.getElementById('my-class-label').textContent = assignedClass ? ('My Class · ' + classLabel(assignedClass).replace('Class ','')) : 'My Class';
+
+  if (!assignedClass){
+    showEmpty('No Class Assigned', 'You need to be assigned as a Class Teacher before you can generate rank cards for students.');
+  } else {
+    document.getElementById('student-field').classList.remove('hidden');
+    const studentSelect = document.getElementById('m-student');
+    const students = getStudentsByClass(assignedClass);
+    studentSelect.innerHTML = students.map(s => `<option value="${s.id}">${escapeHtml(s.name)} (${s.regno})</option>`).join('') || `<option value="">No students in this class</option>`;
+    function refresh(){ if (studentSelect.value) renderMarksheet(studentSelect.value); }
+    studentSelect.addEventListener('change', refresh);
+    if (students.length){
+      refresh();
+      document.getElementById('print-all-btn').classList.remove('hidden');
+      document.getElementById('print-all-hint').classList.remove('hidden');
+      document.getElementById('print-all-btn').addEventListener('click', () => printAllForClass(assignedClass));
+    } else showEmpty('No Students Yet', 'Add students to your class before generating rank cards.');
+  }
+
+} else {
+  document.getElementById('user-avatar').textContent = session.initials || 'A';
+  document.getElementById('class-field').classList.remove('hidden');
+  document.getElementById('student-field').classList.remove('hidden');
+  const classes = getClassesWithCounts();
+  const classSelect = document.getElementById('m-class');
+  classSelect.innerHTML = classes.map(c=>`<option value="${c.code}">${c.label} (${c.total})</option>`).join('');
+  const studentSelect = document.getElementById('m-student');
+
+  function refreshStudents(){
+    const students = getStudentsByClass(classSelect.value);
+    studentSelect.innerHTML = students.map(s=>`<option value="${s.id}">${escapeHtml(s.name)} (${s.regno})</option>`).join('') || `<option value="">No students in this class</option>`;
+    if (studentSelect.value) renderMarksheet(studentSelect.value);
+  }
+  classSelect.addEventListener('change', refreshStudents);
+  studentSelect.addEventListener('change', () => renderMarksheet(studentSelect.value));
+  document.getElementById('print-all-btn').classList.remove('hidden');
+  document.getElementById('print-all-hint').classList.remove('hidden');
+  document.getElementById('print-all-btn').addEventListener('click', () => printAllForClass(classSelect.value));
+  refreshStudents();
+}
+</script>
+</body>
+</html>

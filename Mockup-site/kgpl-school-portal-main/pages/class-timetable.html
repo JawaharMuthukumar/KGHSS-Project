@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Timetable — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight" id="sidebar-title">GHSS ERP</div><div class="text-[11px] text-slate-400" id="sidebar-sub">Admin Panel</div></div>
+  </div>
+  <nav class="sidebar-nav" id="nav-admin">
+    <a class="sidebar-link" href="admin-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <div class="sidebar-section-label">Academics</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Students</a>
+    <a class="sidebar-link" href="add-teacher.html"><i data-lucide="users"></i>Teachers</a>
+    <a class="sidebar-link" href="class-teacher-assign.html"><i data-lucide="user-cog"></i>Class Teacher</a>
+    <a class="sidebar-link" href="subject-teacher-assign.html"><i data-lucide="book-user"></i>Subject Teachers</a>
+    <a class="sidebar-link" href="teacher-timetable.html"><i data-lucide="calendar-clock"></i>Teacher Timetable</a>
+    <a class="sidebar-link active" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="bar-chart-3"></i>Result Analysis</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <a class="sidebar-link" href="class-scorecard.html"><i data-lucide="trophy"></i>Class Scorecards</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance</a>
+    <a class="sidebar-link" href="complaints.html"><i data-lucide="message-circle"></i>Complaints</a>
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link" href="certificate-generator.html"><i data-lucide="file-badge"></i>Certificates</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link" href="home.html"><i data-lucide="globe"></i>School Website</a>
+  </nav>
+  <nav class="sidebar-nav hidden" id="nav-teacher">
+    <a class="sidebar-link" href="teacher-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <a class="sidebar-link" href="take-attendance.html"><i data-lucide="calendar-check"></i>Take Attendance</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="pencil-line"></i>Enter Marks</a>
+    <a class="sidebar-link" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <div class="sidebar-section-label" id="my-class-label">My Class</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Class Students</a>
+    <a class="sidebar-link" href="teacher-add-student.html"><i data-lucide="user-round-plus"></i>Add Student</a>
+    <a class="sidebar-link active" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance Report</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><span class="current">Class Timetable</span></div>
+    </div>
+    <div class="flex items-center gap-2.5"><div class="avatar" id="user-avatar">U</div></div>
+  </header>
+
+  <main class="p-7 max-w-[1440px]">
+
+    <!-- Admin view: pick any class, read-only -->
+    <div id="admin-view" class="hidden">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-7">
+        <div><h1 class="text-h1">Class Timetable</h1><p class="text-body mt-1">Each class's weekly timetable is set by that class's own Class Teacher. This view is read-only.</p></div>
+        <select id="class-select" class="field-input" style="width:220px;padding:10px 14px"></select>
+      </div>
+      <div class="card p-6">
+        <div class="font-semibold text-sm mb-5" id="admin-grid-title" style="color:var(--text-900)">—</div>
+        <div class="overflow-x-auto">
+          <table class="data-table" style="min-width:900px">
+            <thead><tr id="admin-grid-head"></tr></thead>
+            <tbody id="admin-grid-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Class Teacher view: own class only, editable -->
+    <div id="teacher-view" class="hidden">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-7">
+        <div><h1 class="text-h1">My Class Timetable</h1><p class="text-body mt-1" id="teacher-sub">Set the weekly subject schedule for your class — it appears on each student's dashboard.</p></div>
+        <button class="btn btn-primary" id="save-btn"><i data-lucide="check" class="w-4 h-4"></i>Save Timetable</button>
+      </div>
+      <div class="card p-6">
+        <div class="overflow-x-auto">
+          <table class="data-table" style="min-width:900px">
+            <thead><tr id="teacher-grid-head"></tr></thead>
+            <tbody id="teacher-grid-body"></tbody>
+          </table>
+        </div>
+        <p class="text-xs text-slate-400 mt-4">Enter the subject (and teacher, if helpful) for each slot, e.g. "Maths — Mrs. Priya S." — leave blank for a free period.</p>
+      </div>
+    </div>
+
+    <!-- Class Teacher without an assigned class -->
+    <div id="no-class-view" class="hidden card p-14 text-center">
+      <i data-lucide="calendar" class="w-10 h-10 mx-auto mb-4 text-slate-300"></i>
+      <div class="font-semibold text-slate-500">You are not assigned as a Class Teacher yet.</div>
+      <p class="text-sm text-slate-400 mt-1.5">Ask the Admin to assign you to a class from Class Teacher Assignment.</p>
+    </div>
+
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const session = Session.get();
+if (!session || (session.role!=='admin' && session.role!=='teacher')) window.location.href = 'gateway.html';
+const isTeacher = session.role === 'teacher';
+document.getElementById('user-avatar').textContent = session.initials || initials(session.name);
+
+const db = SchoolDB.get();
+
+function buildHeadRow(el){
+  el.innerHTML = '<th>Period</th>' + TIMETABLE_DAYS.map(d => `<th>${d}</th>`).join('');
+}
+
+if (isTeacher){
+  document.getElementById('nav-admin').classList.add('hidden');
+  document.getElementById('nav-teacher').classList.remove('hidden');
+  document.getElementById('sidebar-sub').textContent = 'Teacher Portal';
+
+  const teacher = db.teachers.find(t => t.id === session.id);
+  const assignedClass = teacher ? teacher.assignedClass : null;
+
+  if (!assignedClass){
+    document.getElementById('no-class-view').classList.remove('hidden');
+  } else {
+    document.getElementById('teacher-view').classList.remove('hidden');
+    document.getElementById('my-class-label').textContent = 'My Class · ' + classLabel(assignedClass).replace('Class ','');
+    document.getElementById('teacher-sub').textContent = `Set the weekly subject schedule for Class ${classLabel(assignedClass).replace('Class ','')} — it appears on each student's dashboard.`;
+    buildHeadRow(document.getElementById('teacher-grid-head'));
+
+    let grid = getClassTimetable(assignedClass);
+    document.getElementById('teacher-grid-body').innerHTML = Array.from({length: TIMETABLE_PERIODS}, (_, p) => `
+      <tr>
+        <td class="font-semibold" style="color:var(--text-900)">Period ${p+1}</td>
+        ${TIMETABLE_DAYS.map((_, d) => `<td><input type="text" class="field-input ct-cell" data-day="${d}" data-period="${p}" style="padding:8px 10px;font-size:13px" value="${escapeHtml(grid[d][p] || '')}" placeholder="e.g. Maths"></td>`).join('')}
+      </tr>`).join('');
+
+    document.getElementById('save-btn').addEventListener('click', () => {
+      document.querySelectorAll('.ct-cell').forEach(input => {
+        const d = parseInt(input.dataset.day, 10), p = parseInt(input.dataset.period, 10);
+        grid[d][p] = input.value.trim();
+      });
+      setClassTimetable(assignedClass, grid);
+      alert('Timetable saved for Class ' + classLabel(assignedClass).replace('Class ',''));
+    });
+  }
+} else {
+  document.getElementById('admin-view').classList.remove('hidden');
+  const classSelect = document.getElementById('class-select');
+  classSelect.innerHTML = CLASS_LIST.map(c => `<option value="${c.code}">Class ${c.label}</option>`).join('');
+  buildHeadRow(document.getElementById('admin-grid-head'));
+
+  function renderAdminGrid(classCode){
+    document.getElementById('admin-grid-title').textContent = 'Class ' + (CLASS_LIST.find(c=>c.code===classCode)||{}).label;
+    const grid = getClassTimetable(classCode);
+    document.getElementById('admin-grid-body').innerHTML = Array.from({length: TIMETABLE_PERIODS}, (_, p) => `
+      <tr>
+        <td class="font-semibold" style="color:var(--text-900)">Period ${p+1}</td>
+        ${TIMETABLE_DAYS.map((_, d) => `<td class="text-sm text-slate-500">${escapeHtml(grid[d][p] || '—')}</td>`).join('')}
+      </tr>`).join('');
+  }
+  classSelect.addEventListener('change', () => renderAdminGrid(classSelect.value));
+  renderAdminGrid(classSelect.value);
+}
+</script>
+</body>
+</html>

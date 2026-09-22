@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Mark Report — GHSS ERP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="../css/shared.css">
+<script>
+tailwind.config = { theme: { extend: {
+  colors:{ primary:'#0F4C81', secondary:'#2563EB', success:'#16A34A', warning:'#F59E0B', danger:'#DC2626', bg:'#F8FAFC', side:'#0F172A' },
+  fontFamily:{ sans:['Inter','sans-serif'] }
+}}}
+</script>
+<script src="../js/app.js?v=11"></script>
+<style>
+@media print{
+  @page{ size: landscape; }
+  body *{ visibility:hidden; }
+  #report-print, #report-print *{ visibility:visible; }
+  #report-print{ position:absolute; top:0; left:0; width:100%; }
+  .no-print{ display:none !important; }
+  .print-only{ display:block !important; }
+}
+.cmr-table{ border-collapse:collapse; font-size:11px; white-space:nowrap; }
+.cmr-table th, .cmr-table td{ border:1px solid #CBD5E1; padding:4px 7px; text-align:center; }
+.cmr-table th{ background:#F1F5F9; font-weight:700; }
+.cmr-table td.cmr-name{ text-align:left; white-space:normal; min-width:140px; }
+.cmr-na{ color:#CBD5E1; }
+</style>
+</head>
+<body class="bg-bg">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="w-10 h-10 rounded-xl2 bg-secondary flex items-center justify-center font-bold" style="border-radius:10px">GS</div>
+    <div><div class="text-white font-bold text-[15px] leading-tight" id="sidebar-title">GHSS ERP</div><div class="text-[11px] text-slate-400" id="sidebar-sub">Admin Panel</div></div>
+  </div>
+    <nav class="sidebar-nav" id="nav-admin">
+    <a class="sidebar-link" href="admin-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <div class="sidebar-section-label">Academics</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Students</a>
+    <a class="sidebar-link" href="add-teacher.html"><i data-lucide="users"></i>Teachers</a>
+    <a class="sidebar-link" href="class-teacher-assign.html"><i data-lucide="user-cog"></i>Class Teacher</a>
+    <a class="sidebar-link" href="subject-teacher-assign.html"><i data-lucide="book-user"></i>Subject Teachers</a>
+    <a class="sidebar-link" href="teacher-timetable.html"><i data-lucide="calendar-clock"></i>Teacher Timetable</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="bar-chart-3"></i>Result Analysis</a>
+    <a class="sidebar-link active" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <a class="sidebar-link" href="class-scorecard.html"><i data-lucide="trophy"></i>Class Scorecards</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance</a>
+    <a class="sidebar-link" href="complaints.html"><i data-lucide="message-circle"></i>Complaints</a>
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link" href="certificate-generator.html"><i data-lucide="file-badge"></i>Certificates</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link" href="home.html"><i data-lucide="globe"></i>School Website</a>
+  </nav>
+  <nav class="sidebar-nav hidden" id="nav-teacher">
+    <a class="sidebar-link" href="teacher-dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+    <a class="sidebar-link" href="take-attendance.html"><i data-lucide="calendar-check"></i>Take Attendance</a>
+    <a class="sidebar-link" href="result-analysis.html"><i data-lucide="pencil-line"></i>Enter Marks</a>
+    <a class="sidebar-link active" href="class-mark-report.html"><i data-lucide="clipboard-list"></i>Class Mark Report</a>
+    <div class="sidebar-section-label" id="my-class-label">My Class</div>
+    <a class="sidebar-link" href="student-profile.html"><i data-lucide="graduation-cap"></i>Class Students</a>
+    <a class="sidebar-link" href="teacher-add-student.html"><i data-lucide="user-round-plus"></i>Add Student</a>
+    <a class="sidebar-link" href="class-timetable.html"><i data-lucide="calendar-days"></i>Class Timetable</a>
+    <a class="sidebar-link" href="attendance-report.html"><i data-lucide="calendar-check"></i>Attendance Report</a>
+    <a class="sidebar-link" href="marksheet.html"><i data-lucide="file-text"></i>Rank Card</a>
+    <a class="sidebar-link" href="school-report.html"><i data-lucide="pie-chart"></i>Reports</a>
+    <a class="sidebar-link" href="gallery.html"><i data-lucide="images"></i>Gallery</a>
+  </nav>
+  <div class="sidebar-footer"><a href="gateway.html" class="sidebar-link" onclick="logout();return false;"><i data-lucide="log-out"></i>Log Out</a></div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button class="lg:hidden btn-icon btn-ghost border border-slate-200" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" class="w-5 h-5"></i></button>
+      <div class="breadcrumb"><span class="current">Class Mark Report</span></div>
+    </div>
+    <div class="flex items-center gap-2.5"><div class="avatar" id="user-avatar">U</div></div>
+  </header>
+
+  <main class="p-7 max-w-[1440px]">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-7 no-print">
+      <div><h1 class="text-h1">Class Mark Report</h1><p class="text-body mt-1">Whole-class marks, result, rank &amp; attendance in one downloadable sheet — pick a class and exam.</p></div>
+      <div class="flex items-center gap-3">
+        <select id="class-filter" class="field-input" style="width:200px;padding:10px 14px"></select>
+        <select id="term-filter" class="field-input" style="width:180px;padding:10px 14px">
+          <option>Term 1</option><option>Quarterly</option><option>Term 2</option><option>Half Yearly</option><option>Term 3</option><option>Annual Exam</option>
+        </select>
+        <button class="btn btn-primary" id="print-btn"><i data-lucide="printer" class="w-4 h-4"></i>Print / Save as PDF</button>
+      </div>
+    </div>
+
+    <div id="empty-state" class="hidden card p-14 text-center max-w-xl">
+      <i data-lucide="file-x" class="w-10 h-10 mx-auto mb-4 text-slate-300"></i>
+      <div class="font-semibold text-slate-500" id="empty-title">No students in this class yet</div>
+    </div>
+
+    <div id="report-card" class="card p-6">
+      <div id="report-print">
+        <div class="hidden print-only mb-3">
+          <div class="text-xs font-bold tracking-widest text-slate-500 uppercase">Government Higher Secondary School, Kangayampalayam</div>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <div class="text-lg font-extrabold" id="cmr-title">—</div>
+            <div class="text-caption">Academic Year 2025–2026 · <span id="cmr-exam-label">—</span></div>
+          </div>
+          <div class="badge badge-info" id="cmr-working-days">Total Working Days: —</div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="cmr-table" id="cmr-table">
+            <thead>
+              <tr id="cmr-max-row"></tr>
+              <tr id="cmr-pass-row"></tr>
+              <tr id="cmr-head-row"></tr>
+            </thead>
+            <tbody id="cmr-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+const session = Session.get();
+if (!session || (session.role!=='admin' && session.role!=='teacher')) window.location.href = 'gateway.html';
+const isTeacher = session.role === 'teacher';
+document.getElementById('user-avatar').textContent = session.initials || initials(session.name);
+
+if (isTeacher){
+  document.getElementById('nav-admin').classList.add('hidden');
+  document.getElementById('nav-teacher').classList.remove('hidden');
+  document.getElementById('sidebar-sub').textContent = 'Teacher Portal';
+  const db0 = SchoolDB.get();
+  const teacher0 = db0.teachers.find(t => t.id === session.id);
+  const lockedClass = teacher0 ? teacher0.assignedClass : null;
+  if (lockedClass) document.getElementById('my-class-label').textContent = 'My Class · ' + classLabel(lockedClass).replace('Class ','');
+  window.__lockedClass = lockedClass;
+}
+
+const classFilter = document.getElementById('class-filter');
+const termFilter = document.getElementById('term-filter');
+
+if (isTeacher){
+  if (window.__lockedClass){
+    classFilter.innerHTML = `<option value="${window.__lockedClass}">${classLabel(window.__lockedClass)}</option>`;
+  } else {
+    classFilter.innerHTML = `<option value="">No class assigned</option>`;
+  }
+  classFilter.disabled = true;
+} else {
+  const classes = getClassesWithCounts();
+  classFilter.innerHTML = classes.map(c=>`<option value="${c.code}">${c.label} (${c.total})</option>`).join('');
+}
+
+const GENDER_LETTER = { 'Male':'M', 'Female':'F', 'Other':'O' };
+
+function renderReport(){
+  const code = classFilter.value;
+  const exam = termFilter.value;
+  if (!code){
+    document.getElementById('report-card').classList.add('hidden');
+    document.getElementById('empty-state').classList.remove('hidden');
+    return;
+  }
+  const students = getStudentsByClass(code);
+  if (!students.length){
+    document.getElementById('report-card').classList.add('hidden');
+    document.getElementById('empty-state').classList.remove('hidden');
+    document.getElementById('empty-title').textContent = 'No students in ' + classLabel(code) + ' yet';
+    return;
+  }
+  document.getElementById('report-card').classList.remove('hidden');
+  document.getElementById('empty-state').classList.add('hidden');
+
+  const actualSubjects = SUBJECTS_FOR_CLASS(code);
+  const reportSubjects = REPORT_SUBJECTS_FOR_CLASS(code);
+  const applicable = reportSubjects.map(sub => actualSubjects.includes(sub));
+  const maxTotal = actualSubjects.length * 100;
+  const passTotal = actualSubjects.length * 35;
+
+  document.getElementById('cmr-title').textContent = classLabel(code) + ' — Class Mark Report';
+  document.getElementById('cmr-exam-label').textContent = exam;
+
+  const monthRecords = getAttendanceMonthsForClass(code);
+  const workingDays = monthRecords.reduce((sum,a)=>sum+a.totalDays, 0);
+  document.getElementById('cmr-working-days').textContent = 'Total Working Days: ' + (workingDays || '—');
+
+  const fixedCols = ['SNO','REG NO','NAME','COM','GEN','MED'];
+  const tailCols = ['TOT','RES','RANK','TOT ATT','% ATT','SUBJECTS FAILED','NO SUBS ABS'];
+
+  document.getElementById('cmr-max-row').innerHTML =
+    fixedCols.map(()=>'<th></th>').join('') +
+    reportSubjects.map((sub,i)=>`<th>${applicable[i] ? 100 : ''}</th>`).join('') +
+    `<th>${maxTotal}</th>` + tailCols.slice(1).map(()=>'<th></th>').join('');
+
+  document.getElementById('cmr-pass-row').innerHTML =
+    fixedCols.map(()=>'<th></th>').join('') +
+    reportSubjects.map((sub,i)=>`<th>${applicable[i] ? 35 : ''}</th>`).join('') +
+    `<th>${passTotal}</th>` + tailCols.slice(1).map(()=>'<th></th>').join('');
+
+  document.getElementById('cmr-head-row').innerHTML =
+    fixedCols.map(c=>`<th>${c}</th>`).join('') +
+    reportSubjects.map(sub => `<th>${SUBJECT_ABBR[sub]||sub}</th>`).join('') +
+    tailCols.map(c=>`<th>${c}</th>`).join('');
+
+  document.getElementById('cmr-body').innerHTML = students.map((s, idx) => {
+    const marks = getMarksForStudent(s.id, exam);
+    const byName = {}; marks.forEach(m=>byName[m.subject]=m);
+    const applicableMarks = marks.filter(m => actualSubjects.includes(m.subject));
+
+    const subjectCells = reportSubjects.map((sub,i) => {
+      if (!applicable[i]) return `<td class="cmr-na">—</td>`;
+      const m = byName[sub];
+      if (!m) return `<td>—</td>`;
+      return `<td>${m.absent ? 'AB' : m.score}</td>`;
+    }).join('');
+
+    const graded = applicableMarks.length > 0;
+    const total = graded ? applicableMarks.reduce((a,m)=>a+m.score,0) : null;
+    const pass = graded ? applicableMarks.every(m=>m.score>=35) : null;
+    const rankInfo = studentRank(s.id, code, exam);
+    const att = studentAttendanceStats(s.id);
+    const failed = getFailedSubjects(s.id, exam);
+    const absentSubs = getAbsentSubjects(s.id, exam);
+
+    return `<tr>
+      <td>${idx+1}</td>
+      <td>${s.regno}</td>
+      <td class="cmr-name">${escapeHtml(s.name)}</td>
+      <td>${s.community || 'OTH'}</td>
+      <td>${GENDER_LETTER[s.gender] || '—'}</td>
+      <td>${s.medium || 'TM'}</td>
+      ${subjectCells}
+      <td>${graded ? total : '—'}</td>
+      <td class="font-semibold ${pass===true?'text-success':pass===false?'text-danger':''}">${graded ? (pass?'P':'F') : '—'}</td>
+      <td>${rankInfo ? rankInfo.rank : '—'}</td>
+      <td>${att.totalDays ? att.presentDays : '—'}</td>
+      <td>${att.pct!==null ? att.pct.toFixed(2)+'%' : '—'}</td>
+      <td>${failed.length ? failed.join(' ') : '—'}</td>
+      <td>${absentSubs.length}</td>
+    </tr>`;
+  }).join('');
+
+  lucide.createIcons();
+}
+
+classFilter.addEventListener('change', renderReport);
+termFilter.addEventListener('change', renderReport);
+document.getElementById('print-btn').addEventListener('click', () => window.print());
+renderReport();
+</script>
+</body>
+</html>

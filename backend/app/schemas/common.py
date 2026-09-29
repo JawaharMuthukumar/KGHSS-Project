@@ -104,6 +104,13 @@ class NoticeIn(BaseModel):
     class_code: str | None = None
 
 
+class NoticeUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=2, max_length=200)
+    body: str | None = Field(default=None, min_length=1)
+    audience: str | None = None
+    class_code: str | None = None
+
+
 class CertificateIn(BaseModel):
     certificate_type: str = Field(pattern=r"^(attendance|bonafide|conduct)$")
     note: str | None = None
@@ -126,6 +133,14 @@ class EventIn(BaseModel):
     is_published: bool = True
 
 
+class EventUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=2, max_length=200)
+    description: str | None = None
+    academic_year: str | None = None
+    event_date: date | None = None
+    is_published: bool | None = None
+
+
 class GalleryIn(BaseModel):
     event_id: int | None = None
     title: str = Field(min_length=1, max_length=200)
@@ -139,6 +154,11 @@ class PublicContactIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr
     message: str = Field(min_length=5, max_length=5000)
+
+
+class ChangePasswordIn(BaseModel):
+    old_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class HealthOut(BaseModel):

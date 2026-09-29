@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import current_account
-from app.core.security import create_access_token, verify_password
+from app.core.security import create_access_token, hash_password, verify_password
 from app.models.entities import Account
 from app.models.entities import Student
-from app.schemas.common import LoginIn, TokenOut
+from app.schemas.common import ChangePasswordIn, LoginIn, TokenOut
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -33,3 +33,12 @@ def me(account: Account = Depends(current_account)):
 def logout(_: Account = Depends(current_account)):
     # JWTs are stateless; clients must discard the token. It expires automatically.
     return {"logged_out": True, "message": "Discard the access token on the client."}
+
+
+@router.post("/change-password", summary="Change your own password")
+def change_password(data: ChangePasswordIn, db: Session = Depends(get_db), account: Account = Depends(current_account)):
+    if not verify_password(data.old_password, account.password_hash):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    account.password_hash = hash_password(data.new_password)
+    db.commit()
+    return {"changed": True}

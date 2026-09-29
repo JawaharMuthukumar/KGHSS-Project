@@ -1,0 +1,45 @@
+export const portalNav = {
+  admin: [
+    { to: "/admin", label: "Dashboard", icon: "LayoutDashboard", end: true },
+    { to: "/admin/teachers", label: "Teachers", icon: "Users" },
+    { to: "/admin/class-teachers", label: "Class Teacher Assignment", icon: "UserCog" },
+    { to: "/admin/subject-teachers", label: "Subject Teachers", icon: "BookOpen" },
+    { to: "/admin/students", label: "Students", icon: "GraduationCap" },
+    { to: "/admin/timetables", label: "Timetables", icon: "CalendarRange" },
+    { to: "/admin/marks", label: "Enter Marks", icon: "Pencil" },
+    { to: "/admin/reports", label: "Results & Reports", icon: "BarChart3" },
+    { to: "/admin/attendance-report", label: "Attendance Report", icon: "ClipboardCheck" },
+    { to: "/admin/notices", label: "Notices", icon: "Bell" },
+    { to: "/admin/certificates", label: "Certificates", icon: "FileCheck2" },
+    { to: "/admin/complaints", label: "Complaints", icon: "MessageSquare" },
+    { to: "/admin/gallery", label: "Gallery & Events", icon: "Images" },
+    { to: "/admin/contact-messages", label: "Contact Inbox", icon: "Inbox" },
+  ],
+  teacher: [
+    { to: "/teacher", label: "Dashboard", icon: "LayoutDashboard", end: true },
+    { to: "/teacher/students", label: "My Class Students", icon: "GraduationCap" },
+    { to: "/teacher/students/new", label: "Add Student", icon: "UserPlus" },
+    { to: "/teacher/marks", label: "Enter Marks", icon: "Pencil" },
+    { to: "/teacher/attendance", label: "Take Attendance", icon: "ClipboardCheck" },
+    { to: "/teacher/attendance-report", label: "Attendance Report", icon: "BarChart3" },
+    { to: "/teacher/class-timetable", label: "Class Timetable", icon: "CalendarRange" },
+    { to: "/teacher/my-timetable", label: "My Timetable", icon: "Clock" },
+    { to: "/teacher/notices", label: "Class Notices", icon: "Bell" },
+    { to: "/teacher/certificates", label: "Certificate Requests", icon: "FileCheck2" },
+    { to: "/teacher/reports", label: "Reports", icon: "FileText" },
+  ],
+  student: [
+    { to: "/student", label: "Dashboard", icon: "LayoutDashboard", end: true },
+    { to: "/student/profile", label: "My Profile", icon: "UserRound" },
+    { to: "/student/results", label: "Results / Marksheet", icon: "FileText" },
+    { to: "/student/timetable", label: "Timetable", icon: "CalendarRange" },
+    { to: "/student/notices", label: "Notices", icon: "Bell" },
+    { to: "/student/certificates", label: "Certificates", icon: "FileCheck2" },
+  ],
+};
+
+export const roleLabels = {
+  admin: "Admin Portal",
+  teacher: "Teacher Portal",
+  student: "Student Portal",
+};

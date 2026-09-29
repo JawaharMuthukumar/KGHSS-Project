@@ -17,8 +17,8 @@ from app.models.entities import (Account, AcademicClass, Teacher, Student, Class
     SubjectTeacherAssignment, Assessment, Mark, AttendanceMonth, AttendanceRecord, TimetableEntry,
     Notice, CertificateRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage)
 from app.schemas.common import (ClassIn, ClassTeacherIn, SubjectTeacherIn, TeacherCreate, TeacherUpdate,
-    StudentCreate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, CertificateIn, DecisionIn,
-    ComplaintMessageIn, EventIn, GalleryIn, PublicContactIn)
+    StudentCreate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, NoticeUpdate, CertificateIn, DecisionIn,
+    ComplaintMessageIn, EventIn, EventUpdate, GalleryIn, PublicContactIn)
 
 router = APIRouter(tags=["School"])
 
@@ -332,6 +332,15 @@ def my_teacher_timetable(db: Session = Depends(get_db), account: Account = Depen
     return [{"class_code":db.get(AcademicClass,e.class_id).code,"weekday":e.weekday,"period":e.period,"subject":e.subject,"room":e.room,"academic_year":e.academic_year} for e in entries]
 
 
+@router.get("/teachers/{teacher_id}/timetable")
+def teacher_timetable_by_id(teacher_id: int, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+    """Read-only view of one teacher's aggregated weekly schedule across every class they teach."""
+    teacher=db.get(Teacher,teacher_id)
+    if not teacher: raise HTTPException(404,"Teacher not found")
+    entries=db.query(TimetableEntry).filter_by(teacher_id=teacher.id).order_by(TimetableEntry.weekday,TimetableEntry.period).all()
+    return [{"class_code":db.get(AcademicClass,e.class_id).code,"weekday":e.weekday,"period":e.period,"subject":e.subject,"room":e.room,"academic_year":e.academic_year} for e in entries]
+
+
 @router.put("/teachers/me/timetable")
 def replace_teacher_timetable(data: TimetableIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
     teacher=teacher_profile(db,account) if account.role=="teacher" else None
@@ -397,6 +406,25 @@ def create_notice(data: NoticeIn, db: Session = Depends(get_db), account: Accoun
         data.audience="class"
     notice=Notice(title=data.title,body=data.body,audience=data.audience,class_id=cls.id if cls else None,author_id=account.id)
     db.add(notice); db.commit(); db.refresh(notice); return notice
+
+
+@router.patch("/notices/{notice_id}")
+def update_notice(notice_id: int, data: NoticeUpdate, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    notice=db.get(Notice,notice_id)
+    if not notice: raise HTTPException(404,"Notice not found")
+    if account.role=="teacher" and (notice.author_id!=account.id or notice.audience!="class"):
+        raise HTTPException(403,"Teachers may edit only their own class notices")
+    values=data.model_dump(exclude_unset=True)
+    class_code=values.pop("class_code",None)
+    if class_code is not None:
+        cls=get_class(db,class_code)
+        if account.role=="teacher": teacher_or_admin(account,db,cls)
+        notice.class_id=cls.id
+    if "audience" in values:
+        if account.role=="teacher": values.pop("audience")
+        elif values["audience"] not in {"website","all","students","teachers","class"}: raise HTTPException(422,"Invalid notice audience")
+    for key,value in values.items(): setattr(notice,key,value)
+    db.commit(); db.refresh(notice); return notice
 
 
 @router.delete("/notices/{notice_id}", status_code=204, response_class=Response)
@@ -504,6 +532,23 @@ def list_events(db: Session = Depends(get_db)):
 @router.post("/events", status_code=201)
 def create_event(data: EventIn, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
     event=SchoolEvent(**data.model_dump()); db.add(event); db.commit(); db.refresh(event); return event
+
+
+@router.patch("/events/{event_id}")
+def update_event(event_id: int, data: EventUpdate, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+    event=db.get(SchoolEvent,event_id)
+    if not event: raise HTTPException(404,"Event not found")
+    for key,value in data.model_dump(exclude_unset=True).items(): setattr(event,key,value)
+    db.commit(); db.refresh(event); return event
+
+
+@router.delete("/events/{event_id}", status_code=204, response_class=Response)
+def delete_event(event_id: int, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+    event=db.get(SchoolEvent,event_id)
+    if not event: raise HTTPException(404,"Event not found")
+    event.is_published=False
+    db.commit()
+    return Response(status_code=204)
 
 
 @router.get("/gallery")

@@ -22,6 +22,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
+    # Vite picks the next free port when 5173 is busy; allow any localhost port in dev
+    # rather than chasing the exact port in CORS_ORIGINS every time.
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1):\d+$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

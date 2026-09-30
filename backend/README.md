@@ -88,18 +88,18 @@ All application endpoints are under `/api/v1`; system health/docs are outside th
 
 | Area | Routes / behavior |
 |---|---|
-| Auth | `POST /auth/login`, `GET /auth/me` |
+| Auth | `POST /auth/login`, `GET /auth/me`, `POST /auth/change-password` |
 | Classes | `GET /classes`, `GET /public/classes`, `POST /classes`, subject list and class/subject-teacher assignment routes |
-| Teachers | `GET/POST /teachers`, `PATCH/DELETE /teachers/{id}`, teacher timetable read/write |
+| Teachers | `GET/POST /teachers`, `PATCH/DELETE /teachers/{id}`, teacher timetable read/write, `GET /teachers/{id}/timetable` (admin, read-only view of any teacher's aggregated schedule) |
 | Students | `GET/POST /students`, `GET /students/{id}`, `GET /students/me/profile`; teacher enrollment is limited to their class-teacher class |
-| Results | `PUT /classes/{code}/marks/{term}`, student results, class scorecard/mark report, admin result analysis |
+| Results | `PUT /classes/{code}/marks/{term}`, student results, class scorecard/mark report, admin result analysis, `GET /reports/consolidated` (deep exam analysis: enrollment/result summary by medium+gender, subject-wise stats, marks distribution, subjects-failed histogram, section comparison, top rank holders) |
 | Attendance | Monthly class attendance, report, and admin-only unlock; a saved month locks until unlocked |
 | Timetables | Class timetable read/write and teacher timetable read/write |
-| Notices | Public website notices, role/class portal notices, class notices, create, admin unpublish |
+| Notices | Public website notices, role/class portal notices, class notices, create, `PATCH /notices/{id}` (edit; teachers limited to their own class notices), admin unpublish |
 | Certificates | Student request, teacher/admin decision, status listing, approved PDF download |
 | Complaints | Private student/admin message thread; teachers cannot read it |
-| Public content | School profile, page index, events, gallery, contact form (stored for admin inbox); admin image upload stores files locally under `backend/uploads/gallery` |
-| Reports/dashboards | Admin, teacher, student dashboards; attendance, results, and school reports |
+| Public content | School profile, page index, events (`POST/PATCH/DELETE /events` admin-only), gallery, contact form (now also captures `phone`/`subject`, stored for admin inbox); admin image upload stores files locally under `backend/uploads/gallery` |
+| Reports/dashboards | Admin, teacher, student dashboards; attendance, results, school, and consolidated reports |
 
 ## Important payload shapes
 

@@ -72,7 +72,6 @@ class SubjectTeacherIn(BaseModel):
 
 
 class MarksIn(BaseModel):
-    term: str = Field(min_length=1, max_length=60)
     academic_year: str = Field(min_length=4, max_length=9)
     students: dict[str, dict[str, dict[str, Any]]]
 
@@ -153,6 +152,8 @@ class GalleryIn(BaseModel):
 class PublicContactIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr
+    phone: str | None = None
+    subject: str | None = Field(default=None, max_length=200)
     message: str = Field(min_length=5, max_length=5000)
 
 

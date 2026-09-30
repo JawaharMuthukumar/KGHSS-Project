@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date, datetime
 from io import BytesIO
 from pathlib import Path
@@ -165,7 +166,7 @@ def create_student(data: StudentCreate, db: Session = Depends(get_db), account: 
     registration = data.registration_no or f"GHSS/{cls.academic_year.split('-')[0]}/{(db.query(func.count(Student.id)).scalar() or 0) + 1:04d}"
     username = registration
     if db.query(Account).filter_by(username=username).first() or db.query(Student).filter_by(registration_no=registration).first(): raise HTTPException(409, "Registration number already exists")
-    payload = data.model_dump(exclude={"password", "class_code", "registration_no"})
+    payload = data.model_dump(exclude={"password", "class_code", "registration_no", "full_name"})
     acc = Account(username=username, role="student", full_name=data.full_name, password_hash=hash_password(data.password))
     db.add(acc); db.flush()
     student = Student(account_id=acc.id, class_id=cls.id, registration_no=registration, **payload)
@@ -631,7 +632,7 @@ def my_student_profile(db: Session = Depends(get_db), account: Account = Depends
 
 @router.post("/public/contact", status_code=202)
 def contact_school(data: PublicContactIn, db: Session = Depends(get_db)):
-    db.add(ContactMessage(name=data.name,email=data.email,message=data.message)); db.commit()
+    db.add(ContactMessage(name=data.name,email=data.email,phone=data.phone,subject=data.subject,message=data.message)); db.commit()
     return {"accepted":True,"message":"Your message has been received. The school office will follow up."}
 
 
@@ -665,3 +666,103 @@ def class_subjects(class_code: str, db: Session = Depends(get_db), account: Acco
 @router.get("/reports/school")
 def school_report(db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
     return {"class_count":db.query(func.count(AcademicClass.id)).filter_by(is_active=True).scalar(),"teacher_count":db.query(func.count(Teacher.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"student_count":db.query(func.count(Student.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"assessment_count":db.query(func.count(Assessment.id)).scalar(),"attendance_month_count":db.query(func.count(AttendanceMonth.id)).scalar()}
+
+
+@router.get("/reports/consolidated")
+def consolidated_report(term: str = Query(...), academic_year: str | None = None, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+    """Deep exam-analysis view: enrollment/result summary, subject stats, distribution histograms, section comparison, top rank holders."""
+    PASS_MARK = 35
+    empty = {"term":term,"academic_year":academic_year,"enrollment_summary":[],"subject_stats":[],"marks_distribution":[],"subjects_failed_histogram":[],"section_comparison":[],"top_rank_holders":[]}
+
+    assess_q = db.query(Assessment).filter_by(term=term)
+    if academic_year: assess_q = assess_q.filter_by(academic_year=academic_year)
+    assessments = assess_q.all()
+    if not assessments: return empty
+    assess_ids = [a.id for a in assessments]
+    assess_by_class = {a.class_id: a for a in assessments}
+
+    marks = db.query(Mark).filter(Mark.assessment_id.in_(assess_ids)).all()
+    if not marks: return empty
+    by_student = defaultdict(list)
+    for m in marks: by_student[m.student_id].append(m)
+
+    students = db.query(Student).filter(Student.id.in_(by_student.keys())).all()
+    student_map = {s.id: s for s in students}
+
+    student_totals = {}
+    for sid, ms in by_student.items():
+        total = sum(m.score for m in ms); maximum = sum(m.maximum_score for m in ms)
+        failed = sum(1 for m in ms if not m.absent and m.score < (m.maximum_score * PASS_MARK / 100))
+        student_totals[sid] = {"total": total, "maximum": maximum, "percentage": round(total*100/maximum, 2) if maximum else 0.0, "failed_subjects": failed}
+
+    # Enrollment & result summary, by medium x gender (roll = every currently enrolled student, not just this term's assessed classes)
+    enrollment = defaultdict(lambda: {"roll": 0, "appeared": 0, "passed": 0})
+    for s in db.query(Student).all():
+        enrollment[(s.medium or "Unspecified", s.gender or "Unspecified")]["roll"] += 1
+    for sid, totals in student_totals.items():
+        s = student_map.get(sid)
+        if not s: continue
+        key = (s.medium or "Unspecified", s.gender or "Unspecified")
+        enrollment[key]["appeared"] += 1
+        if totals["percentage"] >= PASS_MARK: enrollment[key]["passed"] += 1
+    enrollment_summary = [
+        {"medium": k[0], "gender": k[1], "roll": v["roll"], "appeared": v["appeared"], "passed": v["passed"],
+         "pass_percent": round(v["passed"]*100/v["appeared"], 2) if v["appeared"] else None}
+        for k, v in sorted(enrollment.items())
+    ]
+
+    # Subject-wise stats (non-absent scores only)
+    by_subject = defaultdict(list)
+    for m in marks:
+        if not m.absent: by_subject[m.subject].append(m.score)
+    subject_stats = [
+        {"subject": subj, "max": max(scores), "min": min(scores), "average": round(sum(scores)/len(scores), 2),
+         "pass_percent": round(sum(1 for sc in scores if sc >= PASS_MARK)*100/len(scores), 2)}
+        for subj, scores in sorted(by_subject.items())
+    ]
+
+    # Marks distribution: 10 equal bins over each student's overall percentage
+    bins = [0]*10
+    for totals in student_totals.values():
+        bins[min(int(totals["percentage"]//10), 9)] += 1
+    marks_distribution = [{"range": f"{i*10}-{i*10+10}", "count": bins[i]} for i in range(10)]
+
+    # Subjects-failed histogram, split by gender (0, 1, 2, 3+)
+    failed_hist = defaultdict(lambda: {"male": 0, "female": 0, "other": 0})
+    for sid, totals in student_totals.items():
+        s = student_map.get(sid)
+        if not s: continue
+        bucket = totals["failed_subjects"] if totals["failed_subjects"] < 3 else "3+"
+        gender = (s.gender or "").lower()
+        gkey = "male" if gender == "male" else "female" if gender == "female" else "other"
+        failed_hist[bucket][gkey] += 1
+    subjects_failed_histogram = [{"failed_count": k, **v} for k, v in sorted(failed_hist.items(), key=lambda kv: (isinstance(kv[0], str), kv[0]))]
+
+    # Section comparison: classes sharing a grade, e.g. 6A vs 6B
+    class_avg = {}
+    for cls in db.query(AcademicClass).all():
+        if cls.id not in assess_by_class: continue
+        percentages = [student_totals[s.id]["percentage"] for s in students if s.class_id == cls.id and s.id in student_totals]
+        if percentages: class_avg[cls.code] = {"grade": cls.grade, "average_percent": round(sum(percentages)/len(percentages), 2)}
+    by_grade = defaultdict(list)
+    for code, info in class_avg.items():
+        by_grade[info["grade"]].append({"class_code": code, "average_percent": info["average_percent"]})
+    section_comparison = []
+    for grade, sections in sorted(by_grade.items()):
+        if len(sections) < 2: continue
+        higher = max(sections, key=lambda sec: sec["average_percent"])
+        section_comparison.append({"grade": grade, "sections": sorted(sections, key=lambda sec: sec["class_code"]), "higher": higher["class_code"]})
+
+    # Top 3 rank holders school-wide, with full per-subject marks
+    ranked = sorted(student_totals.items(), key=lambda kv: kv[1]["percentage"], reverse=True)[:3]
+    top_rank_holders = [
+        {"student_id": sid, "name": student_map[sid].account.full_name, "registration_no": student_map[sid].registration_no,
+         "class_code": student_map[sid].school_class.code, "percentage": totals["percentage"],
+         "marks": [{"subject": m.subject, "score": m.score, "max": m.maximum_score} for m in by_student[sid]]}
+        for sid, totals in ranked
+    ]
+
+    return {"term": term, "academic_year": academic_year, "enrollment_summary": enrollment_summary,
+            "subject_stats": subject_stats, "marks_distribution": marks_distribution,
+            "subjects_failed_histogram": subjects_failed_histogram, "section_comparison": section_comparison,
+            "top_rank_holders": top_rank_holders}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import Icon from "../ui/Icon";
+import ComplaintFab from "./ComplaintFab";
 import { useAuth } from "../../context/AuthContext";
 import { portalNav, roleLabels } from "./navConfig";
 
@@ -105,6 +106,8 @@ export default function PortalLayout({ role }) {
           <Outlet />
         </main>
       </div>
+
+      {role === "student" && <ComplaintFab />}
     </div>
   );
 }

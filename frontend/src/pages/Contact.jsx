@@ -6,21 +6,38 @@ import Icon from "../components/ui/Icon";
 import Button from "../components/ui/Button";
 import SEO from "../components/utility/SEO";
 import { schoolInfo } from "../data/schoolData";
+import { api, ApiError } from "../lib/apiClient";
 
 const initialForm = { name: "", phone: "", email: "", subject: "", message: "" };
 
 export default function Contact() {
   const [form, setForm] = useState(initialForm);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { contact, location } = schoolInfo;
 
   const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Demo-only: no backend is connected yet. This simulates a successful submission.
-    setSubmitted(true);
-    setForm(initialForm);
+    setError("");
+    setSubmitting(true);
+    try {
+      await api.post("/public/contact", {
+        name: form.name,
+        email: form.email,
+        phone: form.phone || undefined,
+        subject: form.subject || undefined,
+        message: form.message,
+      });
+      setSubmitted(true);
+      setForm(initialForm);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not send your message. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const mapEmbedSrc = `https://www.google.com/maps?q=${encodeURIComponent(location.mapQuery)}&output=embed`;
@@ -88,8 +105,7 @@ export default function Contact() {
                 </span>
                 <h3 className="font-heading font-bold text-navy text-lg">Message received!</h3>
                 <p className="text-sm text-ink/60 max-w-sm">
-                  This is a demo submission — no data has actually been sent, since this prototype
-                  is not yet connected to a backend.
+                  Thank you for reaching out. The school office will get back to you soon.
                 </p>
                 <Button variant="outlineDark" onClick={() => setSubmitted(false)} showIcon={false}>
                   Send another message
@@ -117,9 +133,15 @@ export default function Contact() {
                     className="w-full px-4 py-3 rounded-xl border border-navy/12 text-sm focus:border-gold outline-none resize-none"
                   />
                 </div>
-                <div className="sm:col-span-2 flex items-center justify-between gap-4 flex-wrap">
-                  <p className="text-xs text-ink/45">Demo form — submissions are not sent anywhere yet.</p>
-                  <Button type="submit">Send Message</Button>
+                {error && (
+                  <p className="sm:col-span-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+                    {error}
+                  </p>
+                )}
+                <div className="sm:col-span-2 flex items-center justify-end gap-4 flex-wrap">
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? "Sending…" : "Send Message"}
+                  </Button>
                 </div>
               </form>
             )}

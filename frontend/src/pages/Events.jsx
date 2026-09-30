@@ -6,7 +6,7 @@ import Badge from "../components/ui/Badge";
 import SmartImage from "../components/ui/SmartImage";
 import Icon from "../components/ui/Icon";
 import SEO from "../components/utility/SEO";
-import { events } from "../data/schoolData";
+import { useApiResource } from "../hooks/useApiResource";
 import { formatDate, formatDateParts } from "../utils/formatDate";
 
 const statusTabs = [
@@ -15,23 +15,29 @@ const statusTabs = [
   { id: "past", label: "Past Events" },
 ];
 
+function eventStatus(eventDate) {
+  if (!eventDate) return "upcoming";
+  return new Date(eventDate) >= new Date(new Date().toDateString()) ? "upcoming" : "past";
+}
+
 export default function Events() {
+  const { data: events, loading, error } = useApiResource("/events");
   const [status, setStatus] = useState("all");
   const [search, setSearch] = useState("");
   const [month, setMonth] = useState("all");
 
   const months = useMemo(() => {
-    const set = new Set(events.map((e) => new Date(e.date).getMonth()));
+    const set = new Set((events || []).filter((e) => e.event_date).map((e) => new Date(e.event_date).getMonth()));
     return Array.from(set).sort((a, b) => a - b);
-  }, []);
+  }, [events]);
 
   const filtered = useMemo(() => {
-    return events
-      .filter((e) => status === "all" || e.status === status)
-      .filter((e) => month === "all" || new Date(e.date).getMonth() === Number(month))
+    return (events || [])
+      .filter((e) => status === "all" || eventStatus(e.event_date) === status)
+      .filter((e) => month === "all" || (e.event_date && new Date(e.event_date).getMonth() === Number(month)))
       .filter((e) => e.title.toLowerCase().includes(search.toLowerCase()))
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [status, search, month]);
+      .sort((a, b) => new Date(b.event_date || 0) - new Date(a.event_date || 0));
+  }, [events, status, search, month]);
 
   return (
     <>
@@ -93,36 +99,42 @@ export default function Events() {
             </div>
           </div>
 
-          {filtered.length === 0 ? (
+          {error && (
+            <div className="text-center py-20 flex flex-col items-center gap-3">
+              <Icon name="CircleAlert" size={34} className="text-ink/25" />
+              <p className="text-ink/50">Could not load events right now.</p>
+            </div>
+          )}
+
+          {!error && !loading && filtered.length === 0 && (
             <div className="text-center py-20 flex flex-col items-center gap-3">
               <Icon name="CalendarDays" size={34} className="text-ink/25" />
               <p className="text-ink/50">No events match your search right now.</p>
             </div>
-          ) : (
+          )}
+
+          {!error && filtered.length > 0 && (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {filtered.map((event, i) => {
-                const { day, month: monthLabel } = formatDateParts(event.date);
+                const { day, month: monthLabel } = formatDateParts(event.event_date);
+                const eStatus = eventStatus(event.event_date);
                 return (
                   <Reveal key={event.id} delay={(i % 3) * 0.06}>
                     <div className="h-full bg-white rounded-2xl border border-navy/8 shadow-soft overflow-hidden flex flex-col">
                       <div className="relative h-40">
-                        <SmartImage src={event.image} alt={event.title} label={event.category} className="h-full" />
+                        <SmartImage alt={event.title} label={event.title} className="h-full" />
                         <div className="absolute top-3 left-3 bg-white rounded-xl px-3 py-1.5 text-center shadow-soft">
                           <p className="text-lg font-heading font-extrabold text-navy leading-none">{day}</p>
                           <p className="text-[10px] font-semibold uppercase text-ink/50">{monthLabel}</p>
                         </div>
-                        <Badge
-                          tone={event.status === "upcoming" ? "gold" : "navy"}
-                          className="absolute top-3 right-3"
-                        >
-                          {event.status === "upcoming" ? "Upcoming" : "Past"}
+                        <Badge tone={eStatus === "upcoming" ? "gold" : "navy"} className="absolute top-3 right-3">
+                          {eStatus === "upcoming" ? "Upcoming" : "Past"}
                         </Badge>
                       </div>
                       <div className="p-6 flex flex-col flex-1">
-                        <Badge tone="teal" className="self-start mb-3">{event.category}</Badge>
                         <h3 className="font-heading font-semibold text-navy mb-2">{event.title}</h3>
                         <p className="text-sm text-ink/65 leading-relaxed mb-4 flex-1">{event.description}</p>
-                        <p className="text-xs text-ink/40 pt-3 border-t border-navy/8">{formatDate(event.date)}</p>
+                        <p className="text-xs text-ink/40 pt-3 border-t border-navy/8">{formatDate(event.event_date)}</p>
                       </div>
                     </div>
                   </Reveal>

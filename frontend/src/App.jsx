@@ -6,7 +6,6 @@ import { LanguageProvider } from "./context/LanguageContext";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PortalLayout from "./components/portal/PortalLayout";
-import ComingSoon from "./components/portal/ComingSoon";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 
@@ -27,8 +26,36 @@ const Legacy = lazy(() => import("./pages/Legacy"));
 const Login = lazy(() => import("./pages/Login"));
 
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminTeachers = lazy(() => import("./pages/admin/Teachers"));
+const AdminClassTeachers = lazy(() => import("./pages/admin/ClassTeacherAssignment"));
+const AdminSubjectTeachers = lazy(() => import("./pages/admin/SubjectTeacherAssignment"));
+const AdminStudents = lazy(() => import("./pages/admin/Students"));
+const AdminTimetables = lazy(() => import("./pages/admin/AdminTimetables"));
+const AdminResultsReports = lazy(() => import("./pages/admin/ResultsReports"));
+const AdminAttendanceReport = lazy(() => import("./pages/admin/AttendanceReport"));
+const AdminEnterMarks = lazy(() => import("./pages/admin/EnterMarks"));
+const AdminGalleryEvents = lazy(() => import("./pages/admin/GalleryEvents"));
+const AdminContactMessages = lazy(() => import("./pages/admin/ContactMessages"));
+const AdminNotices = lazy(() => import("./pages/admin/Notices"));
+const AdminCertificates = lazy(() => import("./pages/admin/Certificates"));
+const AdminComplaints = lazy(() => import("./pages/admin/Complaints"));
 const TeacherDashboard = lazy(() => import("./pages/teacher/TeacherDashboard"));
+const MyStudents = lazy(() => import("./pages/teacher/MyStudents"));
+const AddStudent = lazy(() => import("./pages/teacher/AddStudent"));
+const EnterMarks = lazy(() => import("./pages/teacher/EnterMarks"));
+const TakeAttendance = lazy(() => import("./pages/teacher/TakeAttendance"));
+const ClassTimetable = lazy(() => import("./pages/teacher/ClassTimetable"));
+const MyTimetable = lazy(() => import("./pages/teacher/MyTimetable"));
+const ClassNotices = lazy(() => import("./pages/teacher/ClassNotices"));
+const CertificateRequests = lazy(() => import("./pages/teacher/CertificateRequests"));
+const TeacherAttendanceReport = lazy(() => import("./pages/teacher/AttendanceReport"));
+const TeacherReports = lazy(() => import("./pages/teacher/Reports"));
 const StudentDashboard = lazy(() => import("./pages/student/StudentDashboard"));
+const MyProfile = lazy(() => import("./pages/student/MyProfile"));
+const MyResults = lazy(() => import("./pages/student/MyResults"));
+const StudentTimetable = lazy(() => import("./pages/student/StudentTimetable"));
+const MyNotices = lazy(() => import("./pages/student/MyNotices"));
+const MyCertificates = lazy(() => import("./pages/student/MyCertificates"));
 
 export default function App() {
   return (
@@ -60,46 +87,46 @@ export default function App() {
               <Route path="admin" element={<ProtectedRoute roles={["admin"]} />}>
                 <Route element={<PortalLayout role="admin" />}>
                   <Route index element={<AdminDashboard />} />
-                  <Route path="teachers" element={<ComingSoon title="Teachers" description="Add, edit and deactivate teacher accounts." />} />
-                  <Route path="class-teachers" element={<ComingSoon title="Class Teacher Assignment" description="Assign one class teacher per class section." />} />
-                  <Route path="subject-teachers" element={<ComingSoon title="Subject Teachers" description="Assign subject teachers per class." />} />
-                  <Route path="students" element={<ComingSoon title="Students" description="Browse students by class." />} />
-                  <Route path="timetables" element={<ComingSoon title="Timetables" description="Manage class and teacher timetables." />} />
-                  <Route path="marks" element={<ComingSoon title="Enter Marks" description="Enter term marks for any class." />} />
-                  <Route path="reports" element={<ComingSoon title="Results & Reports" description="Scorecards, mark reports and result analysis." />} />
-                  <Route path="attendance-report" element={<ComingSoon title="Attendance Report" description="Monthly attendance across classes, with unlock." />} />
-                  <Route path="notices" element={<ComingSoon title="Notices" description="Publish and manage school notices." />} />
-                  <Route path="certificates" element={<ComingSoon title="Certificates" description="Generate and review certificate requests." />} />
-                  <Route path="complaints" element={<ComingSoon title="Complaints" description="Student complaint inbox." />} />
-                  <Route path="gallery" element={<ComingSoon title="Gallery & Events" description="Manage public gallery and events." />} />
-                  <Route path="contact-messages" element={<ComingSoon title="Contact Inbox" description="Messages submitted from the public website." />} />
+                  <Route path="teachers" element={<AdminTeachers />} />
+                  <Route path="class-teachers" element={<AdminClassTeachers />} />
+                  <Route path="subject-teachers" element={<AdminSubjectTeachers />} />
+                  <Route path="students" element={<AdminStudents />} />
+                  <Route path="timetables" element={<AdminTimetables />} />
+                  <Route path="marks" element={<AdminEnterMarks />} />
+                  <Route path="reports" element={<AdminResultsReports />} />
+                  <Route path="attendance-report" element={<AdminAttendanceReport />} />
+                  <Route path="notices" element={<AdminNotices />} />
+                  <Route path="certificates" element={<AdminCertificates />} />
+                  <Route path="complaints" element={<AdminComplaints />} />
+                  <Route path="gallery" element={<AdminGalleryEvents />} />
+                  <Route path="contact-messages" element={<AdminContactMessages />} />
                 </Route>
               </Route>
 
               <Route path="teacher" element={<ProtectedRoute roles={["teacher"]} />}>
                 <Route element={<PortalLayout role="teacher" />}>
                   <Route index element={<TeacherDashboard />} />
-                  <Route path="students" element={<ComingSoon title="My Class Students" description="Students in your assigned class." />} />
-                  <Route path="students/new" element={<ComingSoon title="Add Student" description="Enroll a new student in your class." />} />
-                  <Route path="marks" element={<ComingSoon title="Enter Marks" description="Enter term marks for your class/subjects." />} />
-                  <Route path="attendance" element={<ComingSoon title="Take Attendance" description="Record monthly attendance for your class." />} />
-                  <Route path="attendance-report" element={<ComingSoon title="Attendance Report" description="View attendance for your class." />} />
-                  <Route path="class-timetable" element={<ComingSoon title="Class Timetable" description="View or edit your class's weekly timetable." />} />
-                  <Route path="my-timetable" element={<ComingSoon title="My Timetable" description="Your personal weekly teaching schedule." />} />
-                  <Route path="notices" element={<ComingSoon title="Class Notices" description="Post homework and class announcements." />} />
-                  <Route path="certificates" element={<ComingSoon title="Certificate Requests" description="Approve or reject requests from your class." />} />
-                  <Route path="reports" element={<ComingSoon title="Reports" description="Scorecard, mark report and marksheet views." />} />
+                  <Route path="students" element={<MyStudents />} />
+                  <Route path="students/new" element={<AddStudent />} />
+                  <Route path="marks" element={<EnterMarks />} />
+                  <Route path="attendance" element={<TakeAttendance />} />
+                  <Route path="attendance-report" element={<TeacherAttendanceReport />} />
+                  <Route path="class-timetable" element={<ClassTimetable />} />
+                  <Route path="my-timetable" element={<MyTimetable />} />
+                  <Route path="notices" element={<ClassNotices />} />
+                  <Route path="certificates" element={<CertificateRequests />} />
+                  <Route path="reports" element={<TeacherReports />} />
                 </Route>
               </Route>
 
               <Route path="student" element={<ProtectedRoute roles={["student"]} />}>
                 <Route element={<PortalLayout role="student" />}>
                   <Route index element={<StudentDashboard />} />
-                  <Route path="profile" element={<ComingSoon title="My Profile" description="Your personal and academic details." />} />
-                  <Route path="results" element={<ComingSoon title="Results / Marksheet" description="Your marks across every term." />} />
-                  <Route path="timetable" element={<ComingSoon title="Timetable" description="Your class's weekly timetable." />} />
-                  <Route path="notices" element={<ComingSoon title="Notices" description="Notices for you and your class." />} />
-                  <Route path="certificates" element={<ComingSoon title="Certificates" description="Request and download certificates." />} />
+                  <Route path="profile" element={<MyProfile />} />
+                  <Route path="results" element={<MyResults />} />
+                  <Route path="timetable" element={<StudentTimetable />} />
+                  <Route path="notices" element={<MyNotices />} />
+                  <Route path="certificates" element={<MyCertificates />} />
                 </Route>
               </Route>
             </Routes>

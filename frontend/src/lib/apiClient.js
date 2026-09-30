@@ -1,4 +1,11 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api/v1";
+// Uploaded media (e.g. gallery images) is served from the backend origin directly, outside /api/v1.
+const ASSET_ORIGIN = BASE_URL.replace(/\/api\/v1\/?$/, "");
+
+export function resolveMediaUrl(url) {
+  if (!url) return url;
+  return /^https?:\/\//i.test(url) ? url : `${ASSET_ORIGIN}${url}`;
+}
 
 export class ApiError extends Error {
   constructor(message, status, detail) {

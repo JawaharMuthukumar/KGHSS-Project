@@ -8,7 +8,7 @@ import ClassMarkReport from "../../components/reports/ClassMarkReport";
 import ClassScorecard from "../../components/reports/ClassScorecard";
 import ConsolidatedReport from "../../components/reports/ConsolidatedReport";
 import { useApiResource } from "../../hooks/useApiResource";
-import { EXAM_TERMS } from "../../constants/academic";
+import { termsForGrade } from "../../constants/academic";
 
 const tabs = [
   { id: "mark-report", label: "Class Mark Report", needsClass: true },
@@ -19,8 +19,16 @@ const tabs = [
 export default function ResultsReports() {
   const { data: classes } = useApiResource("/classes");
   const [classCode, setClassCode] = useState("");
-  const [term, setTerm] = useState(EXAM_TERMS[0]);
+  const [term, setTerm] = useState(termsForGrade(null)[0]);
   const [tab, setTab] = useState("mark-report");
+  // With no class picked (school-wide / consolidated views) every exam name from both grade bands is offered.
+  const terms = termsForGrade((classes || []).find((c) => c.code === classCode)?.grade);
+
+  const selectClass = (code) => {
+    setClassCode(code);
+    const next = termsForGrade((classes || []).find((c) => c.code === code)?.grade);
+    if (!next.includes(term)) setTerm(next[0]);
+  };
 
   const { data: schoolWide, loading: loadingSchoolWide, error: schoolWideError } = useApiResource("/reports/results", {
     query: { term },
@@ -34,7 +42,7 @@ export default function ResultsReports() {
       <PortalPageHeader title="Results & Reports" description="Class mark reports, scorecards, and school-wide analysis." />
 
       <Card className="p-4 mb-5 flex flex-wrap gap-3 items-center">
-        <select value={classCode} onChange={(e) => setClassCode(e.target.value)} className={inputClass + " max-w-[10rem]"}>
+        <select value={classCode} onChange={(e) => selectClass(e.target.value)} className={inputClass + " max-w-[10rem]"}>
           <option value="">Select a class…</option>
           {(classes || []).map((c) => (
             <option key={c.code} value={c.code}>
@@ -43,7 +51,7 @@ export default function ResultsReports() {
           ))}
         </select>
         <select value={term} onChange={(e) => setTerm(e.target.value)} className={inputClass + " max-w-[10rem]"}>
-          {EXAM_TERMS.map((t) => (
+          {terms.map((t) => (
             <option key={t}>{t}</option>
           ))}
         </select>

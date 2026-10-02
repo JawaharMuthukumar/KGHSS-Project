@@ -19,6 +19,7 @@ export default function TakeAttendance() {
   const [totalDays, setTotalDays] = useState(22);
   const [students, setStudents] = useState(null);
   const [present, setPresent] = useState({});
+  const [leaveDays, setLeaveDays] = useState({}); // approved normal leave (Mon–Fri days) per student this month
   const [locked, setLocked] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -28,9 +29,14 @@ export default function TakeAttendance() {
     if (!classCode) return;
     setError("");
     setSuccess("");
-    Promise.all([api.get("/students"), api.get(`/classes/${classCode}/attendance`, { query: { month } })])
-      .then(([studentRes, attendanceRes]) => {
+    Promise.all([
+      api.get("/students"),
+      api.get(`/classes/${classCode}/attendance`, { query: { month } }),
+      api.get(`/classes/${classCode}/leave-days`, { query: { month } }),
+    ])
+      .then(([studentRes, attendanceRes, leaveRes]) => {
         setStudents(studentRes);
+        setLeaveDays(leaveRes.leave_days);
         const record = attendanceRes[0];
         if (record) {
           setTotalDays(record.total_days);
@@ -50,7 +56,7 @@ export default function TakeAttendance() {
   }, [classCode, month]);
 
   const markAllPresent = () => {
-    setPresent(Object.fromEntries((students || []).map((s) => [s.id, totalDays])));
+    setPresent(Object.fromEntries((students || []).map((s) => [s.id, Math.max(Number(totalDays) - (leaveDays[s.id] || 0), 0)])));
   };
 
   const handleSave = async () => {
@@ -136,6 +142,12 @@ export default function TakeAttendance() {
         </Banner>
       )}
 
+      {!locked && Object.keys(leaveDays).length > 0 && (
+        <Banner tone="info" className="mb-4">
+          Approved leave is counted as absent — "Mark All Present" already subtracts each student's leave days.
+        </Banner>
+      )}
+
       {students && (
         <Card className="p-0 overflow-hidden">
           <table className="w-full text-sm">
@@ -144,6 +156,7 @@ export default function TakeAttendance() {
                 <th className="px-4 py-3">Student</th>
                 <th className="px-4 py-3 text-center">Present Days</th>
                 <th className="px-4 py-3 text-center">Absent Days</th>
+                <th className="px-4 py-3 text-center">Approved Leave</th>
               </tr>
             </thead>
             <tbody>
@@ -164,6 +177,7 @@ export default function TakeAttendance() {
                       />
                     </td>
                     <td className="px-4 py-2.5 text-center text-navy/60">{Math.max(totalDays - p, 0)}</td>
+                    <td className="px-4 py-2.5 text-center text-navy/60">{leaveDays[s.id] || "—"}</td>
                   </tr>
                 );
               })}

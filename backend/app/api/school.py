@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
@@ -14,12 +14,13 @@ from app.core.dependencies import current_account, require_roles
 from app.core.security import hash_password
 from app.services.permissions import teacher_profile, student_profile, assigned_class, can_access_class
 from app.services.permissions import require_teacher_class_scope
+from app.services.mark_scheme import class_scheme, subject_components, subjects_for_class, terms_for_grade
 from app.models.entities import (Account, AcademicClass, Teacher, Student, ClassTeacherAssignment,
     SubjectTeacherAssignment, Assessment, Mark, AttendanceMonth, AttendanceRecord, TimetableEntry,
-    Notice, CertificateRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage)
+    Notice, CertificateRequest, LeaveRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage)
 from app.schemas.common import (ClassIn, ClassTeacherIn, SubjectTeacherIn, TeacherCreate, TeacherUpdate,
     StudentCreate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, NoticeUpdate, CertificateIn, DecisionIn,
-    ComplaintMessageIn, EventIn, EventUpdate, GalleryIn, PublicContactIn)
+    LeaveRequestIn, ComplaintMessageIn, EventIn, EventUpdate, GalleryIn, PublicContactIn)
 
 router = APIRouter(tags=["School"])
 
@@ -185,9 +186,11 @@ def get_student(student_id: int, db: Session = Depends(get_db), account: Account
 
 # Marks, scorecards, and result analysis
 @router.put("/classes/{class_code}/marks/{term}")
-def save_class_marks(class_code: str, term: str, data: MarksIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+def save_class_marks(class_code: str, term: str, data: MarksIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
     cls = get_class(db, class_code); students = db.query(Student).filter_by(class_id=cls.id).all()
     teacher_or_admin(account, db, cls)
+    if term not in terms_for_grade(cls.grade): raise HTTPException(422, f"'{term}' is not an exam for class {cls.code}")
+    subjects = set(subjects_for_class(cls))
     assessment = db.query(Assessment).filter_by(class_id=cls.id, term=term, academic_year=data.academic_year).first()
     if not assessment:
         assessment = Assessment(class_id=cls.id, term=term, academic_year=data.academic_year); db.add(assessment); db.flush()
@@ -195,13 +198,22 @@ def save_class_marks(class_code: str, term: str, data: MarksIn, db: Session = De
     for student in students:
         values = data.students.get(str(student.id), {})
         for subject, value in values.items():
+            if subject not in subjects: raise HTTPException(422, f"{subject} is not a subject for class {cls.code}")
             teacher_or_admin(account, db, cls, subject)
-            score = int(value.get("score", 0)); maximum = int(value.get("max", 100)); absent = bool(value.get("absent", False))
-            if maximum < 1 or score < 0 or score > maximum: raise HTTPException(422, f"Invalid score for {subject}")
+            scheme = subject_components(cls.grade, subject)
+            absent = bool(value.get("absent", False)); entered = value.get("components") or {}
+            components = {}
+            if not absent:
+                for key, label, limit in scheme:
+                    try: points = int(entered.get(key, 0) or 0)
+                    except (TypeError, ValueError): raise HTTPException(422, f"Invalid {label} mark for {subject}")
+                    if points < 0 or points > limit: raise HTTPException(422, f"{subject} {label} must be between 0 and {limit}")
+                    components[key] = points
+            score = sum(components.values()); maximum = sum(limit for _, _, limit in scheme)
             mark = db.query(Mark).filter_by(student_id=student.id, assessment_id=assessment.id, subject=subject).first()
             if mark:
-                mark.score, mark.maximum_score, mark.absent, mark.entered_by = score, maximum, absent, account.id
-            else: db.add(Mark(student_id=student.id, assessment_id=assessment.id, subject=subject, score=score, maximum_score=maximum, absent=absent, entered_by=account.id))
+                mark.score, mark.maximum_score, mark.absent, mark.components, mark.entered_by = score, maximum, absent, components, account.id
+            else: db.add(Mark(student_id=student.id, assessment_id=assessment.id, subject=subject, score=score, maximum_score=maximum, absent=absent, components=components, entered_by=account.id))
             saved += 1
     db.commit(); return {"class_code": cls.code, "term": term, "saved_marks": saved}
 
@@ -214,7 +226,7 @@ def student_results(student_id: int, term: str | None = None, db: Session = Depe
     if account.role == "teacher" and not can_access_class(db, account, student.school_class): raise HTTPException(403, "Class access denied")
     q = db.query(Mark, Assessment).join(Assessment).filter(Mark.student_id == student.id)
     if term: q = q.filter(Assessment.term == term)
-    rows = [{"term": a.term, "academic_year": a.academic_year, "subject": m.subject, "score": m.score, "max": m.maximum_score, "absent": m.absent} for m, a in q.order_by(Assessment.created_at, Mark.subject).all()]
+    rows = [{"term": a.term, "academic_year": a.academic_year, "subject": m.subject, "score": m.score, "max": m.maximum_score, "absent": m.absent, "components": m.components or {}} for m, a in q.order_by(Assessment.created_at, Mark.subject).all()]
     total = sum(row["score"] for row in rows); max_total = sum(row["max"] for row in rows)
     return {"student_id": student.id, "student_name": student.account.full_name, "class_code": student.school_class.code, "results": rows, "average_percent": round(total * 100 / max_total, 2) if max_total else None}
 
@@ -242,7 +254,7 @@ def class_mark_report(class_code: str, term: str, db: Session = Depends(get_db),
     for student in db.query(Student).filter_by(class_id=cls.id).order_by(Student.id).all():
         marks=db.query(Mark).filter_by(student_id=student.id,assessment_id=assessment.id).order_by(Mark.subject).all()
         maximum=sum(m.maximum_score for m in marks); total=sum(m.score for m in marks)
-        rows.append({"student_id":student.id,"registration_no":student.registration_no,"name":student.account.full_name,"marks":[{"subject":m.subject,"score":m.score,"max":m.maximum_score,"absent":m.absent} for m in marks],"total":total,"maximum":maximum,"percentage":round(total*100/maximum,2) if maximum else None})
+        rows.append({"student_id":student.id,"registration_no":student.registration_no,"name":student.account.full_name,"marks":[{"subject":m.subject,"score":m.score,"max":m.maximum_score,"absent":m.absent,"components":m.components or {}} for m in marks],"total":total,"maximum":maximum,"percentage":round(total*100/maximum,2) if maximum else None})
     return {"class_code":cls.code,"term":term,"students":rows}
 
 
@@ -467,6 +479,99 @@ def decide_certificate(request_id: int, data: DecisionIn, db: Session = Depends(
     db.commit(); return req
 
 
+# Leave requests: student -> class teacher, teacher -> admin (HM)
+LEAVE_TYPES = {"student": {"normal", "od"}, "teacher": {"personal", "sick", "od"}}
+
+
+def leave_days_by_month(start: date, end: date) -> dict[str, int]:
+    """Working days (Mon-Fri) in [start, end], grouped by YYYY-MM."""
+    days: dict[str, int] = defaultdict(int); day = start
+    while day <= end:
+        if day.weekday() < 5: days[day.strftime("%Y-%m")] += 1
+        day += timedelta(days=1)
+    return dict(days)
+
+
+def leave_out(db: Session, req: LeaveRequest) -> dict:
+    applicant = db.get(Account, req.applicant_id); cls = db.get(AcademicClass, req.class_id) if req.class_id else None
+    return {"id": req.id, "applicant_role": req.applicant_role, "applicant_name": applicant.full_name, "applicant_username": applicant.username,
+            "class_code": cls.code if cls else None, "leave_type": req.leave_type, "from_date": req.from_date, "to_date": req.to_date,
+            "days": req.days, "reason": req.reason, "status": req.status, "decision_note": req.decision_note,
+            "created_at": req.created_at, "decided_at": req.decided_at}
+
+
+def mark_leave_absent(db: Session, req: LeaveRequest):
+    """An approved normal leave counts as absence. Months not yet recorded pick it up via /leave-days when attendance is taken."""
+    for month, days in leave_days_by_month(req.from_date, req.to_date).items():
+        rec = db.query(AttendanceMonth).filter_by(class_id=req.class_id, month=month).first()
+        row = db.query(AttendanceRecord).filter_by(attendance_month_id=rec.id, student_id=req.student_id).first() if rec else None
+        if row: row.present_days = max(0, row.present_days - days)
+
+
+@router.post("/leave-requests", status_code=201)
+def apply_leave(data: LeaveRequestIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("student", "teacher"))):
+    if data.leave_type not in LEAVE_TYPES[account.role]: raise HTTPException(422, f"'{data.leave_type}' leave is not available for {account.role}s")
+    if data.to_date < data.from_date: raise HTTPException(422, "To date must be on or after the from date")
+    days = sum(leave_days_by_month(data.from_date, data.to_date).values())
+    if days == 0: raise HTTPException(422, "The selected dates contain no working days (Mon-Fri)")
+    overlap = db.query(LeaveRequest).filter(LeaveRequest.applicant_id == account.id, LeaveRequest.status.in_(["pending", "approved"]),
+        LeaveRequest.from_date <= data.to_date, LeaveRequest.to_date >= data.from_date).first()
+    if overlap: raise HTTPException(409, "You already have a pending or approved leave covering these dates")
+    req = LeaveRequest(applicant_id=account.id, applicant_role=account.role, leave_type=data.leave_type, from_date=data.from_date,
+        to_date=data.to_date, days=days, reason=data.reason)
+    if account.role == "student":
+        student = student_profile(db, account); req.student_id, req.class_id = student.id, student.class_id
+    else: req.teacher_id = teacher_profile(db, account).id
+    db.add(req); db.commit(); db.refresh(req); return leave_out(db, req)
+
+
+@router.get("/leave-requests", summary="scope=mine for own requests, scope=review for requests awaiting your decision")
+def list_leave_requests(scope: str = Query("mine", pattern="^(mine|review)$"), db: Session = Depends(get_db), account: Account = Depends(current_account)):
+    q = db.query(LeaveRequest)
+    if scope == "mine" or account.role == "student": q = q.filter_by(applicant_id=account.id)
+    elif account.role == "teacher":
+        cls = assigned_class(db, teacher_profile(db, account))
+        if not cls: return []
+        q = q.filter_by(applicant_role="student", class_id=cls.id)
+    else: q = q.filter_by(applicant_role="teacher")
+    return [leave_out(db, r) for r in q.order_by(LeaveRequest.created_at.desc()).all()]
+
+
+@router.patch("/leave-requests/{request_id}")
+def decide_leave(request_id: int, data: DecisionIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    req = db.get(LeaveRequest, request_id)
+    if not req: raise HTTPException(404, "Leave request not found")
+    if req.applicant_role == "teacher" and account.role != "admin": raise HTTPException(403, "Only the HM may decide teacher leave")
+    if req.applicant_role == "student":
+        if account.role != "teacher": raise HTTPException(403, "Student leave is decided by the class teacher")
+        if not db.query(ClassTeacherAssignment).filter_by(class_id=req.class_id, teacher_id=teacher_profile(db, account).id).first():
+            raise HTTPException(403, "Only the assigned class teacher may decide this request")
+    if req.status != "pending": raise HTTPException(409, "Request has already been decided")
+    req.status = "approved" if data.approve else "rejected"; req.decision_by = account.id; req.decision_note = data.note; req.decided_at = datetime.utcnow()
+    if req.status == "approved" and req.applicant_role == "student" and req.leave_type == "normal": mark_leave_absent(db, req)
+    db.commit(); return leave_out(db, req)
+
+
+@router.delete("/leave-requests/{request_id}", status_code=204, response_class=Response)
+def cancel_leave(request_id: int, db: Session = Depends(get_db), account: Account = Depends(require_roles("student", "teacher"))):
+    req = db.get(LeaveRequest, request_id)
+    if not req or req.applicant_id != account.id: raise HTTPException(404, "Leave request not found")
+    if req.status != "pending": raise HTTPException(409, "Only pending requests can be cancelled")
+    db.delete(req); db.commit()
+
+
+@router.get("/classes/{class_code}/leave-days", summary="Approved normal-leave working days per student for a month")
+def class_leave_days(class_code: str, month: str = Query(..., pattern=r"^\d{4}-(0[1-9]|1[0-2])$"), db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    cls = get_class(db, class_code)
+    if not can_access_class(db, account, cls): raise HTTPException(403, "Class access denied")
+    start = date.fromisoformat(f"{month}-01"); end = (start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    totals: dict[int, int] = defaultdict(int)
+    for req in db.query(LeaveRequest).filter(LeaveRequest.class_id == cls.id, LeaveRequest.status == "approved", LeaveRequest.leave_type == "normal",
+            LeaveRequest.from_date <= end, LeaveRequest.to_date >= start).all():
+        totals[req.student_id] += leave_days_by_month(req.from_date, req.to_date).get(month, 0)
+    return {"class_code": cls.code, "month": month, "leave_days": totals}
+
+
 @router.get("/certificates/requests/{request_id}/download")
 def download_certificate(request_id: int, db: Session = Depends(get_db), account: Account = Depends(current_account)):
     req=db.get(CertificateRequest,request_id)
@@ -656,11 +761,14 @@ def public_classes(db: Session = Depends(get_db)):
 def class_subjects(class_code: str, db: Session = Depends(get_db), account: Account = Depends(current_account)):
     cls=get_class(db,class_code)
     if not can_access_class(db,account,cls): raise HTTPException(403,"Class access denied")
-    if cls.grade>=11:
-        electives=["Biology"] if cls.group_name=="Bio-Maths" else ["Computer Science"]
-        subjects=["Tamil","English",*electives,"Chemistry","Physics","Maths"]
-    else: subjects=["Tamil","English","Maths","Science","Social Science"]
-    return {"class_code":cls.code,"subjects":subjects}
+    return {"class_code":cls.code,"subjects":subjects_for_class(cls)}
+
+
+@router.get("/classes/{class_code}/mark-scheme", summary="Exam terms and per-subject mark components for a class")
+def class_mark_scheme(class_code: str, db: Session = Depends(get_db), account: Account = Depends(current_account)):
+    cls=get_class(db,class_code)
+    if not can_access_class(db,account,cls): raise HTTPException(403,"Class access denied")
+    return class_scheme(cls)
 
 
 @router.get("/reports/school")

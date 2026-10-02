@@ -101,6 +101,8 @@ class Mark(Base):
     score: Mapped[int] = mapped_column(Integer)
     maximum_score: Mapped[int] = mapped_column(Integer, default=100)
     absent: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Per-component split of `score`, e.g. {"theory": 62, "practical": 18, "internal": 9}; see services/mark_scheme.py
+    components: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     entered_by: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
 
 
@@ -161,6 +163,27 @@ class CertificateRequest(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     downloaded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class LeaveRequest(Base):
+    """Student leave goes to the class teacher; teacher leave goes to the admin (HM)."""
+    __tablename__ = "leave_requests"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    applicant_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    applicant_role: Mapped[str] = mapped_column(String(20), index=True)
+    student_id: Mapped[int | None] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"), nullable=True, index=True)
+    teacher_id: Mapped[int | None] = mapped_column(ForeignKey("teachers.id", ondelete="CASCADE"), nullable=True, index=True)
+    class_id: Mapped[int | None] = mapped_column(ForeignKey("classes.id", ondelete="SET NULL"), nullable=True, index=True)
+    leave_type: Mapped[str] = mapped_column(String(20))
+    from_date: Mapped[datetime] = mapped_column(Date, index=True)
+    to_date: Mapped[datetime] = mapped_column(Date, index=True)
+    days: Mapped[int] = mapped_column(Integer)
+    reason: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    decision_by: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class ComplaintThread(Base):

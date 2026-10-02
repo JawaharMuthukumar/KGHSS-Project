@@ -120,6 +120,14 @@ class DecisionIn(BaseModel):
     note: str | None = None
 
 
+class LeaveRequestIn(BaseModel):
+    # Students: normal | od.  Teachers: personal | sick | od.  Checked per role in the handler.
+    leave_type: str = Field(pattern=r"^(normal|od|personal|sick)$")
+    from_date: date
+    to_date: date
+    reason: str = Field(min_length=3, max_length=2000)
+
+
 class ComplaintMessageIn(BaseModel):
     body: str = Field(min_length=1, max_length=5000)
 

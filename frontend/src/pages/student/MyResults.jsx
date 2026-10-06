@@ -4,7 +4,9 @@ import Card from "../../components/ui/Card";
 import Banner from "../../components/portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api } from "../../lib/apiClient";
-import { EXAM_TERMS, PASS_MARK } from "../../constants/academic";
+import { ALL_EXAM_TERMS, PASS_MARK } from "../../constants/academic";
+
+const componentAbbr = { sa: "SA", fa: "FA", theory: "Th", practical: "Pr", internal: "In" };
 
 export default function MyResults() {
   const { data: profile } = useApiResource("/students/me/profile");
@@ -23,7 +25,7 @@ export default function MyResults() {
     const rows = results?.results || [];
     const subjectSet = new Set(rows.map((r) => r.subject));
     const termSet = new Set(rows.map((r) => r.term));
-    const orderedTerms = [...EXAM_TERMS.filter((t) => termSet.has(t)), ...[...termSet].filter((t) => !EXAM_TERMS.includes(t))];
+    const orderedTerms = [...ALL_EXAM_TERMS.filter((t) => termSet.has(t)), ...[...termSet].filter((t) => !ALL_EXAM_TERMS.includes(t))];
     const map = {};
     rows.forEach((r) => {
       map[`${r.subject}__${r.term}`] = r;
@@ -70,6 +72,13 @@ export default function MyResults() {
                       return (
                         <td key={term} className={`px-3 py-2.5 text-center font-semibold ${cell.absent ? "text-navy/40" : fail ? "text-red-600" : "text-navy"}`}>
                           {cell.absent ? "AB" : `${cell.score}/${cell.max}`}
+                          {!cell.absent && Object.keys(cell.components || {}).length > 1 && (
+                            <span className="block text-[10px] font-normal text-navy/45 whitespace-nowrap">
+                              {Object.entries(cell.components)
+                                .map(([key, value]) => `${componentAbbr[key] || key} ${value}`)
+                                .join(" · ")}
+                            </span>
+                          )}
                         </td>
                       );
                     })}

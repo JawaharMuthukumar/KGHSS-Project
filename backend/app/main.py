@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -41,6 +41,10 @@ def initialize_schema_and_reference_classes():
     Use Alembic migrations instead of create_all once deployment/migration history is established.
     """
     Base.metadata.create_all(bind=engine)
+    # create_all never alters existing tables, so add columns introduced after a table was first created.
+    if "components" not in {c["name"] for c in inspect(engine).get_columns("marks")}:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE marks ADD COLUMN components JSON NULL"))
     classes = [
         ("6A", 6, "A", None), ("6B", 6, "B", None), ("7A", 7, "A", None), ("7B", 7, "B", None),
         ("8A", 8, "A", None), ("8B", 8, "B", None), ("9A", 9, "A", None), ("9B", 9, "B", None),

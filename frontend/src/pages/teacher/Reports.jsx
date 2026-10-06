@@ -5,13 +5,20 @@ import { inputClass } from "../../components/portal/FormField";
 import ClassMarkReport from "../../components/reports/ClassMarkReport";
 import ClassScorecard from "../../components/reports/ClassScorecard";
 import { useApiResource } from "../../hooks/useApiResource";
-import { EXAM_TERMS } from "../../constants/academic";
+import { termsForGrade } from "../../constants/academic";
 
 export default function Reports() {
   const { data: classes } = useApiResource("/classes");
   const [classCode, setClassCode] = useState("");
-  const [term, setTerm] = useState(EXAM_TERMS[0]);
+  const [term, setTerm] = useState(termsForGrade(null)[0]);
   const [tab, setTab] = useState("mark-report");
+  const terms = termsForGrade((classes || []).find((c) => c.code === classCode)?.grade);
+
+  const selectClass = (code) => {
+    setClassCode(code);
+    const next = termsForGrade((classes || []).find((c) => c.code === code)?.grade);
+    if (!next.includes(term)) setTerm(next[0]);
+  };
 
   return (
     <div>
@@ -21,7 +28,7 @@ export default function Reports() {
       />
 
       <Card className="p-4 mb-5 flex flex-wrap gap-3 items-center">
-        <select value={classCode} onChange={(e) => setClassCode(e.target.value)} className={inputClass + " max-w-[10rem]"}>
+        <select value={classCode} onChange={(e) => selectClass(e.target.value)} className={inputClass + " max-w-[10rem]"}>
           <option value="">Select a class…</option>
           {(classes || []).map((c) => (
             <option key={c.code} value={c.code}>
@@ -30,7 +37,7 @@ export default function Reports() {
           ))}
         </select>
         <select value={term} onChange={(e) => setTerm(e.target.value)} className={inputClass + " max-w-[10rem]"}>
-          {EXAM_TERMS.map((t) => (
+          {terms.map((t) => (
             <option key={t}>{t}</option>
           ))}
         </select>

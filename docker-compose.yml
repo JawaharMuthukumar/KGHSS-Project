@@ -1,0 +1,22 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ghss-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root-dev-pass
+      MYSQL_DATABASE: ghss_portal
+      MYSQL_USER: ghss_user
+      MYSQL_PASSWORD: change-this
+    volumes:
+      - ghss_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot-dev-pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  ghss_mysql_data:

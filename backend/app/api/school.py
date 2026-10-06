@@ -234,7 +234,7 @@ def student_results(student_id: int, term: str | None = None, db: Session = Depe
 @router.get("/classes/{class_code}/scorecard")
 def class_scorecard(class_code: str, term: str, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
     cls = get_class(db, class_code)
-    if not can_access_class(db, account, cls): raise HTTPException(403, "Class access denied")
+    if not can_access_class(db, account, cls, allow_subject=False): raise HTTPException(403, "Only the class teacher can view this report")
     students = db.query(Student).filter_by(class_id=cls.id).all(); output=[]
     for student in students:
         q = db.query(func.sum(Mark.score), func.sum(Mark.maximum_score)).join(Assessment).filter(Mark.student_id==student.id, Assessment.term==term)
@@ -247,7 +247,7 @@ def class_scorecard(class_code: str, term: str, db: Session = Depends(get_db), a
 def class_mark_report(class_code: str, term: str, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
     """Return each student's subject marks and aggregate, suitable for printable class reports."""
     cls=get_class(db,class_code)
-    if not can_access_class(db,account,cls): raise HTTPException(403,"Class access denied")
+    if not can_access_class(db,account,cls,allow_subject=False): raise HTTPException(403,"Only the class teacher can view this report")
     assessment=db.query(Assessment).filter_by(class_id=cls.id,term=term,academic_year=cls.academic_year).first()
     if not assessment: return {"class_code":cls.code,"term":term,"students":[]}
     rows=[]
@@ -256,6 +256,112 @@ def class_mark_report(class_code: str, term: str, db: Session = Depends(get_db),
         maximum=sum(m.maximum_score for m in marks); total=sum(m.score for m in marks)
         rows.append({"student_id":student.id,"registration_no":student.registration_no,"name":student.account.full_name,"marks":[{"subject":m.subject,"score":m.score,"max":m.maximum_score,"absent":m.absent,"components":m.components or {}} for m in marks],"total":total,"maximum":maximum,"percentage":round(total*100/maximum,2) if maximum else None})
     return {"class_code":cls.code,"term":term,"students":rows}
+
+
+SUBJECT_ABBR = {"Tamil": "TAM", "English": "ENG", "Maths": "MAT", "Science": "SCI", "Social Science": "SSCI",
+    "Physics": "PHY", "Chemistry": "CHE", "Biology": "BIO", "Computer Science": "CS"}
+ROMAN = {6: "VI", 7: "VII", 8: "VIII", 9: "IX", 10: "X", 11: "XI", 12: "XII"}
+
+
+@router.get("/classes/{class_code}/term-report")
+def class_term_report(class_code: str, term: str, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    """Class teacher's printable term register ("My Report") and the HM result summary ("HM Report") for one class."""
+    PASS = 35
+    cls = get_class(db, class_code)
+    if not can_access_class(db, account, cls, allow_subject=False): raise HTTPException(403, "Only the class teacher can view this report")
+    subjects = subjects_for_class(cls)
+    students = db.query(Student).filter_by(class_id=cls.id).order_by(Student.registration_no).all()
+    assessment = db.query(Assessment).filter_by(class_id=cls.id, term=term, academic_year=cls.academic_year).first()
+    marks = defaultdict(dict)
+    if assessment:
+        for m in db.query(Mark).filter_by(assessment_id=assessment.id).all(): marks[m.student_id][m.subject] = m
+
+    # Attendance: cumulative over every month recorded for this class
+    months = db.query(AttendanceMonth).filter_by(class_id=cls.id).all()
+    working_days = sum(mo.total_days for mo in months)
+    present = defaultdict(int)
+    if months:
+        for r in db.query(AttendanceRecord).filter(AttendanceRecord.attendance_month_id.in_([mo.id for mo in months])).all(): present[r.student_id] += r.present_days
+
+    def gender_key(s): return "M" if (s.gender or "").lower() == "male" else "F" if (s.gender or "").lower() == "female" else "O"
+    def medium_key(s): return {"tamil": "TM", "english": "EM"}.get((s.medium or "").lower(), s.medium)
+
+    rows = []
+    for s in students:
+        sm = marks.get(s.id, {})
+        scores = []; failed = []; absent = []
+        for subj in subjects:
+            m = sm.get(subj)
+            if m is None: scores.append(None); continue
+            if m.absent: absent.append(SUBJECT_ABBR.get(subj, subj)); scores.append("AB"); continue
+            scores.append(m.score)
+            if m.score < m.maximum_score * PASS / 100: failed.append(SUBJECT_ABBR.get(subj, subj))
+        written = [x for x in scores if isinstance(x, int)]
+        appeared = bool(written)
+        passed = appeared and not failed and not absent and len(written) == len(subjects)
+        rows.append({"student_id": s.id, "registration_no": s.registration_no, "name": s.account.full_name,
+            "community": s.community, "gender": gender_key(s), "medium": medium_key(s), "scores": scores,
+            "total": sum(written) if appeared else None, "appeared": appeared, "passed": passed,
+            "failed_subjects": failed, "absent_subjects": absent,
+            "attended_days": present.get(s.id, 0) if months else None,
+            "attendance_percent": round(present.get(s.id, 0) * 100 / working_days, 2) if working_days else None, "rank": None})
+
+    # Rank only students who passed every subject; ties share a rank
+    ranked = sorted([r for r in rows if r["passed"]], key=lambda r: r["total"], reverse=True)
+    for i, r in enumerate(ranked):
+        r["rank"] = ranked[i - 1]["rank"] if i and ranked[i - 1]["total"] == r["total"] else i + 1
+
+    # ---- HM summary ----
+    mediums = [medium_key(s) for s in students if s.medium]
+    medium = max(set(mediums), key=mediums.count) if mediums else ("EM" if cls.section.upper().endswith("B") else "TM")
+    def by_gender(pred):
+        out = {"M": 0, "F": 0}
+        for r in rows:
+            if pred(r) and r["gender"] in out: out[r["gender"]] += 1
+        out["TOT"] = sum(1 for r in rows if pred(r))
+        return out
+    roll = by_gender(lambda r: True); appd = by_gender(lambda r: r["appeared"]); passd = by_gender(lambda r: r["passed"])
+    pass_pct = {k: round(passd[k] * 100 / appd[k]) if appd[k] else None for k in ("M", "F", "TOT")}
+
+    subject_result = []; toppers = []
+    for i, subj in enumerate(subjects):
+        vals = [(r["scores"][i], r["name"]) for r in rows if isinstance(r["scores"][i], int)]
+        sc = [v for v, _ in vals]
+        top = max(sc) if sc else None
+        subject_result.append({"subject": SUBJECT_ABBR.get(subj, subj), "max": top, "min": min(sc) if sc else None,
+            "average": round(sum(sc) / len(sc), 2) if sc else None, "appeared": len(sc),
+            "passed": sum(1 for v in sc if v >= PASS), "pass_percent": round(sum(1 for v in sc if v >= PASS) * 100 / len(sc)) if sc else None})
+        toppers.append({"subject": SUBJECT_ABBR.get(subj, subj), "mark": top, "names": [n for v, n in vals if v == top] if sc else []})
+    totals = [(r["total"], r["name"]) for r in rows if r["appeared"]]
+    tt = [t for t, _ in totals]
+    top_total = max(tt) if tt else None
+    subject_result.append({"subject": "TOT", "max": top_total, "min": min(tt) if tt else None,
+        "average": round(sum(tt) / len(tt), 2) if tt else None, "appeared": appd["TOT"], "passed": passd["TOT"], "pass_percent": pass_pct["TOT"]})
+    toppers.append({"subject": "TOT", "mark": top_total, "names": [n for t, n in totals if t == top_total] if tt else []})
+
+    # Students by number of subjects not cleared (failed or absent)
+    failed_counts = {n: 0 for n in range(1, len(subjects) + 1)}
+    for r in rows:
+        n = len(r["failed_subjects"]) + len(r["absent_subjects"])
+        if r["appeared"] and not r["passed"] and n in failed_counts: failed_counts[n] += 1
+
+    # Marks range on the class's grand total (500 for 6-10, 600 for 11-12)
+    full = 100 * len(subjects); k = full / 500
+    edges = [round(e * k) for e in (475, 450, 400, 350, 300, 250, 200)]
+    ranges = [{"label": f"{full} OUT OF {full}", "bin": full, "count": sum(1 for t in tt if t == full)}]
+    hi = full  # exclusive upper bound of the current bin
+    for lo in edges:
+        shown = full - 1 if hi == full else hi
+        ranges.append({"label": f"FROM {shown} TO {lo}", "bin": shown, "count": sum(1 for t in tt if lo <= t < hi)})
+        hi = lo
+    ranges.append({"label": f"LESS THAN {edges[-1]}", "bin": edges[-1], "count": sum(1 for t in tt if t < edges[-1])})
+
+    return {"class_code": cls.code, "title": f"{ROMAN.get(cls.grade, cls.grade)} - {cls.section}", "academic_year": cls.academic_year,
+        "term": term, "subjects": [SUBJECT_ABBR.get(s, s) for s in subjects], "max_marks": 100, "pass_marks": PASS,
+        "working_days": working_days if months else None, "students": rows,
+        "hm": {"medium": medium, "roll": roll, "appeared": appd, "passed": passd, "pass_percent": pass_pct,
+            "subject_result": subject_result, "toppers": toppers, "failed_counts": failed_counts,
+            "total_failed": appd["TOT"] - passd["TOT"], "absent": roll["TOT"] - appd["TOT"], "ranges": ranges}}
 
 
 @router.get("/reports/results")

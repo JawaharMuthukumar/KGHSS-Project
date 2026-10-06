@@ -632,7 +632,7 @@ def send_complaint(data: ComplaintMessageIn, student_id: int | None = None, db: 
 # Public events/gallery + admin maintenance
 @router.get("/events")
 def list_events(db: Session = Depends(get_db)):
-    return db.query(SchoolEvent).filter_by(is_published=True).order_by(SchoolEvent.event_date.desc()).all()
+    return db.query(SchoolEvent).filter_by(is_published=True).order_by(SchoolEvent.event_date.desc().nulls_last()).all()
 
 
 @router.post("/events", status_code=201)

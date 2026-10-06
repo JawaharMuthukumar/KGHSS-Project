@@ -1,23 +1,18 @@
-# GHSS Portal API (FastAPI + MySQL)
+# GHSS Portal API (FastAPI + PostgreSQL / Supabase)
 
-Backend implementation for the React + Vite school portal. The HTML pages and `js/app.js` under `Mockup-site/` are workflow/UI references; their browser `localStorage` demo data and demo passwords are not imported. This API persists real application data in MySQL and protects role-specific operations with JWT bearer tokens.
+Backend implementation for the React + Vite school portal. The HTML pages and `js/app.js` under `Mockup-site/` are workflow/UI references; their browser `localStorage` demo data and demo passwords are not imported. This API persists real application data in PostgreSQL (hosted on Supabase) and protects role-specific operations with JWT bearer tokens.
 
 ## Requirements
 
 - Python 3.11 or newer
-- MySQL 8 (or a compatible MySQL server)
+- A Supabase project (or any PostgreSQL 15+ server)
 - A virtual environment is recommended
 
-## 1. Create the MySQL database and user
+## 1. Create the Supabase project
 
-Run in MySQL as an account allowed to create users/databases (replace the password):
+Create the project with **Data API disabled** and **automatic RLS enabled**. The API connects directly to Postgres as the table owner, so it is unaffected by RLS, while the tables stay closed to Supabase's auto-generated REST API. Supabase Auth is not used; logins are handled by this API.
 
-```sql
-CREATE DATABASE ghss_portal CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'ghss_user'@'localhost' IDENTIFIED BY 'replace-this-password';
-GRANT ALL PRIVILEGES ON ghss_portal.* TO 'ghss_user'@'localhost';
-FLUSH PRIVILEGES;
-```
+From **Connect → Direct → Session pooler**, copy the connection string. The direct connection host is IPv6-only on the free plan, so use the session pooler (port 5432).
 
 ## 2. Install and configure
 
@@ -31,10 +26,10 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Edit `backend/.env` and set `DATABASE_URL` with your MySQL username/password, plus a long random `JWT_SECRET_KEY`. Keep `.env` private and out of source control. Example URL:
+Edit `backend/.env` and set `DATABASE_URL` to the session pooler string, with the scheme changed to `postgresql+psycopg2://` and `?sslmode=require` appended, plus a long random `JWT_SECRET_KEY`. Keep `.env` private and out of source control. Example URL:
 
 ```text
-mysql+pymysql://ghss_user:your-password@localhost:3306/ghss_portal?charset=utf8mb4
+postgresql+psycopg2://postgres.<project-ref>:<password>@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require
 ```
 
 For credentials containing URL-reserved characters, percent-encode the username/password in this URL.
@@ -59,7 +54,7 @@ Start the server, then open:
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
 - OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
-- Health (also checks MySQL): `http://127.0.0.1:8000/health`
+- Health (also checks the database): `http://127.0.0.1:8000/health`
 
 In Swagger, call `POST /api/v1/auth/login` with JSON, copy `access_token`, select **Authorize**, and enter the token as a Bearer credential. Protected endpoints will then use the logged-in account and enforce its role/class access on the backend.
 
@@ -169,7 +164,7 @@ The record keys are database student IDs in that class. A successful save locks 
 - `app/schemas/` contains Pydantic request schemas and validation.
 - `app/services/` is reserved for reusable business services as the workflows are split out of the initial router implementation.
 - `app/models/` contains SQLAlchemy models and relational schema.
-- `app/core/` contains settings, MySQL sessions, JWT/password helpers, and authorization dependencies.
+- `app/core/` contains settings, database sessions, JWT/password helpers, and authorization dependencies.
 
 ## React development server
 

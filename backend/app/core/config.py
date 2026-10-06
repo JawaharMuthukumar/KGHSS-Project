@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "GHSS Kangayampalayam API"
     api_v1_prefix: str = "/api/v1"
-    database_url: str = "mysql+pymysql://root:password@localhost:3306/ghss_portal?charset=utf8mb4"
+    database_url: str = "postgresql+psycopg2://postgres:password@localhost:5432/ghss_portal"
     jwt_secret_key: str = "development-only-change-this-secret"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30

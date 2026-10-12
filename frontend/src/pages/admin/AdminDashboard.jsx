@@ -14,7 +14,7 @@ const quickActions = [
   { to: "/admin/students", label: "Browse Students", icon: "GraduationCap" },
   { to: "/admin/notices", label: "Post a Notice", icon: "Bell" },
   { to: "/admin/certificates", label: "Certificates", icon: "FileCheck2" },
-  { to: "/admin/gallery", label: "Manage Gallery", icon: "Images" },
+  { to: "/admin/posts", label: "Manage Posts", icon: "Images" },
 ];
 
 export default function AdminDashboard() {

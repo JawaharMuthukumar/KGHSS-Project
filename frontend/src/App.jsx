@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import PageLoader from "./components/utility/PageLoader";
 import { LanguageProvider } from "./context/LanguageContext";
@@ -33,7 +33,7 @@ const AdminStudents = lazy(() => import("./pages/admin/Students"));
 const AdminTimetables = lazy(() => import("./pages/admin/AdminTimetables"));
 const AdminResultsReports = lazy(() => import("./pages/admin/ResultsReports"));
 const AdminAttendanceReport = lazy(() => import("./pages/admin/AttendanceReport"));
-const AdminGalleryEvents = lazy(() => import("./pages/admin/GalleryEvents"));
+const AdminPosts = lazy(() => import("./pages/admin/Posts"));
 const AdminContactMessages = lazy(() => import("./pages/admin/ContactMessages"));
 const AdminNotices = lazy(() => import("./pages/admin/Notices"));
 const AdminCertificates = lazy(() => import("./pages/admin/Certificates"));
@@ -100,7 +100,8 @@ export default function App() {
                   <Route path="leave-requests" element={<AdminLeaveRequests />} />
                   <Route path="certificates" element={<AdminCertificates />} />
                   <Route path="complaints" element={<AdminComplaints />} />
-                  <Route path="gallery" element={<AdminGalleryEvents />} />
+                  <Route path="posts" element={<AdminPosts />} />
+                  <Route path="gallery" element={<Navigate to="/admin/posts" replace />} />
                   <Route path="contact-messages" element={<AdminContactMessages />} />
                 </Route>
               </Route>

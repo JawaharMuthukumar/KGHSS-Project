@@ -8,6 +8,7 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import ClubsSection from "../components/sections/ClubsSection";
 import SEO from "../components/utility/SEO";
+import PagePosts from "../components/sections/PagePosts";
 
 const councilRoles = [
   { role: "Head Boy", name: "[Add name]" },
@@ -29,6 +30,8 @@ export default function SchoolLife() {
         description="Assemblies, clubs, sports and community service that shape everyday student life."
         trail={[{ label: "School Life" }]}
       />
+
+      <PagePosts page="school-life" />
 
       <section className="py-20 sm:py-28">
         <Container className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">

@@ -6,6 +6,7 @@ import Badge from "../components/ui/Badge";
 import Icon from "../components/ui/Icon";
 import SmartImage from "../components/ui/SmartImage";
 import SEO from "../components/utility/SEO";
+import PagePosts from "../components/sections/PagePosts";
 import { sportsList, sportsPhilosophy, achievements } from "../data/schoolData";
 
 const sportsAchievements = achievements.filter((a) => a.category === "Sports");
@@ -23,6 +24,8 @@ export default function Sports() {
         description={sportsPhilosophy}
         trail={[{ label: "School Life", to: "/school-life" }, { label: "Sports" }]}
       />
+
+      <PagePosts page="sports" eyebrow="Sports Updates" title="Latest from the field." />
 
       <section className="py-20 sm:py-28">
         <Container>

@@ -7,6 +7,7 @@ import Badge from "../components/ui/Badge";
 import Icon from "../components/ui/Icon";
 import AnimatedCounter from "../components/ui/AnimatedCounter";
 import SEO from "../components/utility/SEO";
+import PagePosts from "../components/sections/PagePosts";
 import { achievements, achievementCategories, boardResults } from "../data/schoolData";
 
 const categoryIcon = {
@@ -36,6 +37,8 @@ export default function Achievements() {
         description="A record of academic performance and student achievement — sample entries shown until official records are confirmed."
         trail={[{ label: "Academics", to: "/academics" }, { label: "Achievements & Results" }]}
       />
+
+      <PagePosts page="achievements" eyebrow="Recent Achievements" title="Celebrating our students." />
 
       <section className="py-20 sm:py-28">
         <Container>

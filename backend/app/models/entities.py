@@ -224,6 +224,27 @@ class GalleryItem(Base):
     is_published: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class PagePost(Base):
+    """Admin-authored post shown on a chosen public page (e.g. quarterly exam toppers on Achievements)."""
+    __tablename__ = "page_posts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    page: Mapped[str] = mapped_column(String(40), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_published: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    images: Mapped[list["PagePostImage"]] = relationship(order_by="PagePostImage.sort_order", cascade="all, delete-orphan", lazy="selectin")
+
+
+class PagePostImage(Base):
+    __tablename__ = "page_post_images"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("page_posts.id", ondelete="CASCADE"), index=True)
+    media_url: Mapped[str] = mapped_column(String(1000))
+    caption: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class ContactMessage(Base):
     __tablename__ = "contact_messages"
     id: Mapped[int] = mapped_column(primary_key=True)

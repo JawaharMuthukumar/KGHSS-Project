@@ -17,7 +17,8 @@ from app.services.permissions import require_teacher_class_scope
 from app.services.mark_scheme import class_scheme, subject_components, subjects_for_class, terms_for_grade
 from app.models.entities import (Account, AcademicClass, Teacher, Student, ClassTeacherAssignment,
     SubjectTeacherAssignment, Assessment, Mark, AttendanceMonth, AttendanceRecord, TimetableEntry,
-    Notice, CertificateRequest, LeaveRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage)
+    Notice, CertificateRequest, LeaveRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage,
+    PagePost, PagePostImage)
 from app.schemas.common import (ClassIn, ClassTeacherIn, SubjectTeacherIn, TeacherCreate, TeacherUpdate,
     StudentCreate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, NoticeUpdate, CertificateIn, DecisionIn,
     LeaveRequestIn, ComplaintMessageIn, EventIn, EventUpdate, GalleryIn, PublicContactIn)
@@ -805,6 +806,65 @@ def delete_gallery_item(item_id: int, db: Session = Depends(get_db), _: Account 
     item=db.get(GalleryItem,item_id)
     if not item: raise HTTPException(404,"Gallery item not found")
     item.is_published=False; db.commit()
+    return Response(status_code=204)
+
+
+# Page posts: admin picks a public page, adds title/content + images (e.g. quarterly exam toppers)
+POST_PAGES={"achievements","sports","school-life","events"}
+POST_IMAGE_TYPES={"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/gif":"gif"}
+MAX_POST_IMAGES=6
+
+
+def serialize_post(post: PagePost) -> dict:
+    return {"id":post.id,"page":post.page,"title":post.title,"body":post.body,"created_at":post.created_at,
+        "images":[{"id":img.id,"media_url":img.media_url,"caption":img.caption} for img in post.images]}
+
+
+@router.get("/posts", summary="List published posts, optionally for one public page")
+def list_posts(page: str | None = None, db: Session = Depends(get_db)):
+    q=db.query(PagePost).filter_by(is_published=True)
+    if page: q=q.filter_by(page=page)
+    return [serialize_post(p) for p in q.order_by(PagePost.created_at.desc(),PagePost.id.desc()).all()]
+
+
+@router.post("/posts", status_code=201, summary="Create a post with images for a public page")
+async def create_post(
+    page: str = Form(...),
+    title: str = Form(...),
+    body: str | None = Form(None),
+    captions: list[str] = Form([]),
+    images: list[UploadFile] = File([]),
+    db: Session = Depends(get_db),
+    _: Account = Depends(require_roles("admin")),
+):
+    if page not in POST_PAGES: raise HTTPException(422,f"page must be one of: {', '.join(sorted(POST_PAGES))}")
+    if not title.strip(): raise HTTPException(422,"Title is required")
+    if len(images)>MAX_POST_IMAGES: raise HTTPException(422,f"Up to {MAX_POST_IMAGES} images per post")
+    if not images and not (body or "").strip(): raise HTTPException(422,"Add some content or at least one image")
+    files=[]
+    for media in images:
+        if media.content_type not in POST_IMAGE_TYPES: raise HTTPException(415,"Upload JPEG, PNG, WebP, or GIF images")
+        contents=await media.read(10*1024*1024+1)
+        if len(contents)>10*1024*1024: raise HTTPException(413,"Each image must be 10 MB or less")
+        if not contents: raise HTTPException(422,"An uploaded image is empty")
+        files.append((contents,POST_IMAGE_TYPES[media.content_type]))
+    directory=Path(__file__).resolve().parents[2]/"uploads"/"posts"
+    directory.mkdir(parents=True,exist_ok=True)
+    post=PagePost(page=page,title=title.strip(),body=(body or "").strip() or None,is_published=True)
+    for index,(contents,ext) in enumerate(files):
+        filename=f"{uuid4().hex}.{ext}"
+        (directory/filename).write_bytes(contents)
+        caption=(captions[index].strip() if index<len(captions) else "") or None
+        post.images.append(PagePostImage(media_url=f"/uploads/posts/{filename}",caption=caption,sort_order=index))
+    db.add(post); db.commit(); db.refresh(post)
+    return serialize_post(post)
+
+
+@router.delete("/posts/{post_id}", status_code=204, response_class=Response)
+def delete_post(post_id: int, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+    post=db.get(PagePost,post_id)
+    if not post: raise HTTPException(404,"Post not found")
+    post.is_published=False; db.commit()
     return Response(status_code=204)
 
 

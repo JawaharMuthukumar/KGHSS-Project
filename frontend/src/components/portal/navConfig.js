@@ -12,7 +12,7 @@ export const portalNav = {
     { to: "/admin/leave-requests", label: "Leave Requests", icon: "CalendarDays" },
     { to: "/admin/certificates", label: "Certificates", icon: "FileCheck2" },
     { to: "/admin/complaints", label: "Complaints", icon: "MessageSquare" },
-    { to: "/admin/gallery", label: "Gallery & Events", icon: "Images" },
+    { to: "/admin/posts", label: "Posts", icon: "Images" },
     { to: "/admin/contact-messages", label: "Contact Inbox", icon: "Inbox" },
   ],
   teacher: [

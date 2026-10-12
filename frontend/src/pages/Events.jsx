@@ -6,6 +6,7 @@ import Badge from "../components/ui/Badge";
 import SmartImage from "../components/ui/SmartImage";
 import Icon from "../components/ui/Icon";
 import SEO from "../components/utility/SEO";
+import PagePosts from "../components/sections/PagePosts";
 import { useApiResource } from "../hooks/useApiResource";
 import { formatDate, formatDateParts } from "../utils/formatDate";
 
@@ -51,6 +52,8 @@ export default function Events() {
         description="Everything happening across the school calendar — from sports meets to community activities."
         trail={[{ label: "School Life", to: "/school-life" }, { label: "Events" }]}
       />
+
+      <PagePosts page="events" eyebrow="Event Highlights" title="Moments from recent events." />
 
       <section className="py-16 sm:py-20">
         <Container>

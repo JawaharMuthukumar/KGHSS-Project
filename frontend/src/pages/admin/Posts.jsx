@@ -6,16 +6,10 @@ import Banner from "../../components/portal/Banner";
 import FormField, { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError, resolveMediaUrl } from "../../lib/apiClient";
+import { POST_PAGES, MAX_POST_IMAGES, RESULT_CLASSES, resultClassLabel, capitalizeWords } from "../../constants/posts";
 
-// Public pages a post can be published to — keys must match POST_PAGES in the backend.
-const POST_PAGES = [
-  { key: "achievements", label: "Achievements & Results" },
-  { key: "sports", label: "Sports" },
-  { key: "school-life", label: "School Life" },
-  { key: "events", label: "Events" },
-];
 const pageLabel = Object.fromEntries(POST_PAGES.map((p) => [p.key, p.label]));
-const MAX_POST_IMAGES = 6;
+const EMPTY_FORM = { page: "achievements", title: "", body: "", class_label: "", total_marks: "" };
 
 const TABS = [
   { key: "posts", label: "Page Posts" },
@@ -53,15 +47,55 @@ function PagePostsTab() {
   const [filter, setFilter] = useState("");
   const { data: posts, loading, error, reload } = useApiResource("/posts", { query: { page: filter }, deps: [filter] });
   const fileInput = useRef(null);
-  const [form, setForm] = useState({ page: "achievements", title: "", body: "" });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [images, setImages] = useState([]);
   const [submitError, setSubmitError] = useState("");
   const [saving, setSaving] = useState(false);
+  const isResult = form.page === "results";
+
+  // id of the post loaded into the form for editing; null means creating a new post.
+  const [editingId, setEditingId] = useState(null);
+
+  // Images are either new uploads ({file, preview: blob URL}) or, when editing, existing ones ({id, preview: server URL}).
+  // Each also carries caption (Achievements etc.) and name/marks (Results).
+  const revokePreviews = (list) => list.forEach((img) => img.file && URL.revokeObjectURL(img.preview));
 
   // Free preview blob URLs on unmount; removals/publish revoke their own.
   const imagesRef = useRef(images);
   imagesRef.current = images;
-  useEffect(() => () => imagesRef.current.forEach((img) => URL.revokeObjectURL(img.preview)), []);
+  useEffect(() => () => revokePreviews(imagesRef.current), []);
+
+  const resetForm = () => {
+    revokePreviews(images);
+    setImages([]);
+    setEditingId(null);
+    setSubmitError("");
+    setForm((f) => ({ ...EMPTY_FORM, page: f.page, class_label: f.class_label, total_marks: f.total_marks }));
+  };
+
+  const startEdit = (post) => {
+    revokePreviews(images);
+    setEditingId(post.id);
+    setSubmitError("");
+    setForm({
+      page: post.page,
+      title: post.title,
+      body: post.body || "",
+      class_label: post.class_label || "",
+      total_marks: post.total_marks ? String(post.total_marks) : "",
+    });
+    setImages(
+      post.images.map((img) => ({
+        key: `existing-${img.id}`,
+        id: img.id,
+        caption: img.caption || "",
+        name: img.student_name || "",
+        marks: img.obtained_marks ?? "",
+        preview: resolveMediaUrl(img.media_url),
+      }))
+    );
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const addFiles = (e) => {
     const picked = Array.from(e.target.files || []);
@@ -70,21 +104,39 @@ function PagePostsTab() {
     if (picked.length > room) setSubmitError(`Up to ${MAX_POST_IMAGES} images per post.`);
     setImages((prev) => [
       ...prev,
-      ...picked.slice(0, room).map((file) => ({ key: `${file.name}-${Math.random()}`, file, caption: "", preview: URL.createObjectURL(file) })),
+      ...picked
+        .slice(0, room)
+        .map((file) => ({ key: `${file.name}-${Math.random()}`, file, caption: "", name: "", marks: "", preview: URL.createObjectURL(file) })),
     ]);
   };
 
-  const updateCaption = (key, caption) => setImages((prev) => prev.map((img) => (img.key === key ? { ...img, caption } : img)));
+  const updateImage = (key, changes) => setImages((prev) => prev.map((img) => (img.key === key ? { ...img, ...changes } : img)));
   const removeImage = (key) => {
     const img = images.find((i) => i.key === key);
-    if (img) URL.revokeObjectURL(img.preview);
+    if (img) revokePreviews([img]);
     setImages((prev) => prev.filter((i) => i.key !== key));
+  };
+
+  const validate = () => {
+    if (!isResult) return !form.body.trim() && images.length === 0 ? "Add some content or at least one image." : "";
+    const total = Number(form.total_marks);
+    if (!form.class_label) return "Choose the class.";
+    if (!total || total <= 0) return "Enter the total mark.";
+    if (images.length === 0) return "Add at least one student photo.";
+    for (const img of images) {
+      if (!img.name.trim()) return "Enter the name for every student.";
+      const obtained = Number(img.marks);
+      if (img.marks === "" || Number.isNaN(obtained)) return `Enter the obtained mark for ${img.name.trim()}.`;
+      if (obtained < 0 || obtained > total) return `Mark for ${img.name.trim()} must be between 0 and ${total}.`;
+    }
+    return "";
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.body.trim() && images.length === 0) {
-      setSubmitError("Add some content or at least one image.");
+    const problem = validate();
+    if (problem) {
+      setSubmitError(problem);
       return;
     }
     setSubmitError("");
@@ -94,17 +146,27 @@ function PagePostsTab() {
       formData.append("page", form.page);
       formData.append("title", form.title);
       if (form.body.trim()) formData.append("body", form.body);
+      if (isResult) {
+        formData.append("class_label", form.class_label);
+        formData.append("total_marks", form.total_marks);
+      }
       images.forEach((img) => {
-        formData.append("images", img.file);
-        formData.append("captions", img.caption);
+        const prefix = img.file ? "" : "keep_";
+        if (img.file) formData.append("images", img.file);
+        else formData.append("keep_ids", img.id);
+        if (isResult) {
+          formData.append(`${prefix}names`, img.name);
+          formData.append(`${prefix}marks`, img.marks);
+        } else {
+          formData.append(`${prefix}captions`, img.caption);
+        }
       });
-      await api.postForm("/posts", formData);
-      setForm((f) => ({ ...f, title: "", body: "" }));
-      images.forEach((img) => URL.revokeObjectURL(img.preview));
-      setImages([]);
+      if (editingId) await api.putForm(`/posts/${editingId}`, formData);
+      else await api.postForm("/posts", formData);
+      resetForm();
       reload();
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : "Could not publish the post.");
+      setSubmitError(err instanceof ApiError ? err.message : editingId ? "Could not save the post." : "Could not publish the post.");
     } finally {
       setSaving(false);
     }
@@ -113,13 +175,21 @@ function PagePostsTab() {
   const handleDelete = async (id) => {
     if (!window.confirm("Remove this post from the website?")) return;
     await api.delete(`/posts/${id}`);
+    if (id === editingId) resetForm();
     reload();
   };
 
   return (
     <div className="grid lg:grid-cols-3 gap-5">
       <Card className="p-5 lg:col-span-1">
-        <h2 className="font-heading font-bold text-navy text-sm mb-4">New Post</h2>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h2 className="font-heading font-bold text-navy text-sm">{editingId ? "Edit Post" : "New Post"}</h2>
+          {editingId && (
+            <button type="button" onClick={resetForm} className="text-xs font-semibold text-navy/50 hover:text-navy">
+              Cancel
+            </button>
+          )}
+        </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <FormField label="Show on page" htmlFor="p-page" required>
             <select
@@ -135,44 +205,96 @@ function PagePostsTab() {
               ))}
             </select>
           </FormField>
-          <FormField label="Title" htmlFor="p-title" required>
+          {isResult && (
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Class" htmlFor="p-class" required>
+                <select
+                  id="p-class"
+                  value={form.class_label}
+                  onChange={(e) => setForm((f) => ({ ...f, class_label: e.target.value }))}
+                  className={inputClass}
+                >
+                  <option value="">Select</option>
+                  {RESULT_CLASSES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField label="Total Mark" htmlFor="p-total" required>
+                <input
+                  id="p-total"
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 500"
+                  value={form.total_marks}
+                  onChange={(e) => setForm((f) => ({ ...f, total_marks: e.target.value }))}
+                  className={inputClass}
+                />
+              </FormField>
+            </div>
+          )}
+          <FormField label={isResult ? "Heading" : "Title"} htmlFor="p-title" required>
             <input
               id="p-title"
               required
-              placeholder="e.g. Quarterly Exam Toppers 2026"
+              placeholder={isResult ? "e.g. Quarterly Exam Toppers" : "e.g. District Level Kabaddi Winners"}
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               className={inputClass}
             />
           </FormField>
-          <FormField label="Content" htmlFor="p-body" hint="Optional if you add images">
+          <FormField label="Content" htmlFor="p-body" hint={isResult ? "Optional" : "Optional if you add images"}>
             <textarea
               id="p-body"
-              rows={4}
+              rows={isResult ? 2 : 4}
               value={form.body}
               onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
               className={inputClass}
             />
           </FormField>
           <div>
-            <p className="text-sm font-semibold text-navy mb-1.5">Images</p>
+            <p className="text-sm font-semibold text-navy mb-1.5">{isResult ? "Students" : "Images"}</p>
             {images.length > 0 && (
               <div className="flex flex-col gap-2.5 mb-2.5">
                 {images.map((img) => (
                   <div key={img.key} className="flex items-center gap-2.5">
                     <img src={img.preview} alt="" className="w-14 h-14 rounded-lg object-cover border border-navy/8 shrink-0" />
-                    <input
-                      value={img.caption}
-                      onChange={(e) => updateCaption(img.key, e.target.value)}
-                      placeholder="Caption — e.g. Priya S, 10A · 492/500"
-                      aria-label="Image caption"
-                      className={`${inputClass} min-w-0`}
-                    />
+                    {isResult ? (
+                      <div className="flex-1 min-w-0 grid grid-cols-[1fr_5.5rem] gap-2">
+                        <input
+                          value={img.name}
+                          onChange={(e) => updateImage(img.key, { name: capitalizeWords(e.target.value) })}
+                          placeholder="Student name"
+                          aria-label="Student name"
+                          className={`${inputClass} min-w-0`}
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={img.marks}
+                          onChange={(e) => updateImage(img.key, { marks: e.target.value })}
+                          placeholder="Mark"
+                          aria-label="Obtained mark"
+                          className={`${inputClass} min-w-0`}
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        value={img.caption}
+                        onChange={(e) => updateImage(img.key, { caption: e.target.value })}
+                        placeholder="Caption (optional)"
+                        aria-label="Image caption"
+                        className={`${inputClass} min-w-0 flex-1`}
+                      />
+                    )}
                     <button
                       type="button"
                       onClick={() => removeImage(img.key)}
                       className="text-red-500/70 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 shrink-0"
-                      aria-label="Remove image"
+                      aria-label="Remove"
                     >
                       <Icon name="X" size={15} />
                     </button>
@@ -188,7 +310,7 @@ function PagePostsTab() {
                   onClick={() => fileInput.current?.click()}
                   className="w-full border border-dashed border-navy/20 rounded-xl py-2.5 text-sm font-semibold text-navy/60 hover:border-gold hover:text-navy transition-colors flex items-center justify-center gap-2"
                 >
-                  <Icon name="ImagePlus" size={16} /> Add images ({images.length}/{MAX_POST_IMAGES})
+                  <Icon name="ImagePlus" size={16} /> {isResult ? "Add student photos" : "Add images"} ({images.length}/{MAX_POST_IMAGES})
                 </button>
               </>
             )}
@@ -200,7 +322,7 @@ function PagePostsTab() {
             disabled={saving}
             className="bg-gold text-navy-dark font-semibold text-sm py-2.5 rounded-full hover:bg-gold-light transition-colors disabled:opacity-60"
           >
-            {saving ? "Publishing…" : "Publish Post"}
+            {editingId ? (saving ? "Saving…" : "Save Changes") : saving ? "Publishing…" : "Publish Post"}
           </button>
         </form>
       </Card>
@@ -221,32 +343,60 @@ function PagePostsTab() {
         {!loading && (posts || []).length === 0 && <p className="text-sm text-navy/50">No posts yet.</p>}
         <div className="flex flex-col gap-3">
           {(posts || []).map((post) => (
-            <div key={post.id} className="border border-navy/8 rounded-xl p-4">
+            <div
+              key={post.id}
+              className={`border rounded-xl p-4 transition-colors ${post.id === editingId ? "border-gold bg-gold/5" : "border-navy/8"}`}
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <span className="inline-block text-[11px] font-semibold uppercase tracking-wide text-gold-dark bg-gold/12 rounded-full px-2.5 py-0.5 mb-1.5">
-                    {pageLabel[post.page] || post.page}
-                  </span>
+                  <div className="flex flex-wrap gap-1.5 mb-1.5">
+                    <span className="inline-block text-[11px] font-semibold uppercase tracking-wide text-gold-dark bg-gold/12 rounded-full px-2.5 py-0.5">
+                      {pageLabel[post.page] || post.page}
+                    </span>
+                    {post.page === "results" && (
+                      <span className="inline-block text-[11px] font-semibold text-navy bg-navy/6 rounded-full px-2.5 py-0.5">
+                        {resultClassLabel(post.class_label)} · Total {post.total_marks}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm font-semibold text-navy">{post.title}</p>
                   {post.body && <p className="text-xs text-navy/55 mt-1 line-clamp-2 whitespace-pre-line">{post.body}</p>}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(post.id)}
-                  className="text-red-500/70 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 shrink-0"
-                  aria-label="Remove post"
-                >
-                  <Icon name="Trash2" size={15} />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(post)}
+                    className="text-navy/55 hover:text-navy p-1.5 rounded-lg hover:bg-navy/5"
+                    aria-label="Edit post"
+                  >
+                    <Icon name="Pencil" size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(post.id)}
+                    className="text-red-500/70 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50"
+                    aria-label="Remove post"
+                  >
+                    <Icon name="Trash2" size={15} />
+                  </button>
+                </div>
               </div>
               {post.images.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {post.images.map((img) => (
-                    <div key={img.id} className="w-20">
-                      <img src={resolveMediaUrl(img.media_url)} alt={img.caption || ""} className="w-20 h-20 rounded-lg object-cover border border-navy/8" />
-                      {img.caption && <p className="text-[10px] text-navy/60 mt-1 truncate">{img.caption}</p>}
-                    </div>
-                  ))}
+                  {post.images.map((img) => {
+                    const label = post.page === "results" ? img.student_name : img.caption;
+                    return (
+                      <div key={img.id} className="w-20">
+                        <img src={resolveMediaUrl(img.media_url)} alt={label || ""} className="w-20 h-20 rounded-lg object-cover border border-navy/8" />
+                        {label && <p className="text-[10px] text-navy/60 mt-1 truncate">{label}</p>}
+                        {post.page === "results" && (
+                          <p className="text-[10px] font-semibold text-navy">
+                            {img.obtained_marks}/{post.total_marks}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -8,6 +8,7 @@ import Icon from "../components/ui/Icon";
 import AnimatedCounter from "../components/ui/AnimatedCounter";
 import SEO from "../components/utility/SEO";
 import PagePosts from "../components/sections/PagePosts";
+import ResultPosts from "../components/sections/ResultPosts";
 import { achievements, achievementCategories, boardResults } from "../data/schoolData";
 
 const categoryIcon = {
@@ -38,6 +39,7 @@ export default function Achievements() {
         trail={[{ label: "Academics", to: "/academics" }, { label: "Achievements & Results" }]}
       />
 
+      <ResultPosts />
       <PagePosts page="achievements" eyebrow="Recent Achievements" title="Celebrating our students." />
 
       <section className="py-20 sm:py-28">

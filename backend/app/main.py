@@ -42,9 +42,18 @@ def initialize_schema_and_reference_classes():
     """
     Base.metadata.create_all(bind=engine)
     # create_all never alters existing tables, so add columns introduced after a table was first created.
-    if "components" not in {c["name"] for c in inspect(engine).get_columns("marks")}:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE marks ADD COLUMN components JSON NULL"))
+    added_columns = [
+        ("marks", "components", "JSON"),
+        ("page_posts", "class_label", "VARCHAR(20)"),
+        ("page_posts", "total_marks", "INTEGER"),
+        ("page_post_images", "student_name", "VARCHAR(120)"),
+        ("page_post_images", "obtained_marks", "DOUBLE PRECISION"),
+    ]
+    inspector = inspect(engine)
+    for table, column, ddl_type in added_columns:
+        if column not in {c["name"] for c in inspector.get_columns(table)}:
+            with engine.begin() as conn:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type} NULL"))
     classes = [
         ("6A", 6, "A", None), ("6B", 6, "B", None), ("7A", 7, "A", None), ("7B", 7, "B", None),
         ("8A", 8, "A", None), ("8B", 8, "B", None), ("9A", 9, "A", None), ("9B", 9, "B", None),

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -231,6 +231,9 @@ class PagePost(Base):
     page: Mapped[str] = mapped_column(String(40), index=True)
     title: Mapped[str] = mapped_column(String(200))
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Results posts only: the standard (e.g. "10") and the exam's total marks.
+    class_label: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    total_marks: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_published: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
     images: Mapped[list["PagePostImage"]] = relationship(order_by="PagePostImage.sort_order", cascade="all, delete-orphan", lazy="selectin")
@@ -242,6 +245,9 @@ class PagePostImage(Base):
     post_id: Mapped[int] = mapped_column(ForeignKey("page_posts.id", ondelete="CASCADE"), index=True)
     media_url: Mapped[str] = mapped_column(String(1000))
     caption: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Results posts only: the topper's name and marks obtained.
+    student_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    obtained_marks: Mapped[float | None] = mapped_column(Float, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
 

@@ -809,15 +809,51 @@ def delete_gallery_item(item_id: int, db: Session = Depends(get_db), _: Account 
     return Response(status_code=204)
 
 
-# Page posts: admin picks a public page, adds title/content + images (e.g. quarterly exam toppers)
-POST_PAGES={"achievements","sports","school-life","events"}
+# Page posts: admin picks a public page, adds title/content + images (e.g. quarterly exam toppers).
+# "results" posts are class-wise toppers: class + total marks on the post, name + obtained marks per photo.
+POST_PAGES={"achievements","results","sports","school-life","events"}
+RESULT_CLASSES={"6","7","8","9","10","11","12"}
 POST_IMAGE_TYPES={"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/gif":"gif"}
 MAX_POST_IMAGES=6
 
 
 def serialize_post(post: PagePost) -> dict:
     return {"id":post.id,"page":post.page,"title":post.title,"body":post.body,"created_at":post.created_at,
-        "images":[{"id":img.id,"media_url":img.media_url,"caption":img.caption} for img in post.images]}
+        "class_label":post.class_label,"total_marks":post.total_marks,
+        "images":[{"id":img.id,"media_url":img.media_url,"caption":img.caption,"student_name":img.student_name,
+            "obtained_marks":img.obtained_marks} for img in post.images]}
+
+
+def capitalize_words(value: str) -> str:
+    """'priya m' -> 'Priya M' (only the first letter of each word is changed)."""
+    return " ".join(word[:1].upper()+word[1:] for word in value.split())
+
+
+def build_entries(page: str, total_marks: int | None, count: int, captions: list[str], names: list[str], marks: list[str]) -> list[dict]:
+    """Per-image fields for `count` images, validated for the post's page type."""
+    at=lambda values,i: values[i].strip() if i<len(values) else ""
+    entries=[]
+    for i in range(count):
+        if page!="results":
+            entries.append({"caption":at(captions,i) or None,"student_name":None,"obtained_marks":None}); continue
+        name=capitalize_words(at(names,i))
+        if not name: raise HTTPException(422,"Enter the name for every student")
+        try: obtained=float(at(marks,i))
+        except ValueError: raise HTTPException(422,f"Enter the obtained mark for {name}")
+        if obtained<0 or obtained>total_marks: raise HTTPException(422,f"Mark for {name} must be between 0 and {total_marks}")
+        entries.append({"caption":None,"student_name":name,"obtained_marks":obtained})
+    return entries
+
+
+def validate_post_fields(page: str, title: str, body: str | None, image_count: int, class_label: str | None, total_marks: int | None):
+    if page not in POST_PAGES: raise HTTPException(422,f"page must be one of: {', '.join(sorted(POST_PAGES))}")
+    if not title.strip(): raise HTTPException(422,"Title is required")
+    if image_count>MAX_POST_IMAGES: raise HTTPException(422,f"Up to {MAX_POST_IMAGES} images per post")
+    if page=="results":
+        if class_label not in RESULT_CLASSES: raise HTTPException(422,"Choose a class (6 to 12)")
+        if not total_marks or total_marks<=0: raise HTTPException(422,"Enter the total mark")
+        if not image_count: raise HTTPException(422,"Add at least one student")
+    elif not image_count and not (body or "").strip(): raise HTTPException(422,"Add some content or at least one image")
 
 
 @router.get("/posts", summary="List published posts, optionally for one public page")
@@ -832,15 +868,70 @@ async def create_post(
     page: str = Form(...),
     title: str = Form(...),
     body: str | None = Form(None),
+    class_label: str | None = Form(None),
+    total_marks: int | None = Form(None),
     captions: list[str] = Form([]),
+    names: list[str] = Form([]),
+    marks: list[str] = Form([]),
     images: list[UploadFile] = File([]),
     db: Session = Depends(get_db),
     _: Account = Depends(require_roles("admin")),
 ):
-    if page not in POST_PAGES: raise HTTPException(422,f"page must be one of: {', '.join(sorted(POST_PAGES))}")
-    if not title.strip(): raise HTTPException(422,"Title is required")
-    if len(images)>MAX_POST_IMAGES: raise HTTPException(422,f"Up to {MAX_POST_IMAGES} images per post")
-    if not images and not (body or "").strip(): raise HTTPException(422,"Add some content or at least one image")
+    validate_post_fields(page,title,body,len(images),class_label,total_marks)
+    entries=build_entries(page,total_marks,len(images),captions,names,marks)
+    files=await read_post_images(images)
+    is_result=page=="results"
+    post=PagePost(page=page,title=title.strip(),body=(body or "").strip() or None,is_published=True,
+        class_label=class_label if is_result else None,total_marks=total_marks if is_result else None)
+    save_post_images(post,files,entries,start=0)
+    db.add(post); db.commit(); db.refresh(post)
+    return serialize_post(post)
+
+
+@router.put("/posts/{post_id}", summary="Edit a post: fields, kept images (with their captions/names/marks), and new images")
+async def update_post(
+    post_id: int,
+    page: str = Form(...),
+    title: str = Form(...),
+    body: str | None = Form(None),
+    class_label: str | None = Form(None),
+    total_marks: int | None = Form(None),
+    keep_ids: list[int] = Form([]),
+    keep_captions: list[str] = Form([]),
+    keep_names: list[str] = Form([]),
+    keep_marks: list[str] = Form([]),
+    captions: list[str] = Form([]),
+    names: list[str] = Form([]),
+    marks: list[str] = Form([]),
+    images: list[UploadFile] = File([]),
+    db: Session = Depends(get_db),
+    _: Account = Depends(require_roles("admin")),
+):
+    post=db.get(PagePost,post_id)
+    if not post or not post.is_published: raise HTTPException(404,"Post not found")
+    existing={img.id:img for img in post.images}
+    if any(i not in existing for i in keep_ids): raise HTTPException(422,"An image does not belong to this post")
+    validate_post_fields(page,title,body,len(keep_ids)+len(images),class_label,total_marks)
+    kept_entries=build_entries(page,total_marks,len(keep_ids),keep_captions,keep_names,keep_marks)
+    new_entries=build_entries(page,total_marks,len(images),captions,names,marks)
+    files=await read_post_images(images)
+    is_result=page=="results"
+    post.page=page; post.title=title.strip(); post.body=(body or "").strip() or None
+    post.class_label=class_label if is_result else None; post.total_marks=total_marks if is_result else None
+    # Kept images stay first in the order sent; anything not kept is dropped from the post.
+    for index,(image_id,entry) in enumerate(zip(keep_ids,kept_entries)):
+        img=existing[image_id]
+        img.sort_order=index
+        for key,value in entry.items(): setattr(img,key,value)
+    for image_id,img in existing.items():
+        if image_id not in keep_ids: post.images.remove(img)
+    save_post_images(post,files,new_entries,start=len(keep_ids))
+    post.images.sort(key=lambda img: img.sort_order)
+    db.commit(); db.refresh(post)
+    return serialize_post(post)
+
+
+async def read_post_images(images: list[UploadFile]) -> list[tuple[bytes,str]]:
     files=[]
     for media in images:
         if media.content_type not in POST_IMAGE_TYPES: raise HTTPException(415,"Upload JPEG, PNG, WebP, or GIF images")
@@ -848,16 +939,16 @@ async def create_post(
         if len(contents)>10*1024*1024: raise HTTPException(413,"Each image must be 10 MB or less")
         if not contents: raise HTTPException(422,"An uploaded image is empty")
         files.append((contents,POST_IMAGE_TYPES[media.content_type]))
+    return files
+
+
+def save_post_images(post: PagePost, files: list[tuple[bytes,str]], entries: list[dict], start: int):
     directory=Path(__file__).resolve().parents[2]/"uploads"/"posts"
     directory.mkdir(parents=True,exist_ok=True)
-    post=PagePost(page=page,title=title.strip(),body=(body or "").strip() or None,is_published=True)
-    for index,(contents,ext) in enumerate(files):
+    for index,((contents,ext),entry) in enumerate(zip(files,entries)):
         filename=f"{uuid4().hex}.{ext}"
         (directory/filename).write_bytes(contents)
-        caption=(captions[index].strip() if index<len(captions) else "") or None
-        post.images.append(PagePostImage(media_url=f"/uploads/posts/{filename}",caption=caption,sort_order=index))
-    db.add(post); db.commit(); db.refresh(post)
-    return serialize_post(post)
+        post.images.append(PagePostImage(media_url=f"/uploads/posts/{filename}",sort_order=start+index,**entry))
 
 
 @router.delete("/posts/{post_id}", status_code=204, response_class=Response)

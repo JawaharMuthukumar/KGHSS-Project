@@ -76,6 +76,7 @@ export const api = {
   /** Returns a Blob (e.g. certificate PDF download) instead of parsed JSON. */
   getBlob: (path, opts) => request(path, { ...opts, method: "GET" }),
   postForm: (path, formData, opts) => request(path, { ...opts, method: "POST", body: formData, isForm: true }),
+  putForm: (path, formData, opts) => request(path, { ...opts, method: "PUT", body: formData, isForm: true }),
 };
 
 export function getStoredToken() {

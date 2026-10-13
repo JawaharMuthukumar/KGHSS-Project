@@ -15,7 +15,11 @@ export default function MyStudents() {
   const { classCode, loading: loadingProfile } = useMyTeacherProfile();
   const [search, setSearch] = useState("");
   const [activeStudent, setActiveStudent] = useState(null);
-  const { data: students, loading, error } = useApiResource("/students", { enabled: Boolean(classCode) });
+  const { data: students, loading, error } = useApiResource("/students", {
+    query: { class_code: classCode },
+    enabled: Boolean(classCode),
+    deps: [classCode],
+  });
 
   const filtered = useMemo(() => {
     const list = students || [];

@@ -8,6 +8,7 @@ import { inputClass } from "../../components/portal/FormField";
 import Card from "../../components/ui/Card";
 import Icon from "../../components/ui/Icon";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { useAuth } from "../../context/AuthContext";
 import { DashboardSkeleton } from "../../components/ui/Skeleton";
 
@@ -19,12 +20,20 @@ const quickLinks = [
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
-  const { data, loading, error } = useApiResource("/dashboards/teacher");
+  const { profile: data, loading, error, classCode, classes } = useMyTeacherProfile();
 
-  const isClassTeacher = Boolean(data?.class_code);
+  const isClassTeacher = Boolean(classCode);
   const [search, setSearch] = useState("");
   const [activeStudent, setActiveStudent] = useState(null);
-  const { data: students, loading: loadingStudents } = useApiResource("/students", { enabled: isClassTeacher });
+  const { data: students, loading: loadingStudents } = useApiResource("/students", {
+    query: { class_code: classCode },
+    enabled: isClassTeacher,
+    deps: [classCode],
+  });
+
+  const roleLine = classes.length
+    ? `Class Teacher of ${classes.map((c) => c.code).join(", ")}`
+    : "Subject Teacher";
 
   const query = search.trim().toLowerCase();
   const matches = useMemo(() => {
@@ -41,7 +50,7 @@ export default function TeacherDashboard() {
     <div>
       <PortalPageHeader
         title={`Welcome back, ${user?.full_name || "Teacher"}`}
-        description={data?.subject ? `${data.subject} · ${data?.class_code ? `Class Teacher of ${data.class_code}` : "Subject Teacher"}` : undefined}
+        description={data ? [data.subject, roleLine].filter(Boolean).join(" · ") : undefined}
       />
 
       {error && <p className="text-sm text-red-600 mb-4">Could not load the dashboard. {error.message}</p>}
@@ -59,7 +68,12 @@ export default function TeacherDashboard() {
       )}
 
       {!loading && <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <StatCard label="Class Strength" value={loading ? undefined : data?.student_count ?? "—"} icon="GraduationCap" tone="navy" />
+        <StatCard
+          label={data?.strength ? `Enrolled of ${data.strength} · ${classCode}` : "Class Strength"}
+          value={loading ? undefined : data?.student_count ?? "—"}
+          icon="GraduationCap"
+          tone="navy"
+        />
         <StatCard
           label="Pending Certificate Requests"
           value={loading ? undefined : data?.pending_certificate_requests ?? "—"}

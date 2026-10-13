@@ -37,7 +37,7 @@ export default function TakeAttendance() {
     setError("");
     setSuccess("");
     Promise.all([
-      api.get("/students"),
+      api.get("/students", { query: { class_code: classCode } }),
       api.get(`/classes/${classCode}/attendance`, { query: { month } }),
       api.get(`/classes/${classCode}/leave-days`, { query: { month } }),
     ])

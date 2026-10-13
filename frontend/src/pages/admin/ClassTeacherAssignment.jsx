@@ -18,7 +18,7 @@ export default function ClassTeacherAssignment() {
 
   return (
     <div>
-      <PortalPageHeader title="Class Teacher Assignment" description="Assign one class teacher per class section." />
+      <PortalPageHeader title="Class Teacher Assignment" description="One class teacher per class section; a teacher can be class teacher of more than one section." />
 
       {error && <Banner tone="error" className="mb-4">Could not load classes. {error.message}</Banner>}
       {loading && <CardGridSkeleton count={8} />}
@@ -62,10 +62,19 @@ function ClassGroup({ title, classes, onSelect }) {
                 : "border-dashed border-navy/20 hover:border-gold/50 hover:bg-gold/5"
             }`}
           >
-            <p className="font-heading font-bold text-navy text-base mb-1">{cls.code}</p>
-            <p className="text-xs text-navy/50 mb-2">{cls.student_count} students</p>
+            <p className="font-heading font-bold text-navy text-base">{cls.code}</p>
+            <p className="text-[11px] text-navy/50 mb-1.5 truncate">
+              {[cls.group_name, cls.medium].filter(Boolean).join(" · ") || " "}
+            </p>
+            <p className="text-xs text-navy/50 mb-2">
+              {cls.student_count}
+              {cls.strength ? ` / ${cls.strength}` : ""} students
+            </p>
             {cls.class_teacher_name ? (
-              <p className="text-xs font-semibold text-emerald-700 truncate">{cls.class_teacher_name}</p>
+              <>
+                <p className="text-xs font-semibold text-emerald-700 truncate">{cls.class_teacher_name}</p>
+                {cls.class_teacher_phone && <p className="text-[11px] text-navy/50">{cls.class_teacher_phone}</p>}
+              </>
             ) : (
               <p className="text-xs font-semibold text-navy/40">Unassigned</p>
             )}
@@ -85,7 +94,9 @@ function AssignPanel({ cls, teachers, onDone }) {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return teachers;
-    return teachers.filter((t) => t.full_name.toLowerCase().includes(q) || t.subject.toLowerCase().includes(q));
+    return teachers.filter(
+      (t) => t.full_name.toLowerCase().includes(q) || (t.subject || "").toLowerCase().includes(q) || (t.phone || "").includes(q)
+    );
   }, [teachers, search]);
 
   const handleAssign = async () => {
@@ -142,7 +153,7 @@ function AssignPanel({ cls, teachers, onDone }) {
             />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-navy truncate">{t.full_name}</p>
-              <p className="text-xs text-navy/50">{t.subject} · {t.employee_id}</p>
+              <p className="text-xs text-navy/50">{[t.subject, t.employee_id, t.phone].filter(Boolean).join(" · ")}</p>
             </div>
           </label>
         ))}

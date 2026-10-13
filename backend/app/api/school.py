@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import current_account, require_roles
 from app.core.security import hash_password
-from app.services.permissions import teacher_profile, student_profile, assigned_class, can_access_class
+from app.services.permissions import teacher_profile, student_profile, assigned_class, assigned_classes, is_class_teacher_of, can_access_class
 from app.services.permissions import require_teacher_class_scope
 from app.services.mark_scheme import class_scheme, subject_components, subjects_for_class, terms_for_grade
 from app.models.entities import (Account, AcademicClass, Teacher, Student, ClassTeacherAssignment,
@@ -45,7 +45,7 @@ def list_classes(db: Session = Depends(get_db), account: Account = Depends(requi
         count = db.query(func.count(Student.id)).filter(Student.class_id == cls.id).scalar()
         ct = db.query(ClassTeacherAssignment).filter_by(class_id=cls.id, academic_year=cls.academic_year).first()
         teacher = db.get(Teacher, ct.teacher_id) if ct else None
-        result.append({"id": cls.id, "code": cls.code, "grade": cls.grade, "section": cls.section, "group_name": cls.group_name, "academic_year": cls.academic_year, "student_count": count, "class_teacher_id": teacher.id if teacher else None, "class_teacher_name": teacher.account.full_name if teacher else None})
+        result.append({"id": cls.id, "code": cls.code, "grade": cls.grade, "section": cls.section, "group_name": cls.group_name, "medium": cls.medium, "strength": cls.strength, "academic_year": cls.academic_year, "student_count": count, "class_teacher_id": teacher.id if teacher else None, "class_teacher_name": teacher.account.full_name if teacher else None, "class_teacher_phone": teacher.phone if teacher else None})
     return result
 
 
@@ -102,10 +102,8 @@ def delete_teacher(teacher_id: int, db: Session = Depends(get_db), _: Account = 
 def assign_class_teacher(class_code: str, data: ClassTeacherIn, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
     cls = get_class(db, class_code); teacher = db.get(Teacher, data.teacher_id)
     if not teacher: raise HTTPException(404, "Teacher not found")
+    # One class teacher per class; a teacher may be class teacher of several classes.
     old = db.query(ClassTeacherAssignment).filter_by(class_id=cls.id, academic_year=cls.academic_year).first()
-    other = db.query(ClassTeacherAssignment).filter_by(teacher_id=teacher.id, academic_year=cls.academic_year).first()
-    if other and other.class_id != cls.id:
-        db.delete(other); db.flush()
     if old: old.teacher_id = teacher.id
     else: db.add(ClassTeacherAssignment(class_id=cls.id, teacher_id=teacher.id, academic_year=cls.academic_year))
     db.commit(); return {"class_code": cls.code, "teacher_id": teacher.id, "teacher_name": teacher.account.full_name}
@@ -163,8 +161,7 @@ def create_student(data: StudentCreate, db: Session = Depends(get_db), account: 
     cls = get_class(db, data.class_code)
     if account.role == "teacher":
         teacher_or_admin(account, db, cls)
-        assigned = assigned_class(db, teacher_profile(db, account))
-        if not assigned or assigned.id != cls.id: raise HTTPException(403, "Only the class teacher can enroll students")
+        if not is_class_teacher_of(db, teacher_profile(db, account), cls): raise HTTPException(403, "Only the class teacher can enroll students")
     registration = data.registration_no or f"GHSS/{cls.academic_year.split('-')[0]}/{(db.query(func.count(Student.id)).scalar() or 0) + 1:04d}"
     username = registration
     if db.query(Account).filter_by(username=username).first() or db.query(Student).filter_by(registration_no=registration).first(): raise HTTPException(409, "Registration number already exists")
@@ -314,7 +311,8 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
 
     # ---- HM summary ----
     mediums = [medium_key(s) for s in students if s.medium]
-    medium = max(set(mediums), key=mediums.count) if mediums else ("EM" if cls.section.upper().endswith("B") else "TM")
+    class_medium = ("EM" if cls.medium == "English" else "TM") if cls.medium else ("EM" if cls.section.upper().endswith("B") else "TM")
+    medium = max(set(mediums), key=mediums.count) if mediums else class_medium
     def by_gender(pred):
         out = {"M": 0, "F": 0}
         for r in rows:
@@ -481,8 +479,7 @@ def replace_teacher_timetable(data: TimetableIn, db: Session = Depends(get_db), 
 def replace_class_timetable(class_code: str, data: TimetableIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
     cls=get_class(db,class_code); teacher_or_admin(account,db,cls)
     if account.role=="teacher":
-        mine=teacher_profile(db,account); assigned=assigned_class(db,mine)
-        if not assigned or assigned.id!=cls.id: raise HTTPException(403,"Only the class teacher may edit this timetable")
+        if not is_class_teacher_of(db,teacher_profile(db,account),cls): raise HTTPException(403,"Only the class teacher may edit this timetable")
     db.query(TimetableEntry).filter_by(class_id=cls.id,academic_year=data.academic_year).delete()
     db.add_all([TimetableEntry(class_id=cls.id,teacher_id=e.teacher_id,weekday=e.weekday,period=e.period,subject=e.subject,room=e.room,academic_year=data.academic_year) for e in data.entries])
     db.commit(); return {"class_code":cls.code,"entries_saved":len(data.entries)}
@@ -567,9 +564,9 @@ def certificate_requests(db: Session = Depends(get_db), account: Account = Depen
     q=db.query(CertificateRequest)
     if account.role=="student": q=q.filter_by(student_id=student_profile(db,account).id)
     elif account.role=="teacher":
-        cls=assigned_class(db,teacher_profile(db,account))
-        if not cls: return []
-        ids=[s.id for s in db.query(Student).filter_by(class_id=cls.id).all()]; q=q.filter(CertificateRequest.student_id.in_(ids))
+        class_ids=[c.id for c in assigned_classes(db,teacher_profile(db,account))]
+        if not class_ids: return []
+        ids=[s.id for s in db.query(Student).filter(Student.class_id.in_(class_ids)).all()]; q=q.filter(CertificateRequest.student_id.in_(ids))
     return q.order_by(CertificateRequest.created_at.desc()).all()
 
 
@@ -637,9 +634,9 @@ def list_leave_requests(scope: str = Query("mine", pattern="^(mine|review)$"), d
     q = db.query(LeaveRequest)
     if scope == "mine" or account.role == "student": q = q.filter_by(applicant_id=account.id)
     elif account.role == "teacher":
-        cls = assigned_class(db, teacher_profile(db, account))
-        if not cls: return []
-        q = q.filter_by(applicant_role="student", class_id=cls.id)
+        class_ids = [c.id for c in assigned_classes(db, teacher_profile(db, account))]
+        if not class_ids: return []
+        q = q.filter(LeaveRequest.applicant_role == "student", LeaveRequest.class_id.in_(class_ids))
     else: q = q.filter_by(applicant_role="teacher")
     return [leave_out(db, r) for r in q.order_by(LeaveRequest.created_at.desc()).all()]
 
@@ -970,13 +967,17 @@ def admin_dashboard(db: Session = Depends(get_db), _: Account = Depends(require_
 
 
 @router.get("/dashboards/teacher")
-def teacher_dashboard(db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
-    teacher=teacher_profile(db,account); cls=assigned_class(db,teacher)
+def teacher_dashboard(class_code: str | None = None, db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
+    """`class_code` picks which of the teacher's classes the stats are for (defaults to their first class)."""
+    teacher=teacher_profile(db,account); classes=assigned_classes(db,teacher)
+    cls=assigned_class(db,teacher,class_code) or (classes[0] if classes else None)
     pending=0; count=0
     if cls:
         ids=[s.id for s in db.query(Student).filter_by(class_id=cls.id).all()]; count=len(ids)
         pending=db.query(func.count(CertificateRequest.id)).filter(CertificateRequest.student_id.in_(ids),CertificateRequest.status=="pending").scalar() if ids else 0
-    return {"teacher_id":teacher.id,"full_name":account.full_name,"subject":teacher.subject,"class_code":cls.code if cls else None,"student_count":count,"pending_certificate_requests":pending,"timetable":my_teacher_timetable(db,account)}
+    return {"teacher_id":teacher.id,"full_name":account.full_name,"subject":teacher.subject,"class_code":cls.code if cls else None,
+            "classes":[{"code":c.code,"grade":c.grade,"section":c.section,"group_name":c.group_name,"medium":c.medium,"strength":c.strength} for c in classes],
+            "student_count":count,"strength":cls.strength if cls else None,"pending_certificate_requests":pending,"timetable":my_teacher_timetable(db,account)}
 
 
 @router.get("/dashboards/student")

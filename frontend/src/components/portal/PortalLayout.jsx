@@ -4,6 +4,31 @@ import Icon from "../ui/Icon";
 import ComplaintFab from "./ComplaintFab";
 import { useAuth } from "../../context/AuthContext";
 import { portalNav, roleLabels } from "./navConfig";
+import { selectTeacherClass, useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
+
+/** Lets a teacher who is Class Teacher of several sections pick which one the portal pages work on. */
+function TeacherClassSwitcher() {
+  const { classCode, classes } = useMyTeacherProfile();
+  if (classes.length < 2) return null;
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <span className="hidden sm:inline text-navy/55 font-medium">My class</span>
+      <select
+        value={classCode || ""}
+        onChange={(e) => selectTeacherClass(e.target.value)}
+        className="rounded-xl border border-navy/15 bg-white px-3 py-1.5 font-semibold text-navy focus:outline-none focus:border-gold"
+      >
+        {classes.map((c) => (
+          <option key={c.code} value={c.code}>
+            {c.code}
+            {c.group_name ? ` · ${c.group_name}` : ""}
+            {c.medium ? ` · ${c.medium}` : ""}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 export default function PortalLayout({ role }) {
   const { user, logout } = useAuth();
@@ -81,6 +106,7 @@ export default function PortalLayout({ role }) {
           >
             <Icon name="Menu" size={22} />
           </button>
+          {role === "teacher" && <TeacherClassSwitcher />}
           <div className="ml-auto relative">
             <button
               type="button"

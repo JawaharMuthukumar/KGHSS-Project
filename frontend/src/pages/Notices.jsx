@@ -6,6 +6,7 @@ import Icon from "../components/ui/Icon";
 import SEO from "../components/utility/SEO";
 import { useApiResource } from "../hooks/useApiResource";
 import { formatDate } from "../utils/formatDate";
+import { ContentSkeleton } from "../components/ui/Skeleton";
 
 export default function Notices() {
   const [search, setSearch] = useState("");
@@ -49,6 +50,8 @@ export default function Notices() {
             </div>
           )}
 
+          {!error && loading && <ContentSkeleton rows={5} />}
+
           {!error && !loading && filtered.length === 0 && (
             <div className="text-center py-20 flex flex-col items-center gap-3">
               <Icon name="Bell" size={32} className="text-ink/25" />
@@ -56,7 +59,7 @@ export default function Notices() {
             </div>
           )}
 
-          {!error && filtered.length > 0 && (
+          {!error && !loading && filtered.length > 0 && (
             <Reveal className="bg-white rounded-3xl border border-navy/8 shadow-soft divide-y divide-navy/8">
               {filtered.map((notice) => (
                 <div key={notice.id} className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-5 px-6 py-5">

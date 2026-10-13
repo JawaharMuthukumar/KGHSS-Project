@@ -9,6 +9,7 @@ import SEO from "../components/utility/SEO";
 import PagePosts from "../components/sections/PagePosts";
 import { useApiResource } from "../hooks/useApiResource";
 import { formatDate, formatDateParts } from "../utils/formatDate";
+import { CardGridSkeleton } from "../components/ui/Skeleton";
 
 const statusTabs = [
   { id: "all", label: "All Events" },
@@ -109,6 +110,8 @@ export default function Events() {
             </div>
           )}
 
+          {!error && loading && <CardGridSkeleton count={6} image />}
+
           {!error && !loading && filtered.length === 0 && (
             <div className="text-center py-20 flex flex-col items-center gap-3">
               <Icon name="CalendarDays" size={34} className="text-ink/25" />
@@ -116,7 +119,7 @@ export default function Events() {
             </div>
           )}
 
-          {!error && filtered.length > 0 && (
+          {!error && !loading && filtered.length > 0 && (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {filtered.map((event, i) => {
                 const { day, month: monthLabel } = formatDateParts(event.event_date);

@@ -6,6 +6,7 @@ import Banner from "../portal/Banner";
 import { inputClass } from "../portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api } from "../../lib/apiClient";
+import { ContentSkeleton } from "../ui/Skeleton";
 
 export default function AttendanceReportPanel({ classCode, canUnlock = false }) {
   const [tab, setTab] = useState("months");
@@ -35,7 +36,7 @@ export default function AttendanceReportPanel({ classCode, canUnlock = false }) 
   };
 
   if (error) return <Banner tone="error">{error.message}</Banner>;
-  if (loading) return <p className="text-sm text-navy/50">Loading…</p>;
+  if (loading) return <ContentSkeleton rows={4} />;
   if (months.length === 0) return <Card className="p-8 text-center text-navy/50">No attendance recorded yet.</Card>;
 
   return (

@@ -4,6 +4,7 @@ import Banner from "../portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
 import { printElement } from "../../lib/printElement";
 import { PrintButton } from "./MyClassReport";
+import { ContentSkeleton } from "../ui/Skeleton";
 
 const cell = "border border-black px-1.5 py-1 text-center";
 const title = `${cell} font-bold tracking-[0.2em]`;
@@ -20,7 +21,7 @@ export default function HmClassReport({ classCode, term }) {
   });
 
   if (error) return <Banner tone="error">{error.message}</Banner>;
-  if (loading) return <p className="text-sm text-navy/50">Loading…</p>;
+  if (loading) return <ContentSkeleton rows={4} />;
   if (!data || !data.students.some((s) => s.appeared)) return <Card className="p-8 text-center text-navy/50">No marks recorded for {term}.</Card>;
 
   const hm = data.hm;

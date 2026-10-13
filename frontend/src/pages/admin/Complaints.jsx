@@ -6,6 +6,7 @@ import Banner from "../../components/portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
+import { ContentSkeleton } from "../../components/ui/Skeleton";
 
 export default function Complaints() {
   const { data: threads, loading, error, reload } = useApiResource("/complaints");
@@ -33,6 +34,7 @@ export default function Complaints() {
       <PortalPageHeader title="Complaints" description="Private student complaint threads." />
 
       {error && <Banner tone="error" className="mb-4">{error.message}</Banner>}
+      {loading && <ContentSkeleton rows={4} />}
       {!loading && (threads || []).length === 0 && <Card className="p-8 text-center text-navy/50">No complaint threads yet.</Card>}
 
       {(threads || []).length > 0 && (

@@ -3,6 +3,7 @@ import Icon from "../ui/Icon";
 import Banner from "../portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
 import { PASS_MARK } from "../../constants/academic";
+import { ContentSkeleton } from "../ui/Skeleton";
 
 export default function ClassMarkReport({ classCode, term }) {
   const { data, loading, error } = useApiResource(`/classes/${classCode}/mark-report`, {
@@ -12,7 +13,7 @@ export default function ClassMarkReport({ classCode, term }) {
   });
 
   if (error) return <Banner tone="error">{error.message}</Banner>;
-  if (loading) return <p className="text-sm text-navy/50">Loading…</p>;
+  if (loading) return <ContentSkeleton rows={4} />;
   if (!data || data.students.length === 0) return <Card className="p-8 text-center text-navy/50">No marks recorded for {term}.</Card>;
 
   const subjects = data.students[0].marks.map((m) => m.subject);

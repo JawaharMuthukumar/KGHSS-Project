@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Banner from "./Banner";
 import { api } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
+import { ContentSkeleton } from "../ui/Skeleton";
 
 export default function StudentProfilePanel({ studentId }) {
   const [tab, setTab] = useState("profile");
@@ -22,7 +23,7 @@ export default function StudentProfilePanel({ studentId }) {
   }, [tab, studentId, results]);
 
   if (error) return <Banner tone="error">{error}</Banner>;
-  if (!profile) return <p className="text-sm text-navy/50">Loading…</p>;
+  if (!profile) return <ContentSkeleton rows={3} />;
 
   return (
     <div>
@@ -63,7 +64,7 @@ export default function StudentProfilePanel({ studentId }) {
 
       {tab === "results" && (
         <div>
-          {!results && <p className="text-sm text-navy/50">Loading…</p>}
+          {!results && <ContentSkeleton rows={2} />}
           {results && results.results.length === 0 && <p className="text-sm text-navy/50">No marks recorded yet.</p>}
           {results && results.results.length > 0 && (
             <div className="flex flex-col gap-2">

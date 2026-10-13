@@ -8,6 +8,7 @@ import FormField, { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
+import { ContentSkeleton } from "../../components/ui/Skeleton";
 
 const statusTone = { pending: "navy", approved: "success", rejected: "danger" };
 const certTypes = [
@@ -100,8 +101,9 @@ export default function MyCertificates() {
         <Card className="p-5 lg:col-span-2">
           <h2 className="font-heading font-bold text-navy text-sm mb-4">My Requests</h2>
           {error && <Banner tone="error">{error.message}</Banner>}
+          {loading && <ContentSkeleton rows={3} />}
           {!loading && (requests || []).length === 0 && <p className="text-sm text-navy/50">No requests yet.</p>}
-          <div className="flex flex-col gap-3">
+          {!loading && <div className="flex flex-col gap-3">
             {(requests || []).map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-3 pb-3 border-b border-navy/6 last:border-0">
                 <div className="min-w-0">
@@ -125,7 +127,7 @@ export default function MyCertificates() {
                 </div>
               </div>
             ))}
-          </div>
+          </div>}
         </Card>
       </div>
     </div>

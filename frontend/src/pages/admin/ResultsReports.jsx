@@ -9,6 +9,7 @@ import ClassScorecard from "../../components/reports/ClassScorecard";
 import ConsolidatedReport from "../../components/reports/ConsolidatedReport";
 import { useApiResource } from "../../hooks/useApiResource";
 import { termsForGrade } from "../../constants/academic";
+import { TableSkeleton } from "../../components/ui/Skeleton";
 
 const tabs = [
   { id: "mark-report", label: "Class Mark Report", needsClass: true },
@@ -82,6 +83,7 @@ export default function ResultsReports() {
       <div className="mt-8">
         <h2 className="font-heading font-bold text-navy text-base mb-3">School-wide Averages — {term}</h2>
         {schoolWideError && <Banner tone="error">{schoolWideError.message}</Banner>}
+        {loadingSchoolWide && <Card className="p-0 overflow-hidden"><TableSkeleton rows={5} columns={3} /></Card>}
         {!loadingSchoolWide && schoolWide && (
           <Card className="p-0 overflow-hidden">
             <table className="w-full text-sm">

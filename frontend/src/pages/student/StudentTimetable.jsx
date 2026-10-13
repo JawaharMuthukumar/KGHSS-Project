@@ -3,6 +3,7 @@ import Card from "../../components/ui/Card";
 import Banner from "../../components/portal/Banner";
 import { WEEKDAYS, PERIODS } from "../../components/portal/timetableConstants";
 import { useApiResource } from "../../hooks/useApiResource";
+import { TableSkeleton } from "../../components/ui/Skeleton";
 
 export default function StudentTimetable() {
   const { data: profile } = useApiResource("/students/me/profile");
@@ -21,6 +22,8 @@ export default function StudentTimetable() {
       <PortalPageHeader title="Timetable" description={classCode ? `Class ${classCode}` : undefined} />
 
       {error && <Banner tone="error" className="mb-4">{error.message}</Banner>}
+
+      {loading && classCode && <Card className="p-0 overflow-hidden"><TableSkeleton rows={6} columns={6} /></Card>}
 
       {!loading && classCode && (
         <Card className="p-0 overflow-hidden">

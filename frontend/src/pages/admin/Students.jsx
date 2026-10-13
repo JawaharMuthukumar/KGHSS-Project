@@ -7,6 +7,7 @@ import Drawer from "../../components/portal/Drawer";
 import StudentProfilePanel from "../../components/portal/StudentProfilePanel";
 import { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
+import { TableSkeleton } from "../../components/ui/Skeleton";
 
 export default function Students() {
   const { data: classes } = useApiResource("/classes");
@@ -65,11 +66,7 @@ export default function Students() {
             </tr>
           </thead>
           <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-navy/40">Loading…</td>
-              </tr>
-            )}
+            {loading && <tr><td colSpan={6} className="p-0"><TableSkeleton rows={6} columns={5} /></td></tr>}
             {!loading && filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-navy/40">No students found.</td>

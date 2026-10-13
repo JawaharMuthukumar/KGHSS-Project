@@ -2,6 +2,7 @@ import PortalPageHeader from "../../components/portal/PortalPageHeader";
 import Card from "../../components/ui/Card";
 import Banner from "../../components/portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
+import { ContentSkeleton } from "../../components/ui/Skeleton";
 import { formatDate } from "../../utils/formatDate";
 
 export default function MyProfile() {
@@ -12,7 +13,7 @@ export default function MyProfile() {
       <PortalPageHeader title="My Profile" description="Your personal and academic details." />
 
       {error && <Banner tone="error" className="mb-4">{error.message}</Banner>}
-      {loading && <p className="text-sm text-navy/50">Loading…</p>}
+      {loading && <ContentSkeleton rows={3} />}
 
       {profile && (
         <Card className="p-6 max-w-2xl">

@@ -7,6 +7,7 @@ import { inputClass } from "../../components/portal/FormField";
 import { WEEKDAYS, PERIODS } from "../../components/portal/timetableConstants";
 import { useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { useApiResource } from "../../hooks/useApiResource";
+import { TableSkeleton } from "../../components/ui/Skeleton";
 import { api, ApiError } from "../../lib/apiClient";
 
 function cellKey(weekday, period) {
@@ -82,6 +83,8 @@ export default function ClassTimetable() {
       <PortalPageHeader title="Class Timetable" description={classCode ? `Class ${classCode}` : undefined} />
 
       {error && <Banner tone="error" className="mb-4">{error.message}</Banner>}
+
+      {loading && classCode && <Card className="p-0 overflow-hidden"><TableSkeleton rows={6} columns={6} /></Card>}
       {saveError && <Banner tone="error" className="mb-4">{saveError}</Banner>}
       {success && <Banner tone="success" className="mb-4">{success}</Banner>}
 

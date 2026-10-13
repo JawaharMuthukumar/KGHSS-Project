@@ -2,6 +2,7 @@ import Card from "../ui/Card";
 import Icon from "../ui/Icon";
 import Banner from "../portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
+import { ContentSkeleton } from "../ui/Skeleton";
 
 export default function ConsolidatedReport({ term }) {
   const { data, loading, error } = useApiResource("/reports/consolidated", {
@@ -11,7 +12,7 @@ export default function ConsolidatedReport({ term }) {
   });
 
   if (error) return <Banner tone="error">{error.message}</Banner>;
-  if (loading) return <p className="text-sm text-navy/50">Loading…</p>;
+  if (loading) return <ContentSkeleton rows={4} />;
   if (!data || data.top_rank_holders.length === 0) {
     return <Card className="p-8 text-center text-navy/50">No marks recorded for {term} across the school yet.</Card>;
   }

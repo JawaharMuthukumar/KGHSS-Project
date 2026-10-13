@@ -7,6 +7,7 @@ import Badge from "../../components/ui/Badge";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useAuth } from "../../context/AuthContext";
 import { formatDate } from "../../utils/formatDate";
+import { DashboardSkeleton } from "../../components/ui/Skeleton";
 
 const quickActions = [
   { to: "/admin/teachers", label: "Add Teacher", icon: "UserPlus" },
@@ -30,7 +31,9 @@ export default function AdminDashboard() {
 
       {error && <p className="text-sm text-red-600 mb-4">Could not load the dashboard. {error.message}</p>}
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      {loading && <DashboardSkeleton />}
+
+      {!loading && <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <StatCard label="Classes" value={loading ? undefined : data?.class_count} icon="School" tone="navy" />
         <StatCard label="Teachers" value={loading ? undefined : data?.teacher_count} icon="Users" tone="teal" />
         <StatCard label="Students" value={loading ? undefined : data?.student_count} icon="GraduationCap" tone="gold" />
@@ -46,9 +49,9 @@ export default function AdminDashboard() {
           icon="MessageSquare"
           tone="danger"
         />
-      </div>
+      </div>}
 
-      <div className="grid lg:grid-cols-3 gap-5">
+      {!loading && <div className="grid lg:grid-cols-3 gap-5">
         <Card className="p-5 lg:col-span-2">
           <h2 className="font-heading font-bold text-navy mb-4">Quick Actions</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -89,7 +92,7 @@ export default function AdminDashboard() {
             ))}
           </div>
         </Card>
-      </div>
+      </div>}
     </div>
   );
 }

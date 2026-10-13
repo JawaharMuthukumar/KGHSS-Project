@@ -9,6 +9,7 @@ export default function PortalLayout({ role }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const items = portalNav[role] || [];
 
   const handleLogout = () => {
@@ -68,17 +69,6 @@ export default function PortalLayout({ role }) {
             </NavLink>
           ))}
         </nav>
-
-        <div className="px-3 py-4 border-t border-white/10">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-sm font-medium text-white/70 hover:text-white hover:bg-white/8 transition-colors"
-          >
-            <Icon name="LogOut" size={17} />
-            Sign out
-          </button>
-        </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -91,14 +81,56 @@ export default function PortalLayout({ role }) {
           >
             <Icon name="Menu" size={22} />
           </button>
-          <div className="ml-auto flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-navy leading-tight">{user?.full_name}</p>
-              <p className="text-[11px] text-navy/50">{user?.username}</p>
-            </div>
-            <div className="w-9 h-9 rounded-full bg-navy/8 text-navy flex items-center justify-center font-semibold text-sm shrink-0">
-              {(user?.full_name || "?").slice(0, 1).toUpperCase()}
-            </div>
+          <div className="ml-auto relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              className="flex items-center gap-3 rounded-xl px-2 py-1 hover:bg-navy/5 transition-colors"
+            >
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-semibold text-navy leading-tight">{user?.full_name}</p>
+                <p className="text-[11px] text-navy/50">{user?.username}</p>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-navy/8 text-navy flex items-center justify-center font-semibold text-sm shrink-0">
+                {(user?.full_name || "?").slice(0, 1).toUpperCase()}
+              </div>
+              <Icon
+                name="ChevronDown"
+                size={16}
+                className={`text-navy/50 transition-transform ${menuOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {menuOpen && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Close menu"
+                  onClick={() => setMenuOpen(false)}
+                  className="fixed inset-0 z-40 cursor-default"
+                />
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 z-50 w-56 rounded-xl bg-white border border-navy/8 shadow-lg py-1.5"
+                >
+                  <div className="px-4 py-2.5 border-b border-navy/8 sm:hidden">
+                    <p className="text-sm font-semibold text-navy leading-tight truncate">{user?.full_name}</p>
+                    <p className="text-[11px] text-navy/50 truncate">{user?.username}</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <Icon name="LogOut" size={17} />
+                    Sign out
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </header>
 

@@ -20,7 +20,7 @@ from app.models.entities import (Account, AcademicClass, Teacher, Student, Class
     Notice, CertificateRequest, LeaveRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage,
     PagePost, PagePostImage)
 from app.schemas.common import (ClassIn, ClassTeacherIn, SubjectTeacherIn, TeacherCreate, TeacherUpdate,
-    StudentCreate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, NoticeUpdate, CertificateIn, DecisionIn,
+    StudentCreate, StudentUpdate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, NoticeUpdate, CertificateIn, DecisionIn,
     LeaveRequestIn, ComplaintMessageIn, EventIn, EventUpdate, GalleryIn, PublicContactIn)
 
 router = APIRouter(tags=["School"])
@@ -180,6 +180,29 @@ def get_student(student_id: int, db: Session = Depends(get_db), account: Account
     if not student: raise HTTPException(404, "Student not found")
     if account.role == "student" and student.account_id != account.id: raise HTTPException(403, "Student record access denied")
     if account.role == "teacher" and not can_access_class(db, account, student.school_class): raise HTTPException(403, "Class access denied")
+    return student_detail(student)
+
+
+@router.patch("/students/{student_id}", summary="Edit a student's profile (admin or class teacher)")
+def update_student(student_id: int, data: StudentUpdate, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    student = db.get(Student, student_id)
+    if not student: raise HTTPException(404, "Student not found")
+    if account.role == "teacher" and not is_class_teacher_of(db, teacher_profile(db, account), student.school_class): raise HTTPException(403, "Only the class teacher can edit this student")
+    # Blank strings from the form clear a field.
+    values = {key: (value.strip() or None) if isinstance(value, str) else value for key, value in data.model_dump(exclude_unset=True).items()}
+    if "full_name" in values:
+        if not values["full_name"]: raise HTTPException(422, "Full name is required")
+        student.account.full_name = values.pop("full_name")
+    if values.get("admission_no") and db.query(Student).filter(Student.admission_no == values["admission_no"], Student.id != student.id).first():
+        raise HTTPException(409, f"Admission number {values['admission_no']} already exists")
+    for key, value in values.items(): setattr(student, key, value)
+    if "father_phone" in values or "mother_phone" in values:
+        student.guardian_phone = student.father_phone or student.mother_phone or student.guardian_phone
+    db.commit(); db.refresh(student)
+    return student_detail(student)
+
+
+def student_detail(student: Student) -> dict:
     return {"id": student.id, "registration_no": student.registration_no, "admission_no": student.admission_no, "emis_no": student.emis_no, "umis_no": student.umis_no, "full_name": student.account.full_name, "class_code": student.school_class.code, "gender": student.gender, "date_of_birth": student.date_of_birth, "community": student.community, "medium": student.medium, "blood_group": student.blood_group, "father_name": student.father_name, "mother_name": student.mother_name, "father_phone": student.father_phone, "mother_phone": student.mother_phone, "guardian_phone": student.guardian_phone, "address": student.address}
 
 

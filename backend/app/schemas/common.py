@@ -56,6 +56,22 @@ class StudentCreate(BaseModel):
     address: str | None = None
 
 
+class StudentUpdate(BaseModel):
+    full_name: str | None = Field(default=None, min_length=2, max_length=160)
+    admission_no: str | None = None
+    emis_no: str | None = None
+    gender: str | None = None
+    date_of_birth: date | None = None
+    community: str | None = None
+    medium: str | None = None
+    blood_group: str | None = None
+    father_name: str | None = None
+    mother_name: str | None = None
+    father_phone: str | None = None
+    mother_phone: str | None = None
+    address: str | None = None
+
+
 class ClassIn(BaseModel):
     code: str = Field(min_length=2, max_length=12)
     grade: int = Field(ge=1, le=12)

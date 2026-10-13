@@ -15,7 +15,7 @@ export default function MyStudents() {
   const { classCode, loading: loadingProfile } = useMyTeacherProfile();
   const [search, setSearch] = useState("");
   const [activeStudent, setActiveStudent] = useState(null);
-  const { data: students, loading, error } = useApiResource("/students", {
+  const { data: students, loading, error, reload } = useApiResource("/students", {
     query: { class_code: classCode },
     enabled: Boolean(classCode),
     deps: [classCode],
@@ -104,7 +104,7 @@ export default function MyStudents() {
       )}
 
       <Drawer open={Boolean(activeStudent)} onClose={() => setActiveStudent(null)} title="Student Profile">
-        {activeStudent && <StudentProfilePanel studentId={activeStudent} />}
+        {activeStudent && <StudentProfilePanel studentId={activeStudent} editable onSaved={reload} />}
       </Drawer>
     </div>
   );

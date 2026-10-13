@@ -50,6 +50,8 @@ def initialize_schema_and_reference_classes():
         ("page_post_images", "obtained_marks", "DOUBLE PRECISION"),
         ("classes", "medium", "VARCHAR(20)"),
         ("classes", "strength", "INTEGER"),
+        ("students", "father_phone", "VARCHAR(30)"),
+        ("students", "mother_phone", "VARCHAR(30)"),
     ]
     inspector = inspect(engine)
     for table, column, ddl_type in added_columns:

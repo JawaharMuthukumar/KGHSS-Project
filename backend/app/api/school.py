@@ -165,12 +165,13 @@ def create_student(data: StudentCreate, db: Session = Depends(get_db), account: 
     registration = data.registration_no or f"GHSS/{cls.academic_year.split('-')[0]}/{(db.query(func.count(Student.id)).scalar() or 0) + 1:04d}"
     username = registration
     if db.query(Account).filter_by(username=username).first() or db.query(Student).filter_by(registration_no=registration).first(): raise HTTPException(409, "Registration number already exists")
+    if data.admission_no and db.query(Student).filter_by(admission_no=data.admission_no).first(): raise HTTPException(409, f"Admission number {data.admission_no} already exists")
     payload = data.model_dump(exclude={"password", "class_code", "registration_no", "full_name"})
     acc = Account(username=username, role="student", full_name=data.full_name, password_hash=hash_password(data.password))
     db.add(acc); db.flush()
     student = Student(account_id=acc.id, class_id=cls.id, registration_no=registration, **payload)
     db.add(student); db.commit(); db.refresh(student)
-    return {"id": student.id, "registration_no": registration, "username": username, "full_name": acc.full_name, "class_code": cls.code}
+    return {"id": student.id, "registration_no": registration, "admission_no": student.admission_no, "username": username, "full_name": acc.full_name, "class_code": cls.code}
 
 
 @router.get("/students/{student_id}")
@@ -179,7 +180,7 @@ def get_student(student_id: int, db: Session = Depends(get_db), account: Account
     if not student: raise HTTPException(404, "Student not found")
     if account.role == "student" and student.account_id != account.id: raise HTTPException(403, "Student record access denied")
     if account.role == "teacher" and not can_access_class(db, account, student.school_class): raise HTTPException(403, "Class access denied")
-    return {"id": student.id, "registration_no": student.registration_no, "admission_no": student.admission_no, "emis_no": student.emis_no, "umis_no": student.umis_no, "full_name": student.account.full_name, "class_code": student.school_class.code, "gender": student.gender, "date_of_birth": student.date_of_birth, "community": student.community, "medium": student.medium, "blood_group": student.blood_group, "father_name": student.father_name, "mother_name": student.mother_name, "guardian_phone": student.guardian_phone, "address": student.address}
+    return {"id": student.id, "registration_no": student.registration_no, "admission_no": student.admission_no, "emis_no": student.emis_no, "umis_no": student.umis_no, "full_name": student.account.full_name, "class_code": student.school_class.code, "gender": student.gender, "date_of_birth": student.date_of_birth, "community": student.community, "medium": student.medium, "blood_group": student.blood_group, "father_name": student.father_name, "mother_name": student.mother_name, "father_phone": student.father_phone, "mother_phone": student.mother_phone, "guardian_phone": student.guardian_phone, "address": student.address}
 
 
 # Marks, scorecards, and result analysis

@@ -57,6 +57,8 @@ class Student(Base):
     blood_group: Mapped[str | None] = mapped_column(String(8), nullable=True)
     father_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     mother_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    father_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    mother_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     guardian_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

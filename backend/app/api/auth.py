@@ -15,7 +15,12 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/login", response_model=TokenOut, summary="Sign in and receive a JWT")
 def login(data: LoginIn, db: Session = Depends(get_db)):
     # Postgres compares case-sensitively (MySQL did not), so keep logins case-insensitive explicitly.
-    account = db.query(Account).filter(func.lower(Account.username) == data.username.strip().lower()).first()
+    login_id = data.username.strip()
+    account = db.query(Account).filter(func.lower(Account.username) == login_id.lower()).first()
+    if not account:
+        # Students may also sign in with their admission number, which is shorter than the register number.
+        student = db.query(Student).filter(func.lower(Student.admission_no) == login_id.lower()).first()
+        account = student.account if student else None
     if not account or not account.is_active or not verify_password(data.password, account.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     if account.role == "student" and data.class_code:

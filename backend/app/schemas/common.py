@@ -50,6 +50,8 @@ class StudentCreate(BaseModel):
     blood_group: str | None = None
     father_name: str | None = None
     mother_name: str | None = None
+    father_phone: str | None = None
+    mother_phone: str | None = None
     guardian_phone: str | None = None
     address: str | None = None
 

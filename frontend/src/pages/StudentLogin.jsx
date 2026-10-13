@@ -165,12 +165,12 @@ function SignInCard({ classInfo, onBack }) {
         </div>
 
         <h1 className="font-heading font-bold text-white text-xl mb-1">Student Sign In</h1>
-        <p className="text-sm text-white/55 mb-5">Use your Register Number and password to continue.</p>
+        <p className="text-sm text-white/55 mb-5">Use your Admission Number (or Register Number) and password to continue.</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <label className="block text-xs font-semibold text-white/70 mb-1.5" htmlFor="register">
-              Register Number
+              Admission Number
             </label>
             <input
               id="register"
@@ -178,7 +178,7 @@ function SignInCard({ classInfo, onBack }) {
               type="text"
               required
               autoComplete="username"
-              placeholder="e.g. GHSS/2026/0001"
+              placeholder="e.g. 12345"
               value={form.register}
               onChange={handleChange}
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-sm text-white placeholder:text-white/30 focus:border-gold outline-none"

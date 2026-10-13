@@ -32,6 +32,30 @@
   to { transform: translateX(-50%); }
 }
 
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.portal-dark .skeleton-shimmer::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -122,4 +146,33 @@ h1, h2, h3, h4, h5, h6 {
     radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0),
     linear-gradient(135deg, var(--color-navy) 0%, var(--color-teal) 100%);
   background-size: 22px 22px, auto;
+}
+
+/* Portal theme overrides; public pages keep their existing light palette. */
+.portal-dark {
+  --color-navy: #d6e3e8;
+  --color-ink: #d6e3e8;
+  --color-cream: #111c22;
+  --color-cream-dark: #1a2a32;
+  --color-mist: #111c22;
+  --color-sky: #1c3039;
+  color-scheme: dark;
+}
+
+.portal-dark .bg-white {
+  background-color: #192a32;
+}
+
+.portal-dark .bg-cream {
+  background-color: #111c22;
+}
+
+.portal-dark .bg-cream-dark {
+  background-color: #1a2a32;
+}
+
+.portal-dark input,
+.portal-dark textarea,
+.portal-dark select {
+  color-scheme: dark;
 }

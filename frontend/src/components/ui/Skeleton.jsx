@@ -1,5 +1,5 @@
 function SkeletonBlock({ className = "" }) {
-  return <span aria-hidden="true" className={`block animate-pulse rounded-lg bg-navy/[0.08] ${className}`} />;
+  return <span aria-hidden="true" className={`skeleton-shimmer block rounded-lg bg-navy/[0.08] ${className}`} />;
 }
 
 export function TableSkeleton({ rows = 5, columns = 4 }) {

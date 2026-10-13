@@ -10,6 +10,7 @@ export default function PortalLayout({ role }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("ghss_theme") === "dark");
   const items = portalNav[role] || [];
 
   const handleLogout = () => {
@@ -18,7 +19,7 @@ export default function PortalLayout({ role }) {
   };
 
   return (
-    <div className="min-h-svh flex bg-mist">
+    <div className={`portal-app min-h-svh flex bg-mist ${darkMode ? "portal-dark" : ""}`}>
       {mobileOpen && (
         <button
           type="button"
@@ -118,6 +119,28 @@ export default function PortalLayout({ role }) {
                   <div className="px-4 py-2.5 border-b border-navy/8 sm:hidden">
                     <p className="text-sm font-semibold text-navy leading-tight truncate">{user?.full_name}</p>
                     <p className="text-[11px] text-navy/50 truncate">{user?.username}</p>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-navy/8">
+                    <span className="flex items-center gap-2 text-sm font-medium text-navy">
+                      <Icon name={darkMode ? "Moon" : "Sun"} size={17} />
+                      {darkMode ? "Dark mode" : "Light mode"}
+                    </span>
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={darkMode}
+                      aria-label={`Switch to ${darkMode ? "light" : "dark"} mode`}
+                      onClick={() => {
+                        const next = !darkMode;
+                        setDarkMode(next);
+                        localStorage.setItem("ghss_theme", next ? "dark" : "light");
+                      }}
+                      className={`relative h-6 w-11 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${darkMode ? "bg-navy" : "bg-navy/20"}`}
+                    >
+                      <span className={`absolute top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow transition-transform ${darkMode ? "translate-x-[1.375rem]" : "translate-x-0.5"}`}>
+                        <Icon name={darkMode ? "Moon" : "Sun"} size={12} className="text-gold-dark" />
+                      </span>
+                    </button>
                   </div>
                   <button
                     type="button"

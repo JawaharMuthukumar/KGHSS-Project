@@ -8,6 +8,7 @@ import { useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
+import { ContentSkeleton } from "../../components/ui/Skeleton";
 
 export default function ClassNotices() {
   const { classCode, loading: loadingProfile } = useMyTeacherProfile();
@@ -88,8 +89,9 @@ export default function ClassNotices() {
         <Card className="p-5 lg:col-span-2">
           <h2 className="font-heading font-bold text-navy text-sm mb-4">Posted Notices</h2>
           {error && <Banner tone="error">{error.message}</Banner>}
+          {loading && <ContentSkeleton rows={4} />}
           {!loading && (notices || []).length === 0 && <p className="text-sm text-navy/50">No notices posted yet.</p>}
-          <div className="flex flex-col gap-3">
+          {!loading && <div className="flex flex-col gap-3">
             {(notices || []).map((n) => (
               <div key={n.id} className="pb-3 border-b border-navy/6 last:border-0">
                 <p className="text-sm font-semibold text-navy">{n.title}</p>
@@ -97,7 +99,7 @@ export default function ClassNotices() {
                 <p className="text-xs text-navy/40 mt-1">{formatDate(n.created_at)}</p>
               </div>
             ))}
-          </div>
+          </div>}
         </Card>
       </div>
     </div>

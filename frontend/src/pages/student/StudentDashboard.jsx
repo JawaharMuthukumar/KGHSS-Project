@@ -9,6 +9,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
+import { DashboardSkeleton } from "../../components/ui/Skeleton";
 
 const statusTone = { pending: "navy", approved: "success", rejected: "danger" };
 
@@ -33,7 +34,9 @@ export default function StudentDashboard() {
       />
 
       {error && <p className="text-sm text-red-600 mb-4">Could not load the dashboard. {error.message}</p>}
+      {loading && <DashboardSkeleton />}
 
+      {!loading && <>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <StatCard label="My Average" value={average != null ? `${average}%` : "—"} icon="TrendingUp" tone="gold" />
         <StatCard
@@ -110,6 +113,7 @@ export default function StudentDashboard() {
           ))}
         </div>
       </Card>
+      </>}
     </div>
   );
 }

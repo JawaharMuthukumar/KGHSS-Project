@@ -9,6 +9,7 @@ import StudentProfilePanel from "../../components/portal/StudentProfilePanel";
 import { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
+import { TableSkeleton } from "../../components/ui/Skeleton";
 
 export default function MyStudents() {
   const { classCode, loading: loadingProfile } = useMyTeacherProfile();
@@ -64,11 +65,7 @@ export default function MyStudents() {
                 </tr>
               </thead>
               <tbody>
-                {loading && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-navy/40">Loading…</td>
-                  </tr>
-                )}
+                {loading && <tr><td colSpan={5} className="p-0"><TableSkeleton rows={6} columns={4} /></td></tr>}
                 {!loading && filtered.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-navy/40">No students found.</td>

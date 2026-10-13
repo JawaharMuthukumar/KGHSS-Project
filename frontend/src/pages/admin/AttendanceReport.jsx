@@ -5,6 +5,7 @@ import Banner from "../../components/portal/Banner";
 import { inputClass } from "../../components/portal/FormField";
 import AttendanceReportPanel from "../../components/reports/AttendanceReportPanel";
 import { useApiResource } from "../../hooks/useApiResource";
+import { TableSkeleton } from "../../components/ui/Skeleton";
 
 export default function AdminAttendanceReport() {
   const { data: classes } = useApiResource("/classes");
@@ -32,6 +33,7 @@ export default function AdminAttendanceReport() {
       <div className="mt-8">
         <h2 className="font-heading font-bold text-navy text-base mb-3">School-wide Attendance</h2>
         {schoolWideError && <Banner tone="error">{schoolWideError.message}</Banner>}
+        {loadingSchoolWide && <Card className="p-0 overflow-hidden"><TableSkeleton rows={5} columns={3} /></Card>}
         {!loadingSchoolWide && schoolWide && (
           <Card className="p-0 overflow-hidden">
             <table className="w-full text-sm">

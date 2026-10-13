@@ -7,6 +7,7 @@ import Banner from "../portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
+import { TableSkeleton } from "../ui/Skeleton";
 
 const statusTone = { pending: "navy", approved: "success", rejected: "danger" };
 
@@ -47,6 +48,7 @@ export default function CertificateRequestsPanel({ description }) {
             </tr>
           </thead>
           <tbody>
+            {loading && <tr><td colSpan={5} className="p-0"><TableSkeleton rows={4} columns={4} /></td></tr>}
             {!loading && (requests || []).length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-navy/40">No certificate requests.</td>

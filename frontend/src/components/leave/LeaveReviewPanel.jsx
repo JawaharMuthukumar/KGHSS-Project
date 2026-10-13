@@ -8,6 +8,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
 import { LEAVE_STATUS_TONE, LEAVE_TYPE_LABELS } from "./leaveConstants";
+import { TableSkeleton } from "../ui/Skeleton";
 
 const filters = [
   { id: "pending", label: "Pending" },
@@ -77,6 +78,7 @@ export default function LeaveReviewPanel({ showClass = false, emptyText = "No le
               </tr>
             </thead>
             <tbody>
+              {loading && <tr><td colSpan={7} className="p-0"><TableSkeleton rows={5} columns={6} /></td></tr>}
               {!loading && rows.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-navy/40">{emptyText}</td>

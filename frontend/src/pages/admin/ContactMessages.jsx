@@ -3,6 +3,7 @@ import Card from "../../components/ui/Card";
 import Banner from "../../components/portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
 import { formatDate } from "../../utils/formatDate";
+import { ContentSkeleton } from "../../components/ui/Skeleton";
 
 export default function ContactMessages() {
   const { data: messages, loading, error } = useApiResource("/contact-messages");
@@ -14,8 +15,9 @@ export default function ContactMessages() {
       {error && <Banner tone="error" className="mb-4">{error.message}</Banner>}
 
       <Card className="p-0 overflow-hidden">
+        {loading && <ContentSkeleton rows={4} />}
         {!loading && (messages || []).length === 0 && <p className="p-8 text-center text-sm text-navy/50">No messages yet.</p>}
-        <div className="divide-y divide-navy/6">
+        {!loading && <div className="divide-y divide-navy/6">
           {(messages || []).map((m) => (
             <div key={m.id} className="p-5">
               <div className="flex items-center justify-between gap-3 mb-1.5">
@@ -30,7 +32,7 @@ export default function ContactMessages() {
               <p className="text-sm text-navy/70">{m.message}</p>
             </div>
           ))}
-        </div>
+        </div>}
       </Card>
     </div>
   );

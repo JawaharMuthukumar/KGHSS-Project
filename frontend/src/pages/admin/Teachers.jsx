@@ -8,6 +8,7 @@ import Drawer from "../../components/portal/Drawer";
 import FormField, { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError } from "../../lib/apiClient";
+import { TableSkeleton } from "../../components/ui/Skeleton";
 
 const emptyForm = { full_name: "", subject: "", phone: "", password: "" };
 
@@ -85,9 +86,7 @@ export default function Teachers() {
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-navy/40">
-                    Loading…
-                  </td>
+                  <td colSpan={6} className="p-0"><TableSkeleton rows={5} columns={5} /></td>
                 </tr>
               )}
               {!loading && filtered.length === 0 && (

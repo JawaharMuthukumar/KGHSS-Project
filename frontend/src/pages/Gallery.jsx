@@ -8,6 +8,7 @@ import Icon from "../components/ui/Icon";
 import SEO from "../components/utility/SEO";
 import { useApiResource } from "../hooks/useApiResource";
 import { resolveMediaUrl } from "../lib/apiClient";
+import { CardGridSkeleton } from "../components/ui/Skeleton";
 
 export default function Gallery() {
   const { data: items, loading, error } = useApiResource("/gallery");
@@ -68,6 +69,8 @@ export default function Gallery() {
             </div>
           )}
 
+          {!error && loading && <CardGridSkeleton count={8} image />}
+
           {!error && !loading && filtered.length === 0 && (
             <div className="text-center py-20 flex flex-col items-center gap-3">
               <Icon name="ImageIcon" size={32} className="text-ink/25" />
@@ -75,7 +78,7 @@ export default function Gallery() {
             </div>
           )}
 
-          {!error && filtered.length > 0 && (
+          {!error && !loading && filtered.length > 0 && (
             <div className="columns-2 sm:columns-3 lg:columns-4 gap-4 [column-fill:_balance]">
               {filtered.map((image, i) => (
                 <Reveal key={image.id} delay={(i % 4) * 0.05} className="mb-4 break-inside-avoid">

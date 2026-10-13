@@ -3,6 +3,7 @@ import Card from "../../components/ui/Card";
 import Banner from "../../components/portal/Banner";
 import { WEEKDAYS, PERIODS } from "../../components/portal/timetableConstants";
 import { useApiResource } from "../../hooks/useApiResource";
+import { TableSkeleton } from "../../components/ui/Skeleton";
 
 export default function MyTimetable() {
   const { data: entries, loading, error } = useApiResource("/teachers/me/timetable");
@@ -17,6 +18,8 @@ export default function MyTimetable() {
       <PortalPageHeader title="My Timetable" description="Your personal weekly teaching schedule." />
 
       {error && <Banner tone="error" className="mb-4">{error.message}</Banner>}
+
+      {loading && <Card className="p-0 overflow-hidden"><TableSkeleton rows={6} columns={6} /></Card>}
 
       {!loading && (
         <Card className="p-0 overflow-hidden">

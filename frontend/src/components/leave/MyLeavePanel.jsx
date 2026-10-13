@@ -8,6 +8,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
 import { LEAVE_STATUS_TONE, LEAVE_TYPE_LABELS, countWorkingDays } from "./leaveConstants";
+import { ContentSkeleton } from "../ui/Skeleton";
 
 // Apply-for-leave form plus the applicant's own request history. Used by students and teachers.
 export default function MyLeavePanel({ types, approverLabel }) {
@@ -106,8 +107,9 @@ export default function MyLeavePanel({ types, approverLabel }) {
       <Card className="p-5 lg:col-span-2">
         <h2 className="font-heading font-bold text-navy text-sm mb-4">My Leave Requests</h2>
         {error && <Banner tone="error">{error.message}</Banner>}
+        {loading && <ContentSkeleton rows={3} />}
         {!loading && (requests || []).length === 0 && <p className="text-sm text-navy/50">No leave requests yet.</p>}
-        <div className="flex flex-col gap-3">
+        {!loading && <div className="flex flex-col gap-3">
           {(requests || []).map((r) => (
             <div key={r.id} className="flex items-start justify-between gap-3 pb-3 border-b border-navy/6 last:border-0">
               <div className="min-w-0">
@@ -138,7 +140,7 @@ export default function MyLeavePanel({ types, approverLabel }) {
               </div>
             </div>
           ))}
-        </div>
+        </div>}
       </Card>
     </div>
   );

@@ -8,6 +8,7 @@ import FormField, { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
+import { ContentSkeleton } from "../../components/ui/Skeleton";
 
 const audiences = [
   { value: "website", label: "Public Website" },
@@ -99,8 +100,9 @@ export default function AdminNotices() {
         <Card className="p-5 lg:col-span-2">
           <h2 className="font-heading font-bold text-navy text-sm mb-4">Posted Notices</h2>
           {error && <Banner tone="error">{error.message}</Banner>}
+          {loading && <ContentSkeleton rows={4} />}
           {!loading && (notices || []).length === 0 && <p className="text-sm text-navy/50">No notices posted yet.</p>}
-          <div className="flex flex-col gap-3">
+          {!loading && <div className="flex flex-col gap-3">
             {(notices || []).map((n) => (
               <div key={n.id} className="flex items-start gap-3 pb-3 border-b border-navy/6 last:border-0">
                 <div className="flex-1 min-w-0">
@@ -121,7 +123,7 @@ export default function AdminNotices() {
                 </button>
               </div>
             ))}
-          </div>
+          </div>}
         </Card>
       </div>
     </div>

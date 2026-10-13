@@ -1,6 +1,7 @@
 import Card from "../ui/Card";
 import Banner from "../portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
+import { ContentSkeleton } from "../ui/Skeleton";
 
 const medalTone = ["bg-gold text-navy-dark", "bg-navy/15 text-navy", "bg-amber-700/20 text-amber-800"];
 
@@ -12,7 +13,7 @@ export default function ClassScorecard({ classCode, term }) {
   });
 
   if (error) return <Banner tone="error">{error.message}</Banner>;
-  if (loading) return <p className="text-sm text-navy/50">Loading…</p>;
+  if (loading) return <ContentSkeleton rows={3} />;
   if (!data || data.length === 0) return <Card className="p-8 text-center text-navy/50">No marks recorded for {term}.</Card>;
 
   const avg = Math.round(data.reduce((sum, r) => sum + r.percentage, 0) / data.length);

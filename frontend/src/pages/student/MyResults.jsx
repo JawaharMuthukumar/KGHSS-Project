@@ -5,6 +5,7 @@ import Banner from "../../components/portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api } from "../../lib/apiClient";
 import { ALL_EXAM_TERMS, PASS_MARK } from "../../constants/academic";
+import { ContentSkeleton } from "../../components/ui/Skeleton";
 
 const componentAbbr = { sa: "SA", fa: "FA", theory: "Th", practical: "Pr", internal: "In" };
 
@@ -41,7 +42,7 @@ export default function MyResults() {
       />
 
       {error && <Banner tone="error" className="mb-4">{error}</Banner>}
-      {!results && !error && <p className="text-sm text-navy/50">Loading…</p>}
+      {!results && !error && <ContentSkeleton rows={4} />}
 
       {results && results.results.length === 0 && (
         <Card className="p-8 text-center text-navy/50">No marks recorded yet.</Card>

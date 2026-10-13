@@ -6,6 +6,7 @@ import { inputClass } from "../../components/portal/FormField";
 import { WEEKDAYS, PERIODS } from "../../components/portal/timetableConstants";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError } from "../../lib/apiClient";
+import { TableSkeleton } from "../../components/ui/Skeleton";
 
 function cellKey(weekday, period) {
   return `${weekday}-${period}`;
@@ -83,6 +84,8 @@ export default function AdminTimetables() {
       {error && <Banner tone="error" className="mb-4">{error.message}</Banner>}
       {saveError && <Banner tone="error" className="mb-4">{saveError}</Banner>}
       {success && <Banner tone="success" className="mb-4">{success}</Banner>}
+
+      {classCode && loading && <Card className="p-0 overflow-hidden"><TableSkeleton rows={6} columns={6} /></Card>}
 
       {classCode && !loading && (
         <Card className="p-0 overflow-hidden">

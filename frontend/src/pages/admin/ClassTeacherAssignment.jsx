@@ -6,6 +6,7 @@ import Drawer from "../../components/portal/Drawer";
 import { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError } from "../../lib/apiClient";
+import { CardGridSkeleton } from "../../components/ui/Skeleton";
 
 export default function ClassTeacherAssignment() {
   const { data: classes, loading, error, reload } = useApiResource("/classes");
@@ -20,7 +21,7 @@ export default function ClassTeacherAssignment() {
       <PortalPageHeader title="Class Teacher Assignment" description="Assign one class teacher per class section." />
 
       {error && <Banner tone="error" className="mb-4">Could not load classes. {error.message}</Banner>}
-      {loading && <p className="text-sm text-navy/50">Loading classes…</p>}
+      {loading && <CardGridSkeleton count={8} />}
 
       {secondary.length > 0 && (
         <ClassGroup title="Classes 6 – 10" classes={secondary} onSelect={setActiveClass} />

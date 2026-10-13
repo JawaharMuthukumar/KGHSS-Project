@@ -78,7 +78,7 @@ export default function MyStudents() {
                   <tr
                     key={s.id}
                     onClick={() => setActiveStudent(s.id)}
-                    className="border-b border-navy/6 last:border-0 hover:bg-navy/[0.02] cursor-pointer"
+                    className="border-b border-navy/6 last:border-0 hover:bg-navy/[0.05] cursor-pointer"
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">

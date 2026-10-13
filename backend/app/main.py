@@ -57,12 +57,33 @@ def initialize_schema_and_reference_classes():
     classes = [
         ("6A", 6, "A", None), ("6B", 6, "B", None), ("7A", 7, "A", None), ("7B", 7, "B", None),
         ("8A", 8, "A", None), ("8B", 8, "B", None), ("9A", 9, "A", None), ("9B", 9, "B", None),
-        ("10A", 10, "A", None), ("10B", 10, "B", None), ("11G1", 11, "Group I", "Bio-Maths"),
-        ("11G2", 11, "Group II", "Computer Science"), ("12G1", 12, "Group I", "Bio-Maths"),
-        ("12G2", 12, "Group II", "Computer Science"),
+        ("10A", 10, "A", None), ("10B", 10, "B", None),
+        # Higher secondary: one class per group (subject combination) and section.
+        ("11PCBM-A1", 11, "A1", "P/C/B/M"), ("11PCBM-A2", 11, "A2", "P/C/B/M"),
+        ("11PCMCS-A1", 11, "A1", "P/C/M/CS"), ("11PCMCS-A2", 11, "A2", "P/C/M/CS"),
+        ("12PCMCS-A1", 12, "A1", "P/C/M/CS"), ("12PCMCS-A2", 12, "A2", "P/C/M/CS"),
+        ("12PCBM-A1", 12, "A1", "P/C/B/M"), ("12PCBM-A2", 12, "A2", "P/C/B/M"),
+        ("12PCBCS-A1", 12, "A1", "P/C/B/CS"), ("12PCBCS-A2", 12, "A2", "P/C/B/CS"),
     ]
+    # The original Group I/II classes are renamed in place (keeping their ids) to the matching new class.
+    # If the new class already exists, an unused legacy row (e.g. re-seeded by an older deploy) is dropped.
+    legacy_renames = {"11G1": "11PCBM-A1", "11G2": "11PCMCS-A1", "12G1": "12PCBM-A1", "12G2": "12PCMCS-A1"}
+    class_ref_tables = ["students", "assessments", "attendance_months", "notices", "class_teacher_assignments",
+                        "subject_teacher_assignments", "timetable_entries", "leave_requests"]
+    seed = {code: (grade, section, group_name) for code, grade, section, group_name in classes}
     from app.core.database import SessionLocal
     with SessionLocal() as db:
+        for old_code, new_code in legacy_renames.items():
+            legacy = db.query(AcademicClass).filter_by(code=old_code).first()
+            if not legacy:
+                continue
+            if not db.query(AcademicClass).filter_by(code=new_code).first():
+                legacy.code = new_code
+                legacy.grade, legacy.section, legacy.group_name = seed[new_code]
+            elif not any(db.execute(text(f"SELECT 1 FROM {t} WHERE class_id = :id LIMIT 1"), {"id": legacy.id}).first()
+                         for t in class_ref_tables):
+                db.delete(legacy)
+        db.flush()
         for code, grade, section, group_name in classes:
             if not db.query(AcademicClass).filter_by(code=code).first():
                 db.add(AcademicClass(code=code, grade=grade, section=section, group_name=group_name, academic_year="2026-2027"))

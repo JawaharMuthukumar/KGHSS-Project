@@ -31,10 +31,12 @@ export default function StudentLogin() {
 
 function groupClasses(classes) {
   const secondary = classes.filter((c) => c.grade < 11).sort((a, b) => a.grade - b.grade || a.section.localeCompare(b.section));
-  const higher = classes.filter((c) => c.grade >= 11).sort((a, b) => a.grade - b.grade || a.code.localeCompare(b.code));
   const groups = [];
   if (secondary.length) groups.push({ title: "Classes 6 – 10", items: secondary });
-  if (higher.length) groups.push({ title: "Higher Secondary", items: higher });
+  for (const grade of [11, 12]) {
+    const items = classes.filter((c) => c.grade === grade).sort((a, b) => a.code.localeCompare(b.code));
+    if (items.length) groups.push({ title: `Higher Secondary · Class ${grade}`, items });
+  }
   return groups;
 }
 
@@ -89,7 +91,8 @@ function ClassPicker({ onSelect }) {
                   <span className="block font-heading font-bold text-sm text-white">
                     {item.group_name ? (
                       <>
-                        {item.grade} <span className="text-gold-light">· {item.group_name}</span>
+                        {item.grade} <span className="text-gold-light">· {item.group_name}</span>{" "}
+                        <span className="text-gold-light">{item.section}</span>
                       </>
                     ) : (
                       <>

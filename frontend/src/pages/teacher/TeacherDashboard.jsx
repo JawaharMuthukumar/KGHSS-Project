@@ -1,6 +1,10 @@
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import PortalPageHeader from "../../components/portal/PortalPageHeader";
 import StatCard from "../../components/portal/StatCard";
+import Drawer from "../../components/portal/Drawer";
+import StudentProfilePanel from "../../components/portal/StudentProfilePanel";
+import { inputClass } from "../../components/portal/FormField";
 import Card from "../../components/ui/Card";
 import Icon from "../../components/ui/Icon";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -17,6 +21,20 @@ export default function TeacherDashboard() {
   const { data, loading, error } = useApiResource("/dashboards/teacher");
 
   const isClassTeacher = Boolean(data?.class_code);
+  const [search, setSearch] = useState("");
+  const [activeStudent, setActiveStudent] = useState(null);
+  const { data: students, loading: loadingStudents } = useApiResource("/students", { enabled: isClassTeacher });
+
+  const query = search.trim().toLowerCase();
+  const matches = useMemo(() => {
+    if (!query) return [];
+    return (students || []).filter(
+      (s) =>
+        s.full_name.toLowerCase().includes(query) ||
+        s.registration_no.toLowerCase().includes(query) ||
+        (s.admission_no || "").toLowerCase().includes(query)
+    );
+  }, [students, query]);
 
   return (
     <div>
@@ -47,6 +65,53 @@ export default function TeacherDashboard() {
         />
         <StatCard label="Weekly Periods" value={loading ? undefined : (data?.timetable || []).length} icon="Clock" tone="teal" />
       </div>
+
+      {isClassTeacher && (
+        <Card className="p-5 mb-6">
+          <h2 className="font-heading font-bold text-navy mb-3">Find a Student in {data.class_code}</h2>
+          <div className="relative">
+            <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy/35" />
+            <input
+              type="text"
+              placeholder="Search by name or register number…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className={`${inputClass} pl-9`}
+            />
+          </div>
+
+          {query && (
+            <div className="mt-3 flex flex-col gap-1">
+              {loadingStudents && <p className="text-sm text-navy/40 px-1 py-2">Loading…</p>}
+              {!loadingStudents && matches.length === 0 && (
+                <p className="text-sm text-navy/40 px-1 py-2">No students match “{search.trim()}”.</p>
+              )}
+              {matches.slice(0, 8).map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setActiveStudent(s.id)}
+                  className="flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-navy/[0.05] transition-colors"
+                >
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy/8 text-navy text-xs font-bold shrink-0">
+                    {s.full_name.slice(0, 1)}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-navy truncate">{s.full_name}</span>
+                    <span className="block text-xs text-navy/50">{s.registration_no}</span>
+                  </span>
+                  <Icon name="ChevronRight" size={16} className="ml-auto text-navy/30" />
+                </button>
+              ))}
+              {matches.length > 8 && (
+                <Link to="/teacher/students" className="text-xs font-semibold text-gold-dark hover:text-gold px-1 pt-1">
+                  {matches.length - 8} more — view all students
+                </Link>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-5">
         <Card className="p-5">
@@ -84,6 +149,10 @@ export default function TeacherDashboard() {
           </p>
         </Card>
       </div>
+
+      <Drawer open={Boolean(activeStudent)} onClose={() => setActiveStudent(null)} title="Student Profile">
+        {activeStudent && <StudentProfilePanel studentId={activeStudent} />}
+      </Drawer>
     </div>
   );
 }

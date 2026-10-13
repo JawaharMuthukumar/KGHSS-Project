@@ -8,6 +8,13 @@ import { inputClass } from "../../components/portal/FormField";
 import { useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { api, ApiError } from "../../lib/apiClient";
 
+/** Keeps a typed day count to digits only, drops leading zeros, and caps it at `max`. Empty stays empty while editing. */
+function sanitizeDays(raw, max) {
+  const digits = String(raw).replace(/\D/g, "");
+  if (digits === "") return "";
+  return String(Math.min(Number(digits), max));
+}
+
 function currentMonth() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -60,9 +67,13 @@ export default function TakeAttendance() {
   };
 
   const handleSave = async () => {
-    setSaving(true);
     setError("");
     setSuccess("");
+    if (!Number(totalDays)) {
+      setError("Enter the total working days (1–31) before saving.");
+      return;
+    }
+    setSaving(true);
     try {
       await api.put(`/classes/${classCode}/attendance`, {
         month,
@@ -115,7 +126,17 @@ export default function TakeAttendance() {
             max={31}
             value={totalDays}
             disabled={locked}
-            onChange={(e) => setTotalDays(e.target.value)}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => {
+              const next = sanitizeDays(e.target.value, 31);
+              setTotalDays(next);
+              // Lowering the working days pulls any present count above it back down.
+              const cap = Number(next) || 0;
+              if (next !== "")
+                setPresent((prev) =>
+                  Object.fromEntries(Object.entries(prev).map(([id, v]) => [id, v === "" ? v : Math.min(Number(v), cap)]))
+                );
+            }}
             className={inputClass + " w-28"}
           />
         </div>
@@ -171,12 +192,16 @@ export default function TakeAttendance() {
                         min={0}
                         max={totalDays}
                         disabled={locked}
-                        value={p}
-                        onChange={(e) => setPresent((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                        value={present[s.id] ?? ""}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) =>
+                          setPresent((prev) => ({ ...prev, [s.id]: sanitizeDays(e.target.value, Number(totalDays) || 0) }))
+                        }
                         className="w-20 px-2 py-1.5 rounded-lg border border-navy/15 text-center disabled:bg-navy/5"
                       />
                     </td>
-                    <td className="px-4 py-2.5 text-center text-navy/60">{Math.max(totalDays - p, 0)}</td>
+                    <td className="px-4 py-2.5 text-center text-navy/60">{Math.max((Number(totalDays) || 0) - p, 0)}</td>
                     <td className="px-4 py-2.5 text-center text-navy/60">{leaveDays[s.id] || "—"}</td>
                   </tr>
                 );

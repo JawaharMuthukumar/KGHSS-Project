@@ -17,7 +17,7 @@ export const portalNav = {
   ],
   teacher: [
     { to: "/teacher", label: "Dashboard", icon: "LayoutDashboard", end: true },
-    { to: "/teacher/students", label: "My Class Students", icon: "GraduationCap" },
+    { to: "/teacher/students", label: "My Class Students", icon: "GraduationCap", end: true },
     { to: "/teacher/students/new", label: "Add Student", icon: "UserPlus" },
     { to: "/teacher/marks", label: "Enter Marks", icon: "Pencil" },
     { to: "/teacher/attendance", label: "Take Attendance", icon: "ClipboardCheck" },

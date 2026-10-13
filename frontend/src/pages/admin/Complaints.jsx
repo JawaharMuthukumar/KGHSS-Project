@@ -44,7 +44,7 @@ export default function Complaints() {
                 type="button"
                 onClick={() => setActiveId(t.id)}
                 className={`w-full text-left px-4 py-3.5 border-b border-navy/6 last:border-0 transition-colors ${
-                  active?.id === t.id ? "bg-gold/10" : "hover:bg-navy/[0.02]"
+                  active?.id === t.id ? "bg-gold/10" : "hover:bg-navy/[0.05]"
                 }`}
               >
                 <p className="text-sm font-semibold text-navy truncate">{t.student_name}</p>

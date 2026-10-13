@@ -357,7 +357,7 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
         hi = lo
     ranges.append({"label": f"LESS THAN {edges[-1]}", "bin": edges[-1], "count": sum(1 for t in tt if t < edges[-1])})
 
-    return {"class_code": cls.code, "title": f"{ROMAN.get(cls.grade, cls.grade)} - {cls.section}", "academic_year": cls.academic_year,
+    return {"class_code": cls.code, "title": f"{ROMAN.get(cls.grade, cls.grade)} - {cls.group_name + ' ' if cls.group_name else ''}{cls.section}", "academic_year": cls.academic_year,
         "term": term, "subjects": [SUBJECT_ABBR.get(s, s) for s in subjects], "max_marks": 100, "pass_marks": PASS,
         "working_days": working_days if months else None, "students": rows,
         "hm": {"medium": medium, "roll": roll, "appeared": appd, "passed": passd, "pass_percent": pass_pct,

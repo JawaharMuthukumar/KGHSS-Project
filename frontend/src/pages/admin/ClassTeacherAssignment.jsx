@@ -129,7 +129,7 @@ function AssignPanel({ cls, teachers, onDone }) {
           <label
             key={t.id}
             className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-              selected === t.id ? "border-gold bg-gold/8" : "border-navy/8 hover:bg-navy/[0.03]"
+              selected === t.id ? "border-gold bg-gold/8" : "border-navy/8 hover:bg-navy/[0.05]"
             }`}
           >
             <input

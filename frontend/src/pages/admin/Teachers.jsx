@@ -98,7 +98,7 @@ export default function Teachers() {
                 </tr>
               )}
               {filtered.map((t) => (
-                <tr key={t.id} className="border-b border-navy/6 last:border-0 hover:bg-navy/[0.02]">
+                <tr key={t.id} className="border-b border-navy/6 last:border-0 hover:bg-navy/[0.05]">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy/8 text-navy text-xs font-bold shrink-0">

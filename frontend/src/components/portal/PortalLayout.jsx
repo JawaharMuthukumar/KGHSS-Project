@@ -18,7 +18,7 @@ export default function PortalLayout({ role }) {
   };
 
   return (
-    <div className="min-h-svh flex bg-mist">
+    <div className="portal-shell min-h-svh flex bg-mist">
       {mobileOpen && (
         <button
           type="button"
@@ -109,7 +109,7 @@ export default function PortalLayout({ role }) {
                   type="button"
                   aria-label="Close menu"
                   onClick={() => setMenuOpen(false)}
-                  className="fixed inset-0 z-40 cursor-default"
+                  className="fixed inset-0 z-40 cursor-default bg-transparent hover:bg-transparent"
                 />
                 <div
                   role="menu"

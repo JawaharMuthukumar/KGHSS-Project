@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import PortalPageHeader from "../../components/portal/PortalPageHeader";
 import Card from "../../components/ui/Card";
 import Banner from "../../components/portal/Banner";
@@ -6,6 +6,9 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { api } from "../../lib/apiClient";
 import { ALL_EXAM_TERMS, PASS_MARK } from "../../constants/academic";
 import { ContentSkeleton } from "../../components/ui/Skeleton";
+import Icon from "../../components/ui/Icon";
+import ReportCard from "../../components/reports/ReportCard";
+import { printElement } from "../../lib/printElement";
 
 const componentAbbr = { sa: "SA", fa: "FA", theory: "Th", practical: "Pr", internal: "In" };
 
@@ -13,12 +16,18 @@ export default function MyResults() {
   const { data: profile } = useApiResource("/students/me/profile");
   const [results, setResults] = useState(null);
   const [error, setError] = useState("");
+  const [reportCard, setReportCard] = useState(null);
+  const cardRef = useRef(null);
 
   useEffect(() => {
     if (!profile?.id) return;
     api
       .get(`/students/${profile.id}/results`)
       .then(setResults)
+      .catch((err) => setError(err.message));
+    api
+      .get(`/students/${profile.id}/report-card`)
+      .then(setReportCard)
       .catch((err) => setError(err.message));
   }, [profile?.id]);
 
@@ -39,6 +48,19 @@ export default function MyResults() {
       <PortalPageHeader
         title="Results / Marksheet"
         description={results ? `Overall Average: ${results.average_percent != null ? `${results.average_percent}%` : "—"}` : undefined}
+        actions={
+          reportCard && (
+            <button
+              type="button"
+              // The browser print dialog offers "Save as PDF" for downloading.
+              onClick={() => printElement(cardRef.current, { orientation: "portrait", title: `${reportCard.card.name} - Report Card` })}
+              className="flex items-center gap-1.5 bg-gold text-navy-dark font-semibold text-sm px-4 py-2.5 rounded-full hover:bg-gold-light transition-colors"
+            >
+              <Icon name="Download" size={16} />
+              Download Report Card
+            </button>
+          )
+        }
       />
 
       {error && <Banner tone="error" className="mb-4">{error}</Banner>}
@@ -89,6 +111,17 @@ export default function MyResults() {
             </table>
           </div>
         </Card>
+      )}
+
+      {reportCard && (
+        <div className="mt-8">
+          <h2 className="font-heading font-bold text-navy text-lg mb-3">Report Card</h2>
+          <Card className="p-4 overflow-x-auto">
+            <div className="min-w-[720px]">
+              <ReportCard ref={cardRef} meta={reportCard} card={reportCard.card} />
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   );

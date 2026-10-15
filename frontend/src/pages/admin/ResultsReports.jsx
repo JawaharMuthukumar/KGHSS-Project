@@ -7,6 +7,7 @@ import { inputClass } from "../../components/portal/FormField";
 import ClassMarkReport from "../../components/reports/ClassMarkReport";
 import ClassScorecard from "../../components/reports/ClassScorecard";
 import ConsolidatedReport from "../../components/reports/ConsolidatedReport";
+import ClassReportCards from "../../components/reports/ClassReportCards";
 import { useApiResource } from "../../hooks/useApiResource";
 import { termsForGrade } from "../../constants/academic";
 import { TableSkeleton } from "../../components/ui/Skeleton";
@@ -14,6 +15,7 @@ import { TableSkeleton } from "../../components/ui/Skeleton";
 const tabs = [
   { id: "mark-report", label: "Class Mark Report", needsClass: true },
   { id: "scorecard", label: "Scorecard", needsClass: true },
+  { id: "report-cards", label: "Report Cards", needsClass: true },
   { id: "consolidated", label: "Consolidated Report", needsClass: false },
 ];
 
@@ -78,6 +80,7 @@ export default function ResultsReports() {
       )}
       {tab === "mark-report" && classCode && <ClassMarkReport classCode={classCode} term={term} />}
       {tab === "scorecard" && classCode && <ClassScorecard classCode={classCode} term={term} />}
+      {tab === "report-cards" && classCode && <ClassReportCards classCode={classCode} />}
       {tab === "consolidated" && <ConsolidatedReport term={term} />}
 
       <div className="mt-8">

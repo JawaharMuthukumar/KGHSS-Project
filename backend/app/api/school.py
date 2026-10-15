@@ -387,6 +387,75 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
             "total_failed": appd["TOT"] - passd["TOT"], "absent": roll["TOT"] - appd["TOT"], "ranges": ranges}}
 
 
+# Report card remark (தகுதி) by total percentage, highest band first; replaces Pass/Fail on the card.
+REMARK_BANDS = [(90, "மிகச் சிறப்பு"), (75, "மிக நன்று"), (60, "நன்று"), (35, "சராசரி"), (0, "முன்னேற்றம் தேவை")]
+
+
+def report_remark(percent: float) -> str:
+    return next(label for floor, label in REMARK_BANDS if percent >= floor)
+
+
+def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | None = None) -> dict:
+    """Per-student report cards (every exam of the year as a row), as printed on the school's progress card.
+    Class-wide data is always loaded because each row shows the class's top total for that exam."""
+    subjects = subjects_for_class(cls)
+    students = db.query(Student).filter_by(class_id=cls.id).order_by(Student.registration_no).all()
+    assessments = {a.term: a for a in db.query(Assessment).filter_by(class_id=cls.id, academic_year=cls.academic_year).all()}
+    marks = defaultdict(lambda: defaultdict(dict))  # term -> student_id -> subject -> Mark
+    if assessments:
+        term_of = {a.id: t for t, a in assessments.items()}
+        for m in db.query(Mark).filter(Mark.assessment_id.in_(term_of)).all(): marks[term_of[m.assessment_id]][m.student_id][m.subject] = m
+
+    def term_total(term, sid):
+        sm = marks[term].get(sid)
+        return sum(m.score for m in sm.values() if not m.absent) if sm else None
+
+    class_top = {t: max([v for v in (term_total(t, s.id) for s in students) if v is not None], default=None) for t in terms_for_grade(cls.grade)}
+
+    # Attendance is recorded per month, not per exam, so the card shows the cumulative figure on the latest exam row.
+    months = db.query(AttendanceMonth).filter_by(class_id=cls.id).all()
+    working_days = sum(mo.total_days for mo in months)
+    present = defaultdict(int)
+    if months:
+        for r in db.query(AttendanceRecord).filter(AttendanceRecord.attendance_month_id.in_([mo.id for mo in months])).all(): present[r.student_id] += r.present_days
+
+    full = 100 * len(subjects)
+    cards = []
+    for s in students:
+        if only_student_id is not None and s.id != only_student_id: continue
+        rows = []
+        for term in terms_for_grade(cls.grade):
+            sm = marks[term].get(s.id)
+            if not sm:
+                rows.append({"term": term, "scores": [None] * len(subjects), "total": None, "remark": None, "class_top": class_top[term], "attendance": None}); continue
+            scores = [None if subj not in sm else "AB" if sm[subj].absent else sm[subj].score for subj in subjects]
+            total = term_total(term, s.id)
+            rows.append({"term": term, "scores": scores, "total": total, "remark": report_remark(total * 100 / full),
+                "class_top": class_top[term], "attendance": None})
+        last = max((i for i, r in enumerate(rows) if r["total"] is not None), default=None)
+        if last is not None and working_days: rows[last]["attendance"] = {"present": present.get(s.id, 0), "working": working_days}
+        cards.append({"student_id": s.id, "registration_no": s.registration_no, "name": s.account.full_name, "rows": rows})
+    return {"class_code": cls.code, "grade": cls.grade, "academic_year": cls.academic_year, "subjects": subjects,
+        "max_total": full, "cards": cards}
+
+
+@router.get("/classes/{class_code}/report-cards", summary="Printable progress cards for every student in a class")
+def class_report_cards(class_code: str, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    cls = get_class(db, class_code)
+    if not can_access_class(db, account, cls, allow_subject=False): raise HTTPException(403, "Only the class teacher can view report cards")
+    return build_report_cards(db, cls)
+
+
+@router.get("/students/{student_id}/report-card", summary="One student's progress card")
+def student_report_card(student_id: int, db: Session = Depends(get_db), account: Account = Depends(current_account)):
+    student = db.get(Student, student_id)
+    if not student: raise HTTPException(404, "Student not found")
+    if account.role == "student" and student.account_id != account.id: raise HTTPException(403, "Report card access denied")
+    if account.role == "teacher" and not can_access_class(db, account, student.school_class): raise HTTPException(403, "Class access denied")
+    data = build_report_cards(db, student.school_class, only_student_id=student.id)
+    return {**{k: v for k, v in data.items() if k != "cards"}, "card": data["cards"][0]}
+
+
 @router.get("/reports/results")
 def results_report(term: str = Query(...), academic_year: str | None = None, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
     q = db.query(AcademicClass)

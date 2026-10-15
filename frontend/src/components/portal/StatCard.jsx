@@ -7,6 +7,7 @@ export default function StatCard({ label, value, icon, tone = "navy" }) {
     gold: "bg-gold/12 text-gold-dark",
     teal: "bg-teal/10 text-teal",
     danger: "bg-red-50 text-red-600",
+    success: "bg-emerald-50 text-emerald-600",
   };
 
   return (

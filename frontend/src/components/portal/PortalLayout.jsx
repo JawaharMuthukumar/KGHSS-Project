@@ -6,6 +6,8 @@ import { useAuth } from "../../context/AuthContext";
 import { portalNav, roleLabels, mobileTabs, flatNav } from "./navConfig";
 import { selectTeacherClass, useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { useAutoCapitalize } from "../../hooks/useAutoCapitalize";
+import { enableAppInstall } from "../../lib/installApp";
+import InstallAppBanner from "./InstallAppBanner";
 import { AlertsProvider, useAlerts } from "../../context/AlertsContext";
 import { formatDate } from "../../utils/formatDate";
 
@@ -293,6 +295,9 @@ function PortalShell({ role }) {
   const items = portalNav[role] || [];
   useAutoCapitalize(role === "admin" || role === "teacher");
 
+  // The phone-app install is offered only inside the portal (after sign-in), never on the public site.
+  useEffect(() => enableAppInstall(role), [role]);
+
   // Opening another page closes the More sheet.
   useEffect(() => setMoreOpen(false), [pathname]);
 
@@ -403,6 +408,7 @@ function PortalShell({ role }) {
         )}
 
         <main className="flex-1 px-4 pt-4 pb-28 sm:px-5 sm:pt-5 lg:p-7 max-w-[1440px] w-full mx-auto">
+          <InstallAppBanner />
           <Outlet />
         </main>
       </div>

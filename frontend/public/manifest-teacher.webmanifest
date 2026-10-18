@@ -1,8 +1,9 @@
 {
-  "name": "GHSS Kangayampalayam",
-  "short_name": "GHSS KGP",
-  "description": "School portal for GHSS Kangayampalayam — students, teachers and the Head Master.",
-  "start_url": "/login",
+  "id": "/teacher",
+  "name": "GHSS KGP Teacher",
+  "short_name": "KGP Teacher",
+  "description": "GHSS Kangayampalayam school portal",
+  "start_url": "/teacher",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

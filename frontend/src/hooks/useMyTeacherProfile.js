@@ -1,3 +1,4 @@
+import { authStorage } from "../lib/authStorage";
 import { useEffect, useState } from "react";
 import { useApiResource } from "./useApiResource";
 
@@ -6,7 +7,7 @@ const CHANGE_EVENT = "kghss:teacher-class-change";
 
 function readStoredClass() {
   try {
-    return sessionStorage.getItem(STORAGE_KEY);
+    return authStorage.getItem(STORAGE_KEY);
   } catch {
     return null;
   }
@@ -15,7 +16,7 @@ function readStoredClass() {
 /** Switch which of the teacher's classes every teacher page works on. */
 export function selectTeacherClass(code) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, code);
+    authStorage.setItem(STORAGE_KEY, code);
   } catch {
     /* storage blocked: the selection still applies for this page view */
   }

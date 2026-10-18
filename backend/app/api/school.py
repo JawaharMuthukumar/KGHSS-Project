@@ -153,7 +153,7 @@ def list_students(class_code: str | None = None, db: Session = Depends(get_db), 
         cls = assigned_class(db, teacher_profile(db, account))
         if not cls: return []
         query = query.filter_by(class_id=cls.id)
-    return [{"id": s.id, "registration_no": s.registration_no, "admission_no": s.admission_no, "full_name": s.account.full_name, "class_code": s.school_class.code, "gender": s.gender, "guardian_phone": s.guardian_phone} for s in query.order_by(Student.id).all()]
+    return [{"id": s.id, "registration_no": s.registration_no, "admission_no": s.admission_no, "full_name": s.account.full_name, "class_code": s.school_class.code, "gender": s.gender, "guardian_phone": s.guardian_phone, "father_name": s.father_name, "parent_phone": s.father_phone or s.mother_phone or s.guardian_phone} for s in query.order_by(Student.id).all()]
 
 
 @router.post("/students", status_code=201)
@@ -1087,8 +1087,12 @@ def teacher_dashboard(class_code: str | None = None, db: Session = Depends(get_d
     if cls:
         ids=[s.id for s in db.query(Student).filter_by(class_id=cls.id).all()]; count=len(ids)
         pending=db.query(func.count(CertificateRequest.id)).filter(CertificateRequest.student_id.in_(ids),CertificateRequest.status=="pending").scalar() if ids else 0
+    subject_rows=(db.query(SubjectTeacherAssignment,AcademicClass).join(AcademicClass,AcademicClass.id==SubjectTeacherAssignment.class_id)
+                  .filter(SubjectTeacherAssignment.teacher_id==teacher.id,SubjectTeacherAssignment.academic_year==AcademicClass.academic_year)
+                  .order_by(AcademicClass.grade,AcademicClass.code,SubjectTeacherAssignment.subject).all())
     return {"teacher_id":teacher.id,"full_name":account.full_name,"subject":teacher.subject,"class_code":cls.code if cls else None,
             "classes":[{"code":c.code,"grade":c.grade,"section":c.section,"group_name":c.group_name,"medium":c.medium,"strength":c.strength} for c in classes],
+            "subject_classes":[{"code":c.code,"subject":a.subject,"group_name":c.group_name,"medium":c.medium} for a,c in subject_rows],
             "student_count":count,"strength":cls.strength if cls else None,"pending_certificate_requests":pending,"timetable":my_teacher_timetable(db,account)}
 
 

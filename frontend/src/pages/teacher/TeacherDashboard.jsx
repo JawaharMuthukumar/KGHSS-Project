@@ -4,7 +4,6 @@ import PortalPageHeader from "../../components/portal/PortalPageHeader";
 import StatCard from "../../components/portal/StatCard";
 import Drawer from "../../components/portal/Drawer";
 import StudentProfilePanel from "../../components/portal/StudentProfilePanel";
-import { inputClass } from "../../components/portal/FormField";
 import Card from "../../components/ui/Card";
 import Icon from "../../components/ui/Icon";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -51,6 +50,54 @@ export default function TeacherDashboard() {
       <PortalPageHeader
         title={`Welcome back, ${user?.full_name || "Teacher"}`}
         description={data ? [data.subject, roleLine].filter(Boolean).join(" · ") : undefined}
+        actions={
+          isClassTeacher && (
+            <div className="relative w-64 max-w-full">
+              <Icon name="Search" size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy/35" />
+              <input
+                type="text"
+                placeholder={`Search students in ${classCode}…`}
+                aria-label={`Find a student in ${classCode}`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === "Escape" && setSearch("")}
+                className="w-full rounded-full border border-navy/15 bg-white pl-9 pr-3 py-2 text-sm text-navy placeholder:text-navy/35 focus:outline-none focus:border-gold"
+              />
+              {query && (
+                <div className="absolute right-0 mt-1.5 w-80 max-w-[calc(100vw-2rem)] z-30 bg-white border border-navy/10 rounded-2xl shadow-lg p-1.5 flex flex-col gap-0.5">
+                  {loadingStudents && <p className="text-sm text-navy/40 px-2 py-2">Loading…</p>}
+                  {!loadingStudents && matches.length === 0 && (
+                    <p className="text-sm text-navy/40 px-2 py-2">No students match “{search.trim()}”.</p>
+                  )}
+                  {matches.slice(0, 8).map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveStudent(s.id);
+                        setSearch("");
+                      }}
+                      className="flex items-center gap-3 p-2 rounded-xl text-left hover:bg-navy/[0.05] transition-colors"
+                    >
+                      <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy/8 text-navy text-xs font-bold shrink-0">
+                        {s.full_name.slice(0, 1)}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-navy truncate">{s.full_name}</span>
+                        <span className="block text-xs text-navy/50">{s.registration_no}</span>
+                      </span>
+                    </button>
+                  ))}
+                  {matches.length > 8 && (
+                    <Link to="/teacher/students" className="text-xs font-semibold text-gold-dark hover:text-gold px-2 py-1.5">
+                      {matches.length - 8} more — view all students
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        }
       />
 
       {error && <p className="text-sm text-red-600 mb-4">Could not load the dashboard. {error.message}</p>}
@@ -73,62 +120,17 @@ export default function TeacherDashboard() {
           value={loading ? undefined : data?.student_count ?? "—"}
           icon="GraduationCap"
           tone="navy"
+          to={isClassTeacher ? "/teacher/students" : undefined}
         />
         <StatCard
           label="Pending Certificate Requests"
           value={loading ? undefined : data?.pending_certificate_requests ?? "—"}
           icon="FileCheck2"
           tone="gold"
+          to="/teacher/certificates"
         />
-        <StatCard label="Weekly Periods" value={loading ? undefined : (data?.timetable || []).length} icon="Clock" tone="teal" />
+        <StatCard label="Weekly Periods" value={loading ? undefined : (data?.timetable || []).length} icon="Clock" tone="teal" to="/teacher/my-timetable" />
       </div>}
-
-      {isClassTeacher && (
-        <Card className="p-5 mb-6">
-          <h2 className="font-heading font-bold text-navy mb-3">Find a Student in {data.class_code}</h2>
-          <div className="relative">
-            <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy/35" />
-            <input
-              type="text"
-              placeholder="Search by name or register number…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={`${inputClass} pl-9`}
-            />
-          </div>
-
-          {query && (
-            <div className="mt-3 flex flex-col gap-1">
-              {loadingStudents && <p className="text-sm text-navy/40 px-1 py-2">Loading…</p>}
-              {!loadingStudents && matches.length === 0 && (
-                <p className="text-sm text-navy/40 px-1 py-2">No students match “{search.trim()}”.</p>
-              )}
-              {matches.slice(0, 8).map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setActiveStudent(s.id)}
-                  className="flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-navy/[0.05] transition-colors"
-                >
-                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy/8 text-navy text-xs font-bold shrink-0">
-                    {s.full_name.slice(0, 1)}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium text-navy truncate">{s.full_name}</span>
-                    <span className="block text-xs text-navy/50">{s.registration_no}</span>
-                  </span>
-                  <Icon name="ChevronRight" size={16} className="ml-auto text-navy/30" />
-                </button>
-              ))}
-              {matches.length > 8 && (
-                <Link to="/teacher/students" className="text-xs font-semibold text-gold-dark hover:text-gold px-1 pt-1">
-                  {matches.length - 8} more — view all students
-                </Link>
-              )}
-            </div>
-          )}
-        </Card>
-      )}
 
       {!loading && <div className="grid lg:grid-cols-2 gap-5">
         <Card className="p-5">

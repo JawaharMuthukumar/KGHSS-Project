@@ -38,14 +38,15 @@ export default function StudentDashboard() {
 
       {!loading && <>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <StatCard label="My Average" value={average != null ? `${average}%` : "—"} icon="TrendingUp" tone="gold" />
+        <StatCard label="My Average" value={average != null ? `${average}%` : "—"} icon="TrendingUp" tone="gold" to="/student/results" />
         <StatCard
           label="Certificate Requests"
           value={loading ? undefined : (data?.certificate_requests || []).length}
           icon="FileCheck2"
           tone="navy"
+          to="/student/certificates"
         />
-        <StatCard label="Class" value={data?.class_code} icon="School" tone="teal" />
+        <StatCard label="Class" value={data?.class_code} icon="School" tone="teal" to="/student/timetable" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">

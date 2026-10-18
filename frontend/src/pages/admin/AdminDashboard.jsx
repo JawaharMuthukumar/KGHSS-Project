@@ -34,20 +34,22 @@ export default function AdminDashboard() {
       {loading && <DashboardSkeleton />}
 
       {!loading && <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <StatCard label="Classes" value={loading ? undefined : data?.class_count} icon="School" tone="navy" />
-        <StatCard label="Teachers" value={loading ? undefined : data?.teacher_count} icon="Users" tone="teal" />
-        <StatCard label="Students" value={loading ? undefined : data?.student_count} icon="GraduationCap" tone="gold" />
+        <StatCard label="Classes" value={loading ? undefined : data?.class_count} icon="School" tone="navy" to="/admin/class-teachers" />
+        <StatCard label="Teachers" value={loading ? undefined : data?.teacher_count} icon="Users" tone="teal" to="/admin/teachers" />
+        <StatCard label="Students" value={loading ? undefined : data?.student_count} icon="GraduationCap" tone="gold" to="/admin/students" />
         <StatCard
           label="Pending Certificates"
           value={loading ? undefined : data?.pending_certificate_requests}
           icon="FileCheck2"
           tone="navy"
+          to="/admin/certificates"
         />
         <StatCard
           label="Open Complaints"
           value={loading ? undefined : data?.open_complaint_threads}
           icon="MessageSquare"
           tone="danger"
+          to="/admin/complaints"
         />
       </div>}
 

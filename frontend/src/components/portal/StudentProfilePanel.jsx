@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import Banner from "./Banner";
+import Icon from "../ui/Icon";
 import FormField, { inputClass } from "./FormField";
 import { api, ApiError } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
 import { ContentSkeleton } from "../ui/Skeleton";
+import { BLOOD_GROUPS, normalizeBloodGroup } from "../../constants/academic";
 
 const editableFields = [
   "full_name",
@@ -23,9 +25,11 @@ const editableFields = [
 
 const communities = ["OTH", "BC", "BCM", "MBC", "SC", "SCA", "ST"];
 const mediumLabels = { TM: "Tamil", EM: "English" };
+// The saved value stays selectable even if it is an old free-text entry outside the list.
+const bloodGroupOptions = (current) => (current && !BLOOD_GROUPS.includes(current) ? [current, ...BLOOD_GROUPS] : BLOOD_GROUPS);
 const mobileProps = { pattern: "[0-9]{10}", title: "10-digit mobile number", inputMode: "numeric" };
 
-export default function StudentProfilePanel({ studentId, editable = false, onSaved }) {
+export default function StudentProfilePanel({ studentId, editable = false, onSaved, onDelete }) {
   const [tab, setTab] = useState("profile");
   const [profile, setProfile] = useState(null);
   const [results, setResults] = useState(null);
@@ -33,6 +37,7 @@ export default function StudentProfilePanel({ studentId, editable = false, onSav
   const [form, setForm] = useState(null);
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setProfile(null);
@@ -49,7 +54,9 @@ export default function StudentProfilePanel({ studentId, editable = false, onSav
 
   const startEditing = () => {
     setSaveError("");
-    setForm(Object.fromEntries(editableFields.map((key) => [key, profile[key] ?? ""])));
+    const values = Object.fromEntries(editableFields.map((key) => [key, profile[key] ?? ""]));
+    values.blood_group = normalizeBloodGroup(values.blood_group);
+    setForm(values);
   };
 
   const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
@@ -124,6 +131,24 @@ export default function StudentProfilePanel({ studentId, editable = false, onSav
             {!profile.father_phone && !profile.mother_phone && <Field label="Guardian Phone" value={profile.guardian_phone} />}
             <Field label="Address" value={profile.address} full />
           </div>
+          {editable && onDelete && (
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  await onDelete(profile);
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+              className="mt-6 w-full flex items-center justify-center gap-1.5 border border-red-200 text-red-600 font-semibold text-sm py-3 rounded-full hover:bg-red-50 transition-colors disabled:opacity-60"
+            >
+              <Icon name="Trash2" size={15} />
+              {deleting ? "Deleting…" : "Delete Student"}
+            </button>
+          )}
         </div>
       )}
 
@@ -153,7 +178,12 @@ export default function StudentProfilePanel({ studentId, editable = false, onSav
           </div>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Blood Group" htmlFor="edit_blood_group">
-              <input id="edit_blood_group" name="blood_group" placeholder="e.g. O+" value={form.blood_group} onChange={handleChange} className={inputClass} />
+              <select id="edit_blood_group" name="blood_group" value={form.blood_group} onChange={handleChange} className={inputClass}>
+                <option value="">Select…</option>
+                {bloodGroupOptions(form.blood_group).map((g) => (
+                  <option key={g}>{g}</option>
+                ))}
+              </select>
             </FormField>
             <FormField label="Medium" htmlFor="edit_medium">
               <select id="edit_medium" name="medium" value={form.medium} onChange={handleChange} className={inputClass}>

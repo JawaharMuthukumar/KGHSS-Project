@@ -6,6 +6,7 @@ import Banner from "../../components/portal/Banner";
 import FormField, { inputClass } from "../../components/portal/FormField";
 import { useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { api, ApiError } from "../../lib/apiClient";
+import { BLOOD_GROUPS } from "../../constants/academic";
 
 const emptyForm = {
   full_name: "",
@@ -23,6 +24,8 @@ const emptyForm = {
   address: "",
 };
 
+// The saved value stays selectable even if it is an old free-text entry outside the list.
+const bloodGroupOptions = (current) => (current && !BLOOD_GROUPS.includes(current) ? [current, ...BLOOD_GROUPS] : BLOOD_GROUPS);
 const mobileProps = { pattern: "[0-9]{10}", title: "10-digit mobile number", inputMode: "numeric" };
 
 const communities = ["OTH", "BC", "BCM", "MBC", "SC", "SCA", "ST"];
@@ -125,7 +128,12 @@ export default function AddStudent() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Blood Group" htmlFor="blood_group">
-              <input id="blood_group" name="blood_group" placeholder="e.g. O+" value={form.blood_group} onChange={handleChange} className={inputClass} />
+              <select id="blood_group" name="blood_group" value={form.blood_group} onChange={handleChange} className={inputClass}>
+                <option value="">Select…</option>
+                {bloodGroupOptions(form.blood_group).map((g) => (
+                  <option key={g}>{g}</option>
+                ))}
+              </select>
             </FormField>
             <FormField label="Medium" htmlFor="medium">
               <select id="medium" name="medium" value={form.medium} onChange={handleChange} className={inputClass}>

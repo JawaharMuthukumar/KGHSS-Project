@@ -17,7 +17,6 @@ export default function MyStudents() {
   const { classCode, loading: loadingProfile } = useMyTeacherProfile();
   const [search, setSearch] = useState("");
   const [activeStudent, setActiveStudent] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
   const toast = useToast();
   const { data: students, loading, error, reload } = useApiResource("/students", {
     query: { class_code: classCode },
@@ -34,16 +33,13 @@ export default function MyStudents() {
 
   const handleDelete = async (student) => {
     if (!window.confirm(`Delete ${student.full_name}? Their marks, attendance and requests will also be removed. This cannot be undone.`)) return;
-    setDeletingId(student.id);
     try {
       await api.delete(`/students/${student.id}`);
-      if (activeStudent === student.id) setActiveStudent(null);
+      setActiveStudent(null);
       await reload();
       toast.success(`${student.full_name} deleted successfully`);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not delete this student.");
-    } finally {
-      setDeletingId(null);
     }
   };
 
@@ -83,15 +79,16 @@ export default function MyStudents() {
                   <th className="px-4 py-3">Student</th>
                   <th className="px-4 py-3">Register No</th>
                   <th className="px-4 py-3">Gender</th>
-                  <th className="px-4 py-3">Guardian Phone</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3">Father Name</th>
+                  <th className="px-4 py-3">Parent Phone</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {loading && <tr><td colSpan={5} className="p-0"><TableSkeleton rows={6} columns={4} /></td></tr>}
+                {loading && <tr><td colSpan={6} className="p-0"><TableSkeleton rows={6} columns={5} /></td></tr>}
                 {!loading && filtered.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-navy/40">No students found.</td>
+                    <td colSpan={6} className="px-4 py-8 text-center text-navy/40">No students found.</td>
                   </tr>
                 )}
                 {filtered.map((s) => (
@@ -110,24 +107,10 @@ export default function MyStudents() {
                     </td>
                     <td className="px-4 py-3 text-navy/70">{s.registration_no}</td>
                     <td className="px-4 py-3 text-navy/70">{s.gender || "—"}</td>
-                    <td className="px-4 py-3 text-navy/70">{s.guardian_phone || "—"}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          disabled={deletingId === s.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(s);
-                          }}
-                          aria-label={`Delete ${s.full_name}`}
-                          className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg disabled:opacity-50"
-                        >
-                          <Icon name="Trash2" size={14} />
-                          {deletingId === s.id ? "Deleting…" : "Delete"}
-                        </button>
-                        <Icon name="ChevronRight" size={16} className="text-navy/30" />
-                      </div>
+                    <td className="px-4 py-3 text-navy/70">{s.father_name || "—"}</td>
+                    <td className="px-4 py-3 text-navy/70">{s.parent_phone || "—"}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Icon name="ChevronRight" size={16} className="text-navy/30" />
                     </td>
                   </tr>
                 ))}
@@ -138,7 +121,7 @@ export default function MyStudents() {
       )}
 
       <Drawer open={Boolean(activeStudent)} onClose={() => setActiveStudent(null)} title="Student Profile">
-        {activeStudent && <StudentProfilePanel studentId={activeStudent} editable onSaved={reload} />}
+        {activeStudent && <StudentProfilePanel studentId={activeStudent} editable onSaved={reload} onDelete={handleDelete} />}
       </Drawer>
     </div>
   );

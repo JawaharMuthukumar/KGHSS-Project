@@ -20,7 +20,7 @@ from app.models.entities import (Account, AcademicClass, Teacher, Student, Class
     Notice, CertificateRequest, LeaveRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage,
     PagePost, PagePostImage)
 from app.schemas.common import (ClassIn, ClassTeacherIn, SubjectTeacherIn, TeacherCreate, TeacherUpdate,
-    StudentCreate, StudentUpdate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, NoticeUpdate, CertificateIn, DecisionIn,
+    StudentCreate, StudentUpdate, StudentSelfUpdate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, NoticeUpdate, CertificateIn, DecisionIn,
     LeaveRequestIn, ComplaintMessageIn, EventIn, EventUpdate, GalleryIn, PublicContactIn)
 
 router = APIRouter(tags=["School"])
@@ -1204,6 +1204,16 @@ def student_dashboard(db: Session = Depends(get_db), account: Account = Depends(
 @router.get("/students/me/profile")
 def my_student_profile(db: Session = Depends(get_db), account: Account = Depends(require_roles("student"))):
     return get_student(student_profile(db,account).id,db,account)
+
+
+@router.patch("/students/me/profile", summary="Student edits their own DOB, blood group, parent names and address")
+def update_my_student_profile(data: StudentSelfUpdate, db: Session = Depends(get_db), account: Account = Depends(require_roles("student"))):
+    student=student_profile(db,account)
+    # Only the fields in StudentSelfUpdate can change here; blank strings clear a field.
+    for key,value in data.model_dump(exclude_unset=True).items():
+        setattr(student,key,(value.strip() or None) if isinstance(value,str) else value)
+    db.commit(); db.refresh(student)
+    return student_detail(student)
 
 
 @router.post("/public/contact", status_code=202)

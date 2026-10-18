@@ -84,6 +84,15 @@ class StudentUpdate(BaseModel):
     address: str | None = None
 
 
+class StudentSelfUpdate(BaseModel):
+    """The few profile fields a student may correct themselves; everything else stays with the school."""
+    date_of_birth: date | None = None
+    blood_group: str | None = Field(default=None, max_length=10)
+    father_name: str | None = Field(default=None, max_length=160)
+    mother_name: str | None = Field(default=None, max_length=160)
+    address: str | None = Field(default=None, max_length=500)
+
+
 class ClassIn(BaseModel):
     code: str = Field(min_length=2, max_length=12)
     grade: int = Field(ge=1, le=12)

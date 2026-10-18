@@ -11,6 +11,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError } from "../../lib/apiClient";
 import { TableSkeleton } from "../../components/ui/Skeleton";
 import { useToast } from "../../components/ui/Toast";
+import { mobileInputProps, toMobileDigits } from "../../utils/mobile";
 
 const emptyForm = { full_name: "", subject: "", phone: "", password: "", is_active: true };
 
@@ -295,7 +296,7 @@ function TeacherForm({ mode, teacher, onCancel, onSuccess }) {
           full_name: teacher.full_name,
           // Normalise legacy free-text values like "tamil" onto the canonical list.
           subject: SUBJECTS.find((s) => s.toLowerCase() === (teacher.subject || "").trim().toLowerCase()) || "",
-          phone: teacher.phone || "",
+          phone: toMobileDigits(teacher.phone),
           password: "",
           is_active: teacher.is_active,
         }
@@ -356,7 +357,7 @@ function TeacherForm({ mode, teacher, onCancel, onSuccess }) {
         <SubjectPicker value={form.subject} onChange={(subject) => setForm((f) => ({ ...f, subject }))} />
       </FormField>
       <FormField label="Phone" htmlFor="phone" hint="Optional">
-        <input id="phone" name="phone" value={form.phone} onChange={handleChange} className={inputClass} />
+        <input id="phone" name="phone" {...mobileInputProps} value={form.phone} onChange={handleChange} className={inputClass} />
       </FormField>
       {mode === "create" && (
         <FormField label="Temporary Password" htmlFor="password" required hint="Minimum 8 characters. Share this with the teacher.">

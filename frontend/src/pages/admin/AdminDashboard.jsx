@@ -20,7 +20,7 @@ const quickActions = [
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const { data, loading, error } = useApiResource("/dashboards/admin");
+  const { data, loading, error } = useApiResource("/dashboards/admin", { live: ["certificates", "leave"] });
 
   return (
     <div>

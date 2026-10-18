@@ -7,6 +7,7 @@ import FormField, { inputClass } from "../../components/portal/FormField";
 import { useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { api, ApiError } from "../../lib/apiClient";
 import { BLOOD_GROUPS } from "../../constants/academic";
+import { mobileInputProps } from "../../utils/mobile";
 
 const emptyForm = {
   full_name: "",
@@ -26,7 +27,7 @@ const emptyForm = {
 
 // The saved value stays selectable even if it is an old free-text entry outside the list.
 const bloodGroupOptions = (current) => (current && !BLOOD_GROUPS.includes(current) ? [current, ...BLOOD_GROUPS] : BLOOD_GROUPS);
-const mobileProps = { pattern: "[0-9]{10}", title: "10-digit mobile number", inputMode: "numeric" };
+const mobileProps = mobileInputProps;
 
 const communities = ["OTH", "BC", "BCM", "MBC", "SC", "SCA", "ST"];
 

@@ -6,6 +6,7 @@ import { api, ApiError } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
 import { ContentSkeleton } from "../ui/Skeleton";
 import { BLOOD_GROUPS, normalizeBloodGroup } from "../../constants/academic";
+import { mobileInputProps } from "../../utils/mobile";
 
 const editableFields = [
   "full_name",
@@ -27,7 +28,7 @@ const communities = ["OTH", "BC", "BCM", "MBC", "SC", "SCA", "ST"];
 const mediumLabels = { TM: "Tamil", EM: "English" };
 // The saved value stays selectable even if it is an old free-text entry outside the list.
 const bloodGroupOptions = (current) => (current && !BLOOD_GROUPS.includes(current) ? [current, ...BLOOD_GROUPS] : BLOOD_GROUPS);
-const mobileProps = { pattern: "[0-9]{10}", title: "10-digit mobile number", inputMode: "numeric" };
+const mobileProps = mobileInputProps;
 
 export default function StudentProfilePanel({ studentId, editable = false, onSaved, onDelete }) {
   const [tab, setTab] = useState("profile");

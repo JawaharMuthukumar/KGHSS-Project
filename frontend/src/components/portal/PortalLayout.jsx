@@ -6,6 +6,8 @@ import { useAuth } from "../../context/AuthContext";
 import { portalNav, roleLabels } from "./navConfig";
 import { selectTeacherClass, useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { useAutoCapitalize } from "../../hooks/useAutoCapitalize";
+import { AlertsProvider, useAlerts } from "../../context/AlertsContext";
+import { formatDate } from "../../utils/formatDate";
 
 /** Lets a teacher who is Class Teacher of several sections pick which one the portal pages work on. */
 function TeacherClassSwitcher() {
@@ -31,8 +33,98 @@ function TeacherClassSwitcher() {
   );
 }
 
+function CountBadge({ count, className = "" }) {
+  if (!count) return null;
+  return (
+    <span className={`min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center leading-none ${className}`}>
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+const kindIcons = { certificate: "FileCheck2", leave: "CalendarDays" };
+
+/** Header bell: everything waiting on this user, plus unread notices. */
+function NotificationBell() {
+  const { items, unreadNotices, noticePath, counts } = useAlerts();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const total = (counts.certificates || 0) + (counts.leave || 0) + (unreadNotices || 0);
+
+  const go = (to) => {
+    setOpen(false);
+    navigate(to);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label={total ? `${total} notifications` : "Notifications"}
+        aria-expanded={open}
+        className="relative flex items-center justify-center w-10 h-10 rounded-full text-navy/70 hover:text-navy hover:bg-navy/5 transition-colors"
+      >
+        <Icon name="Bell" size={20} />
+        <CountBadge count={total} className="absolute -top-0.5 -right-0.5" />
+      </button>
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Close notifications"
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-40 cursor-default bg-transparent hover:bg-transparent"
+          />
+          <div className="absolute right-0 mt-2 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-navy/8 shadow-lg py-2">
+            <p className="px-4 pb-2 text-sm font-heading font-bold text-navy border-b border-navy/8">Notifications</p>
+            <div className="max-h-96 overflow-y-auto">
+              {unreadNotices > 0 && (
+                <button type="button" onClick={() => go(noticePath)} className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-navy/[0.04]">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-gold/15 text-gold-dark shrink-0">
+                    <Icon name="Bell" size={15} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-navy">
+                      {unreadNotices} new notice{unreadNotices === 1 ? "" : "s"}
+                    </span>
+                    <span className="block text-xs text-navy/50">Tap to read</span>
+                  </span>
+                </button>
+              )}
+              {items.map((item) => (
+                <button key={item.key} type="button" onClick={() => go(item.to)} className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-navy/[0.04]">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy/8 text-navy shrink-0">
+                    <Icon name={kindIcons[item.kind] || "Bell"} size={15} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-navy">{item.title}</span>
+                    <span className="block text-xs text-navy/60 truncate">{item.detail}</span>
+                    {item.created_at && <span className="block text-[11px] text-navy/40">{formatDate(item.created_at)}</span>}
+                  </span>
+                </button>
+              ))}
+              {!items.length && !unreadNotices && <p className="px-4 py-6 text-sm text-center text-navy/45">You're all caught up.</p>}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function PortalLayout({ role }) {
+  const { user } = useAuth();
+  return (
+    <AlertsProvider key={user?.username} role={role} username={user?.username}>
+      <PortalShell role={role} />
+    </AlertsProvider>
+  );
+}
+
+function PortalShell({ role }) {
   const { user, logout } = useAuth();
+  const { counts } = useAlerts();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -93,6 +185,7 @@ export default function PortalLayout({ role }) {
             >
               <Icon name={item.icon} size={17} />
               <span className="truncate">{item.label}</span>
+              <CountBadge count={item.badge && counts[item.badge]} className="ml-auto shrink-0" />
             </NavLink>
           ))}
         </nav>
@@ -109,7 +202,10 @@ export default function PortalLayout({ role }) {
             <Icon name="Menu" size={22} />
           </button>
           {role === "teacher" && <TeacherClassSwitcher />}
-          <div className="ml-auto relative">
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
+          <div className="relative">
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}

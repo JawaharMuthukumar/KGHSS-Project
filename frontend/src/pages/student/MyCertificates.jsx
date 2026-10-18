@@ -18,7 +18,7 @@ const certTypes = [
 ];
 
 export default function MyCertificates() {
-  const { data: requests, loading, error, reload } = useApiResource("/certificates/requests");
+  const { data: requests, loading, error, reload } = useApiResource("/certificates/requests", { live: "certificates" });
   const [form, setForm] = useState({ certificate_type: "bonafide", note: "" });
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);

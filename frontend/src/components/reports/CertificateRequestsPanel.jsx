@@ -12,7 +12,7 @@ import { TableSkeleton } from "../ui/Skeleton";
 const statusTone = { pending: "navy", approved: "success", rejected: "danger" };
 
 export default function CertificateRequestsPanel({ description }) {
-  const { data: requests, loading, error, reload } = useApiResource("/certificates/requests");
+  const { data: requests, loading, error, reload } = useApiResource("/certificates/requests", { live: "certificates" });
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState("");
 

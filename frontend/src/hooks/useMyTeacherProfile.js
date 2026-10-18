@@ -39,6 +39,7 @@ export function useMyTeacherProfile() {
   const { data, loading, error } = useApiResource("/dashboards/teacher", {
     query: selected ? { class_code: selected } : undefined,
     deps: [selected],
+    live: ["certificates", "leave"],
   });
 
   return { profile: data, loading, error, classCode: data?.class_code || null, classes: data?.classes || [] };

@@ -17,7 +17,7 @@ const filters = [
 
 // Approve/reject list: class teacher sees their class's student requests, admin sees teacher requests.
 export default function LeaveReviewPanel({ showClass = false, emptyText = "No leave requests." }) {
-  const { data: requests, loading, error, reload } = useApiResource("/leave-requests", { query: { scope: "review" } });
+  const { data: requests, loading, error, reload } = useApiResource("/leave-requests", { query: { scope: "review" }, live: "leave" });
   const [filter, setFilter] = useState("pending");
   const [busyId, setBusyId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);

@@ -596,6 +596,35 @@ def list_notices(db: Session = Depends(get_db)):
     return db.query(Notice).filter_by(published=True,audience="website").order_by(Notice.created_at.desc()).all()
 
 
+def notice_author(db: Session, notice: Notice, cache: dict | None = None) -> dict:
+    """Who posted a notice, for display: the HM, or a teacher with their subject and class-teacher role."""
+    cache = {} if cache is None else cache
+    key = (notice.author_id, notice.class_id)
+    if key in cache: return cache[key]
+    author = db.get(Account, notice.author_id) if notice.author_id else None
+    info = {"author_name": None, "author_role": None, "author_subject": None, "author_teacher_id": None, "author_is_class_teacher": False}
+    if author and author.role == "admin":
+        info.update(author_name=author.full_name, author_role="admin")
+    elif author and author.role == "teacher":
+        teacher = db.query(Teacher).filter_by(account_id=author.id).first()
+        cls = db.get(AcademicClass, notice.class_id) if notice.class_id else None
+        info.update(author_name=author.full_name, author_role="teacher", author_subject=teacher.subject if teacher else None,
+                    author_teacher_id=teacher.id if teacher else None,
+                    author_is_class_teacher=bool(teacher and cls and is_class_teacher_of(db, teacher, cls)))
+    cache[key] = info
+    return info
+
+
+def notice_out(db: Session, notice: Notice, cache: dict | None = None) -> dict:
+    return {"id": notice.id, "title": notice.title, "body": notice.body, "audience": notice.audience, "class_id": notice.class_id,
+            "author_id": notice.author_id, "published": notice.published, "created_at": notice.created_at, **notice_author(db, notice, cache)}
+
+
+def notices_out(db: Session, notices: list[Notice]) -> list[dict]:
+    cache: dict = {}
+    return [notice_out(db, n, cache) for n in notices]
+
+
 @router.get("/portal/notices")
 def portal_notices(db: Session = Depends(get_db), account: Account = Depends(current_account)):
     """Notices visible to the signed-in role and, for students, their class."""
@@ -607,14 +636,68 @@ def portal_notices(db: Session = Depends(get_db), account: Account = Depends(cur
         student=student_profile(db,account)
         query=db.query(Notice).filter(Notice.published.is_(True),((Notice.class_id==student.class_id)|(Notice.class_id.is_(None)&Notice.audience.in_(["all","students"]))))
     else: raise HTTPException(403,"Notices not available for this role")
-    return query.order_by(Notice.created_at.desc()).all()
+    return notices_out(db, query.order_by(Notice.created_at.desc()).all())
+
+
+@router.get("/portal/alerts", summary="Badge counts, pending items and change markers for live portal updates (polled)")
+def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(current_account)):
+    """`versions` change whenever anything in that topic changes, so the client knows what to refresh.
+    `items` are things waiting on this user; `notices` lists recent visible notice ids for unread badges."""
+    def version(q, model, decided=True):
+        cols = [func.count(model.id), func.max(model.id)] + ([func.max(model.decided_at)] if decided else [])
+        return ":".join(str(v) for v in q.with_entities(*cols).one())
+
+    certs = db.query(CertificateRequest); leaves = db.query(LeaveRequest); notices = db.query(Notice).filter(Notice.published.is_(True))
+    cert_pending = leave_pending = None; cert_link = leave_link = None
+    if account.role == "admin":
+        cert_pending = certs.filter(CertificateRequest.status == "pending"); cert_link = "/admin/certificates"
+        leaves = leaves.filter(LeaveRequest.applicant_role == "teacher"); leave_pending = leaves.filter(LeaveRequest.status == "pending"); leave_link = "/admin/leave-requests"
+        notices = notices.filter(Notice.id < 0)  # the HM writes notices; nothing to alert on
+    elif account.role == "teacher":
+        class_ids = [c.id for c in assigned_classes(db, teacher_profile(db, account))] or [-1]
+        certs = certs.join(Student, Student.id == CertificateRequest.student_id).filter(Student.class_id.in_(class_ids))
+        cert_pending = certs.filter(CertificateRequest.status == "pending"); cert_link = "/teacher/certificates"
+        leaves = leaves.filter(LeaveRequest.applicant_role == "student", LeaveRequest.class_id.in_(class_ids))
+        leave_pending = leaves.filter(LeaveRequest.status == "pending"); leave_link = "/teacher/leave-requests"
+        notices = notices.filter(Notice.audience.in_(["all", "teachers"]))
+    elif account.role == "student":
+        student = student_profile(db, account)
+        certs = certs.filter(CertificateRequest.student_id == student.id); leaves = leaves.filter(LeaveRequest.applicant_id == account.id)
+        notices = notices.filter((Notice.class_id == student.class_id) | (Notice.class_id.is_(None) & Notice.audience.in_(["all", "students"])))
+    else: raise HTTPException(403, "Alerts not available for this role")
+
+    items = []
+    if cert_pending is not None:
+        for req in cert_pending.order_by(CertificateRequest.id.desc()).limit(10).all():
+            s = db.get(Student, req.student_id)
+            items.append({"key": f"certificate-{req.id}", "kind": "certificate", "title": "New certificate request",
+                          "detail": f"{s.account.full_name if s else 'Student'} · {req.certificate_type.title()}", "to": cert_link, "created_at": req.created_at})
+    if leave_pending is not None:
+        for req in leave_pending.order_by(LeaveRequest.id.desc()).limit(10).all():
+            items.append({"key": f"leave-{req.id}", "kind": "leave", "title": "New leave request",
+                          "detail": f"{db.get(Account, req.applicant_id).full_name} · {req.days} day{'s' if req.days != 1 else ''}", "to": leave_link, "created_at": req.created_at})
+    if account.role == "student":
+        # Approved certificates waiting to be downloaded count as "for you".
+        for req in certs.filter(CertificateRequest.status == "approved", CertificateRequest.downloaded_at.is_(None)).order_by(CertificateRequest.id.desc()).limit(10).all():
+            items.append({"key": f"certificate-ready-{req.id}", "kind": "certificate", "title": "Certificate approved",
+                          "detail": f"{req.certificate_type.title()} is ready to download", "to": "/student/certificates", "created_at": req.decided_at})
+        for req in leaves.filter(LeaveRequest.status != "pending", LeaveRequest.decided_at >= datetime.utcnow() - timedelta(days=3)).order_by(LeaveRequest.id.desc()).limit(5).all():
+            items.append({"key": f"leave-{req.id}-{req.status}", "kind": "leave", "title": f"Leave {req.status}", "detail": f"{req.from_date:%d %b} – {req.to_date:%d %b}",
+                          "to": "/student/leave", "created_at": req.decided_at, "silent_badge": True})
+    items.sort(key=lambda i: i["created_at"] or datetime.min, reverse=True)
+
+    counts = {"certificates": sum(1 for i in items if i["kind"] == "certificate"), "leave": sum(1 for i in items if i["kind"] == "leave" and not i.get("silent_badge"))}
+    cache: dict = {}
+    recent_notices = [{"id": n.id, "title": n.title, "author_teacher_id": notice_author(db, n, cache)["author_teacher_id"]} for n in notices.order_by(Notice.id.desc()).limit(30).all()]
+    return {"counts": counts, "items": items, "notices": recent_notices,
+            "versions": {"certificates": version(certs, CertificateRequest), "leave": version(leaves, LeaveRequest), "notices": version(notices, Notice, decided=False)}}
 
 
 @router.get("/classes/{class_code}/notices")
 def class_notices(class_code: str, db: Session = Depends(get_db), account: Account = Depends(current_account)):
     cls=get_class(db,class_code)
     if not can_access_class(db,account,cls): raise HTTPException(403,"Class access denied")
-    return db.query(Notice).filter_by(class_id=cls.id,published=True).order_by(Notice.created_at.desc()).all()
+    return notices_out(db, db.query(Notice).filter_by(class_id=cls.id,published=True).order_by(Notice.created_at.desc()).all())
 
 
 @router.post("/notices", status_code=201)
@@ -1100,8 +1183,18 @@ def teacher_dashboard(class_code: str | None = None, db: Session = Depends(get_d
 def student_dashboard(db: Session = Depends(get_db), account: Account = Depends(require_roles("student"))):
     student=student_profile(db,account); cls=student.school_class
     notices=db.query(Notice).filter(Notice.published.is_(True),((Notice.class_id==cls.id)|(Notice.class_id.is_(None)&Notice.audience.in_(["all","students","website"])))) .order_by(Notice.created_at.desc()).limit(10).all()
-    teachers=get_subject_teachers(cls.code,db,account)
-    return {"student_id":student.id,"full_name":account.full_name,"registration_no":student.registration_no,"class_code":cls.code,"notices":notices,"subject_teachers":teachers,"certificate_requests":db.query(CertificateRequest).filter_by(student_id=student.id).order_by(CertificateRequest.created_at.desc()).all()}
+    # Class teacher first, then subject teachers; each with phone so students/parents can reach them.
+    staff={}
+    for link in db.query(ClassTeacherAssignment).filter_by(class_id=cls.id,academic_year=cls.academic_year).all():
+        t=db.get(Teacher,link.teacher_id)
+        if t: staff[t.id]={"teacher_id":t.id,"teacher_name":t.account.full_name,"phone":t.phone,"subjects":[],"is_class_teacher":True}
+    for a in db.query(SubjectTeacherAssignment).filter_by(class_id=cls.id,academic_year=cls.academic_year).order_by(SubjectTeacherAssignment.subject).all():
+        t=db.get(Teacher,a.teacher_id)
+        if not t: continue
+        entry=staff.setdefault(t.id,{"teacher_id":t.id,"teacher_name":t.account.full_name,"phone":t.phone,"subjects":[],"is_class_teacher":False})
+        entry["subjects"].append(a.subject)
+    teachers=sorted(staff.values(),key=lambda e:(not e["is_class_teacher"],e["subjects"][0] if e["subjects"] else "",e["teacher_name"]))
+    return {"student_id":student.id,"full_name":account.full_name,"registration_no":student.registration_no,"class_code":cls.code,"notices":notices_out(db,notices),"subject_teachers":teachers,"certificate_requests":db.query(CertificateRequest).filter_by(student_id=student.id).order_by(CertificateRequest.created_at.desc()).all()}
 
 
 @router.get("/students/me/profile")

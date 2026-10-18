@@ -13,9 +13,9 @@ export default function StatCard({ label, value, icon, tone = "navy", to }) {
   };
 
   const card = (
-    <Card className={`p-5 flex items-center gap-4 h-full ${to ? "transition-colors group-hover:border-gold/50 group-hover:bg-gold/[0.03]" : ""}`}>
+    <Card className={`p-4 sm:p-5 flex items-center gap-3 sm:gap-4 h-full ${to ? "transition-colors group-hover:border-gold/50 group-hover:bg-gold/[0.03]" : ""}`}>
       {icon && (
-        <span className={`flex items-center justify-center w-11 h-11 rounded-2xl shrink-0 ${tones[tone] || tones.navy}`}>
+        <span className={`flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl shrink-0 ${tones[tone] || tones.navy}`}>
           <Icon name={icon} size={20} />
         </span>
       )}

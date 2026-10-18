@@ -111,7 +111,7 @@ export default function Teachers() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="table-cards w-full text-sm">
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-navy/45 border-b border-navy/8">
                 <th className="px-4 py-3">Teacher</th>
@@ -141,7 +141,7 @@ export default function Teachers() {
                   onClick={() => openTeacher(t)}
                   className="border-b border-navy/6 last:border-0 hover:bg-navy/[0.05] cursor-pointer"
                 >
-                  <td className="px-4 py-3">
+                  <td className="tc-primary px-4 py-3">
                     <div className="flex items-center gap-3">
                       <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy/8 text-navy text-xs font-bold shrink-0">
                         {t.full_name.slice(0, 1)}
@@ -149,13 +149,13 @@ export default function Teachers() {
                       <span className="font-medium text-navy">{t.full_name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-navy/70">{t.employee_id}</td>
-                  <td className="px-4 py-3 text-navy/70">{t.subject}</td>
-                  <td className="px-4 py-3 text-navy/70">{t.phone || "—"}</td>
-                  <td className="px-4 py-3">
+                  <td data-label="Employee ID" className="px-4 py-3 text-navy/70">{t.employee_id}</td>
+                  <td data-label="Subject" className="px-4 py-3 text-navy/70">{t.subject}</td>
+                  <td data-label="Phone" className="px-4 py-3 text-navy/70">{t.phone || "—"}</td>
+                  <td className="tc-aside px-4 py-3">
                     <Badge tone={t.is_active ? "success" : "danger"}>{t.is_active ? "Active" : "Inactive"}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="tc-hide px-4 py-3 text-right">
                     <Icon name="ChevronRight" size={16} className="text-navy/30" />
                   </td>
                 </tr>

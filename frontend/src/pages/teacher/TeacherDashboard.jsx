@@ -52,7 +52,7 @@ export default function TeacherDashboard() {
         description={data ? [data.subject, roleLine].filter(Boolean).join(" · ") : undefined}
         actions={
           isClassTeacher && (
-            <div className="relative w-64 max-w-full">
+            <div className="relative w-full sm:w-64">
               <Icon name="Search" size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy/35" />
               <input
                 type="text"

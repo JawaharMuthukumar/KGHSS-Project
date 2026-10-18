@@ -1,25 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import Icon from "../ui/Icon";
 import ComplaintFab from "./ComplaintFab";
 import { useAuth } from "../../context/AuthContext";
-import { portalNav, roleLabels } from "./navConfig";
+import { portalNav, roleLabels, mobileTabs, flatNav } from "./navConfig";
 import { selectTeacherClass, useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { useAutoCapitalize } from "../../hooks/useAutoCapitalize";
 import { AlertsProvider, useAlerts } from "../../context/AlertsContext";
 import { formatDate } from "../../utils/formatDate";
 
 /** Lets a teacher who is Class Teacher of several sections pick which one the portal pages work on. */
-function TeacherClassSwitcher() {
+function TeacherClassSwitcher({ className = "" }) {
   const { classCode, classes } = useMyTeacherProfile();
   if (classes.length < 2) return null;
   return (
-    <label className="flex items-center gap-2 text-sm">
-      <span className="hidden sm:inline text-navy/55 font-medium">My class</span>
+    <label className={`flex items-center gap-2 text-sm ${className}`}>
+      <span className="text-navy/55 font-medium whitespace-nowrap">My class</span>
       <select
         value={classCode || ""}
         onChange={(e) => selectTeacherClass(e.target.value)}
-        className="rounded-xl border border-navy/15 bg-white px-3 py-1.5 font-semibold text-navy focus:outline-none focus:border-gold"
+        className="min-w-0 flex-1 lg:flex-none rounded-xl border border-navy/15 bg-white px-3 py-1.5 font-semibold text-navy focus:outline-none focus:border-gold"
       >
         {classes.map((c) => (
           <option key={c.code} value={c.code}>
@@ -165,6 +165,114 @@ function NotificationBell() {
   );
 }
 
+/** Phone/tablet bottom navigation: four everyday pages plus "More" (the full menu sheet). */
+function MobileTabBar({ role, counts, onMore, moreOpen }) {
+  const tabs = mobileTabs[role] || [];
+  const itemClass = (active) =>
+    `flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 text-[11px] font-semibold transition-colors ${
+      active ? "text-navy" : "text-navy/45"
+    }`;
+  const pill = (active) => `relative flex items-center justify-center w-12 h-7 rounded-full transition-colors ${active ? "bg-gold/25" : ""}`;
+
+  return (
+    <nav
+      aria-label="Main"
+      className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-navy/10 shadow-[0_-4px_16px_rgba(6,54,74,0.06)] pb-[env(safe-area-inset-bottom)]"
+    >
+      <div className="flex max-w-xl mx-auto">
+        {tabs.map((tab) => (
+          <NavLink key={tab.to} to={tab.to} end={tab.end} className={({ isActive }) => itemClass(isActive && !moreOpen)}>
+            {({ isActive }) => (
+              <>
+                <span className={pill(isActive && !moreOpen)}>
+                  <Icon name={tab.icon} size={20} />
+                  <CountBadge count={tab.badge && counts[tab.badge]} className="absolute -top-1 right-0.5 min-w-4! h-4! text-[10px]! px-1!" />
+                </span>
+                {tab.label}
+              </>
+            )}
+          </NavLink>
+        ))}
+        <button type="button" onClick={onMore} aria-expanded={moreOpen} className={itemClass(moreOpen)}>
+          <span className={pill(moreOpen)}>
+            <Icon name="LayoutGrid" size={20} />
+          </span>
+          More
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+/** Bottom sheet listing every page of the role's menu as an app-style icon grid, plus sign out. */
+function MoreSheet({ role, user, counts, onClose, onLogout }) {
+  const items = flatNav(role);
+  return (
+    <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+      <button type="button" aria-label="Close menu" onClick={onClose} className="absolute inset-0 bg-navy-dark/50" />
+      <div className="relative bg-white rounded-t-3xl shadow-2xl max-h-[85svh] flex flex-col animate-[sheet-up_0.22s_ease-out] pb-[env(safe-area-inset-bottom)]">
+        <div className="flex justify-center pt-2.5 pb-1">
+          <span className="w-10 h-1.5 rounded-full bg-navy/15" />
+        </div>
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-navy/8">
+          <div className="w-11 h-11 rounded-full bg-navy text-white flex items-center justify-center font-semibold shrink-0">
+            {(user?.full_name || "?").slice(0, 1).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-navy truncate">{user?.full_name}</p>
+            <p className="text-xs text-navy/50 truncate">
+              {user?.username} · {roleLabels[role]}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="w-9 h-9 flex items-center justify-center rounded-full text-navy/50">
+            <Icon name="X" size={20} />
+          </button>
+        </div>
+        <div className="overflow-y-auto px-3 py-4 grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {items.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              onClick={onClose}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-1.5 rounded-2xl px-1 py-3 text-center text-[11.5px] font-medium leading-tight transition-colors ${
+                  isActive ? "bg-gold/15 text-navy" : "text-navy/75"
+                }`
+              }
+            >
+              <span className="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-navy/[0.06] text-navy">
+                <Icon name={item.icon} size={20} />
+                <CountBadge count={item.badge && counts[item.badge]} className="absolute -top-1 -right-1 min-w-4! h-4! text-[10px]! px-1!" />
+              </span>
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+        <div className="px-5 pb-4 pt-1">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-2 rounded-full border border-red-200 py-3 text-sm font-semibold text-red-600 hover:bg-red-50"
+          >
+            <Icon name="LogOut" size={17} />
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The current page's menu label, for the compact phone app bar (longest matching path wins). */
+function usePageTitle(role) {
+  const { pathname } = useLocation();
+  const match = flatNav(role)
+    .filter((item) => pathname === item.to || (!item.end && pathname.startsWith(`${item.to}/`)))
+    .sort((a, b) => b.to.length - a.to.length)[0];
+  return match?.label || roleLabels[role];
+}
+
 export default function PortalLayout({ role }) {
   const { user } = useAuth();
   return (
@@ -178,32 +286,26 @@ function PortalShell({ role }) {
   const { user, logout } = useAuth();
   const { counts } = useAlerts();
   const navigate = useNavigate();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const pageTitle = usePageTitle(role);
+  const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const items = portalNav[role] || [];
   useAutoCapitalize(role === "admin" || role === "teacher");
 
+  // Opening another page closes the More sheet.
+  useEffect(() => setMoreOpen(false), [pathname]);
+
   const handleLogout = () => {
+    setMoreOpen(false);
     logout();
     navigate(`/login/${role === "student" ? "student" : role}`, { replace: true });
   };
 
   return (
     <div className="portal-shell min-h-svh flex bg-mist">
-      {mobileOpen && (
-        <button
-          type="button"
-          aria-label="Close menu"
-          onClick={() => setMobileOpen(false)}
-          className="fixed inset-0 z-40 bg-navy-dark/60 lg:hidden"
-        />
-      )}
-
-      <aside
-        className={`fixed lg:sticky top-0 z-50 h-svh w-72 shrink-0 bg-navy-dark text-white flex flex-col transition-transform duration-200 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
-      >
+      {/* Desktop sidebar; phones and tablets use the bottom tab bar + More sheet instead. */}
+      <aside className="hidden lg:flex sticky top-0 z-50 h-svh w-72 shrink-0 bg-navy-dark text-white flex-col">
         <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
           <div className="w-10 h-10 rounded-xl bg-heritage-gradient flex items-center justify-center font-heading font-bold text-sm shrink-0">
             GK
@@ -212,38 +314,32 @@ function PortalShell({ role }) {
             <p className="font-heading font-bold text-sm leading-tight truncate">GHSS Kangayampalayam</p>
             <p className="text-[11px] text-white/50">{roleLabels[role]}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setMobileOpen(false)}
-            className="ml-auto text-white/60 hover:text-white lg:hidden"
-            aria-label="Close menu"
-          >
-            <Icon name="X" size={20} />
-          </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1">
           {items.map((item) =>
             item.children ? (
-              <NavGroup key={item.label} item={item} counts={counts} onNavigate={() => setMobileOpen(false)} />
+              <NavGroup key={item.label} item={item} counts={counts} />
             ) : (
-              <NavItem key={item.to} item={item} count={item.badge && counts[item.badge]} onNavigate={() => setMobileOpen(false)} />
+              <NavItem key={item.to} item={item} count={item.badge && counts[item.badge]} />
             )
           )}
         </nav>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-30 flex items-center gap-3 bg-white border-b border-navy/8 px-5 py-3.5">
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            className="text-navy/70 hover:text-navy lg:hidden"
-            aria-label="Open menu"
-          >
-            <Icon name="Menu" size={22} />
-          </button>
-          {role === "teacher" && <TeacherClassSwitcher />}
+        <header className="sticky top-0 z-30 flex items-center gap-2 lg:gap-3 bg-white border-b border-navy/8 px-4 lg:px-5 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-2.5 lg:py-3.5">
+          {/* Phone/tablet app bar: school mark + the current page's name */}
+          <div className="lg:hidden flex items-center gap-2.5 min-w-0">
+            <span className="w-9 h-9 rounded-xl bg-heritage-gradient text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
+              GK
+            </span>
+            <div className="min-w-0">
+              <p className="font-heading font-bold text-navy text-[15px] leading-tight truncate">{pageTitle}</p>
+              <p className="text-[11px] text-navy/45 leading-tight truncate">GHSS Kangayampalayam</p>
+            </div>
+          </div>
+          {role === "teacher" && <TeacherClassSwitcher className="hidden lg:flex" />}
           <div className="ml-auto">
             <NotificationBell />
           </div>
@@ -253,9 +349,9 @@ function PortalShell({ role }) {
               onClick={() => setMenuOpen((v) => !v)}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              className="flex items-center gap-3 rounded-xl px-2 py-1 hover:bg-navy/5 transition-colors"
+              className="flex items-center gap-3 rounded-xl px-1 lg:px-2 py-1 hover:bg-navy/5 transition-colors"
             >
-              <div className="text-right hidden sm:block">
+              <div className="text-right hidden lg:block">
                 <p className="text-sm font-semibold text-navy leading-tight">{user?.full_name}</p>
                 <p className="text-[11px] text-navy/50">{user?.username}</p>
               </div>
@@ -265,7 +361,7 @@ function PortalShell({ role }) {
               <Icon
                 name="ChevronDown"
                 size={16}
-                className={`text-navy/50 transition-transform ${menuOpen ? "rotate-180" : ""}`}
+                className={`hidden lg:block text-navy/50 transition-transform ${menuOpen ? "rotate-180" : ""}`}
               />
             </button>
 
@@ -281,7 +377,7 @@ function PortalShell({ role }) {
                   role="menu"
                   className="absolute right-0 mt-2 z-50 w-56 rounded-xl bg-white border border-navy/8 shadow-lg py-1.5"
                 >
-                  <div className="px-4 py-2.5 border-b border-navy/8 sm:hidden">
+                  <div className="px-4 py-2.5 border-b border-navy/8 lg:hidden">
                     <p className="text-sm font-semibold text-navy leading-tight truncate">{user?.full_name}</p>
                     <p className="text-[11px] text-navy/50 truncate">{user?.username}</p>
                   </div>
@@ -300,10 +396,19 @@ function PortalShell({ role }) {
           </div>
         </header>
 
-        <main className="flex-1 p-5 lg:p-7 max-w-[1440px] w-full mx-auto">
+        {role === "teacher" && (
+          <div className="lg:hidden bg-white border-b border-navy/8 px-4 py-2 empty:hidden">
+            <TeacherClassSwitcher className="w-full" />
+          </div>
+        )}
+
+        <main className="flex-1 px-4 pt-4 pb-28 sm:px-5 sm:pt-5 lg:p-7 max-w-[1440px] w-full mx-auto">
           <Outlet />
         </main>
       </div>
+
+      <MobileTabBar role={role} counts={counts} moreOpen={moreOpen} onMore={() => setMoreOpen((v) => !v)} />
+      {moreOpen && <MoreSheet role={role} user={user} counts={counts} onClose={() => setMoreOpen(false)} onLogout={handleLogout} />}
 
       {role === "student" && <ComplaintFab />}
     </div>

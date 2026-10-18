@@ -52,3 +52,31 @@ export const roleLabels = {
   teacher: "Teacher Portal",
   student: "Student Portal",
 };
+
+/**
+ * Phone / tablet bottom tab bar (below the lg breakpoint): four everyday pages per role; the fifth
+ * "More" tab opens a sheet with the full menu. `badge` keys match the alert counts used in the sidebar.
+ */
+export const mobileTabs = {
+  admin: [
+    { to: "/admin", label: "Home", icon: "LayoutDashboard", end: true },
+    { to: "/admin/teachers", label: "Teachers", icon: "Users" },
+    { to: "/admin/students", label: "Students", icon: "GraduationCap" },
+    { to: "/admin/certificates", label: "Requests", icon: "FileCheck2", badge: "certificates" },
+  ],
+  teacher: [
+    { to: "/teacher", label: "Home", icon: "LayoutDashboard", end: true },
+    { to: "/teacher/students", label: "Students", icon: "GraduationCap", end: true },
+    { to: "/teacher/attendance", label: "Attendance", icon: "ClipboardCheck" },
+    { to: "/teacher/notices", label: "Notices", icon: "Bell", badge: "notices" },
+  ],
+  student: [
+    { to: "/student", label: "Home", icon: "LayoutDashboard", end: true },
+    { to: "/student/results", label: "Results", icon: "FileText" },
+    { to: "/student/timetable", label: "Timetable", icon: "CalendarRange" },
+    { to: "/student/notices", label: "Notices", icon: "Bell", badge: "notices" },
+  ],
+};
+
+/** Flat list of every page in a role's menu (groups expanded), for page titles and the "More" sheet. */
+export const flatNav = (role) => (portalNav[role] || []).flatMap((item) => item.children || [item]);

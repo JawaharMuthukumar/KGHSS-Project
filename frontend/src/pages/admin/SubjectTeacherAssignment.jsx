@@ -68,7 +68,7 @@ export default function SubjectTeacherAssignment() {
           id="class-select"
           value={classCode}
           onChange={(e) => setClassCode(e.target.value)}
-          className={inputClass + " max-w-xs"}
+          className={inputClass + " md:max-w-xs"}
           disabled={loadingClasses}
         >
           <option value="">Select a class…</option>
@@ -98,7 +98,7 @@ export default function SubjectTeacherAssignment() {
 
       {classCode && subjects && (
         <Card className="p-0 overflow-hidden">
-          <table className="w-full text-sm">
+          <table className="table-cards w-full text-sm">
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-navy/45 border-b border-navy/8">
                 <th className="px-4 py-3">Subject</th>
@@ -109,12 +109,12 @@ export default function SubjectTeacherAssignment() {
             <tbody>
               {subjects.map((subject) => (
                 <tr key={subject} className="border-b border-navy/6 last:border-0">
-                  <td className="px-4 py-3 font-medium text-navy">{subject}</td>
-                  <td className="px-4 py-3">
+                  <td className="tc-primary px-4 py-3 font-medium text-navy">{subject}</td>
+                  <td className="tc-full px-4 py-3">
                     <select
                       value={teacherFor(subject)}
                       onChange={(e) => handleAssign(subject, e.target.value)}
-                      className={inputClass + " max-w-xs"}
+                      className={inputClass + " md:max-w-xs"}
                     >
                       <option value="">— Unassigned —</option>
                       {sortedTeachers.map((t) => (
@@ -124,7 +124,7 @@ export default function SubjectTeacherAssignment() {
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-3 text-emerald-600">
+                  <td className="tc-aside px-4 py-3 text-emerald-600">
                     {savedSubject === subject && <Icon name="Check" size={16} />}
                   </td>
                 </tr>

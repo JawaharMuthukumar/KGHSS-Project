@@ -14,7 +14,7 @@ import {
   Save, Plus, Trash2, Pencil, AlertTriangle, Inbox, KeyRound, RefreshCw,
   Loader2, ShieldAlert, ClipboardX, CircleCheck, CircleX, CircleAlert,
   ChevronsUpDown, SlidersHorizontal, FolderOpen, Images, UsersRound, Send,
-  ImagePlus,
+  ImagePlus, LayoutGrid,
 } from "lucide-react";
 
 const registry = {
@@ -33,7 +33,7 @@ const registry = {
   Save, Plus, Trash2, Pencil, AlertTriangle, Inbox, KeyRound, RefreshCw,
   Loader2, ShieldAlert, ClipboardX, CircleCheck, CircleX, CircleAlert,
   ChevronsUpDown, SlidersHorizontal, FolderOpen, Images, UsersRound, Send,
-  ImagePlus,
+  ImagePlus, LayoutGrid,
 };
 
 export default function Icon({ name, className = "", size = 20, strokeWidth = 1.8, ...rest }) {

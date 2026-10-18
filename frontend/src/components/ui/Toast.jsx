@@ -43,7 +43,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={toast}>
       {children}
-      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none">
+      <div className="fixed top-[calc(env(safe-area-inset-top)+0.75rem)] lg:top-5 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none">
         {toasts.map((t) => {
           const tone = tones[t.tone] || tones.success;
           return (

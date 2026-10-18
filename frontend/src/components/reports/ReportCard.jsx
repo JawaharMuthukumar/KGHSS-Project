@@ -28,15 +28,18 @@ const TAMIL_TERM = {
 
 const PASS_MARK = 35;
 const cell = "border border-black px-1 py-1 text-center align-middle";
-const head = `${cell} font-semibold leading-tight [overflow-wrap:anywhere]`;
+// Tamil words must never split mid-word: wrap only at spaces, and balance multi-word labels so no
+// single word dangles on its own line.
+const noSplit = "[word-break:keep-all] [overflow-wrap:normal] [text-wrap:balance]";
+const head = `${cell} font-semibold leading-tight ${noSplit}`;
 // Keep the red circles when printed.
 const printExact = { WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" };
 
 /** Tamil label with its English name underneath. */
-function Bi({ ta, en, extra }) {
+function Bi({ ta, en, extra, nowrap = false }) {
   return (
     <span className="block">
-      <span className="block text-[10px]">{ta}</span>
+      <span className={`block text-[10px] ${nowrap ? "whitespace-nowrap print:whitespace-normal" : ""}`}>{ta}</span>
       <span className="block text-[8.5px] font-normal text-black/70">{en}</span>
       {extra && <span className="block text-[9px] font-normal">{extra}</span>}
     </span>
@@ -91,32 +94,32 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
 
       <table className="w-full border-collapse table-fixed">
         <colgroup>
-          <col style={{ width: "15%" }} />
+          <col style={{ width: "17%" }} />
           {meta.subjects.map((s) => (
             <col key={s} />
           ))}
+          <col style={{ width: "6.5%" }} />
+          <col style={{ width: "7.5%" }} />
+          <col style={{ width: "6.5%" }} />
+          <col style={{ width: "7.5%" }} />
           <col style={{ width: "7%" }} />
-          <col style={{ width: "8%" }} />
           <col style={{ width: "7%" }} />
-          <col style={{ width: "8%" }} />
-          <col style={{ width: "7%" }} />
-          <col style={{ width: "8%" }} />
         </colgroup>
         <thead>
           <tr>
             <th className={head}>
-              <Bi ta="தேர்வு" en="Exam" />
+              <Bi ta="தேர்வு" en="Exam" nowrap />
             </th>
             {meta.subjects.map((s) => (
               <th key={s} className={head}>
-                <Bi ta={TAMIL_SUBJECT[s] || s} en={s} extra="(100)" />
+                <Bi ta={TAMIL_SUBJECT[s] || s} en={s} extra="(100)" nowrap />
               </th>
             ))}
             <th className={head}>
-              <Bi ta="மொத்தம்" en="Total" extra={`(${meta.max_total})`} />
+              <Bi ta="மொத்தம்" en="Total" extra={`(${meta.max_total})`} nowrap />
             </th>
             <th className={head}>
-              <Bi ta="தகுதி" en="Result" />
+              <Bi ta="தகுதி" en="Result" nowrap />
             </th>
             <th className={head}>
               <Bi ta="வருகை நாட்கள்" en="Attendance" />
@@ -135,8 +138,8 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
         <tbody>
           {card.rows.map((r) => (
             <tr key={r.term} className="h-8">
-              <td className={`${cell} text-left leading-tight font-semibold`}>
-                <span className="block text-[10px]">{TAMIL_TERM[r.term] || r.term}</span>
+              <td className={`${cell} text-left leading-tight font-semibold ${noSplit}`}>
+                <span className="block text-[10px] whitespace-nowrap print:whitespace-normal">{TAMIL_TERM[r.term] || r.term}</span>
                 <span className="block text-[8.5px] font-normal text-black/70">{r.term}</span>
               </td>
               {r.scores.map((sc, i) => (
@@ -145,7 +148,7 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
                 </td>
               ))}
               <td className={`${cell} font-bold`}>{r.total ?? ""}</td>
-              <td className={`${cell} text-[10px] font-semibold leading-tight`}>{r.remark ?? ""}</td>
+              <td className={`${cell} text-[10px] font-semibold leading-tight ${noSplit}`}>{r.remark ?? ""}</td>
               <td className={cell}>{r.attendance ? `${r.attendance.present}/${r.attendance.working}` : ""}</td>
               <td className={cell}></td>
               <td className={cell}>{r.total != null ? r.class_top ?? "" : ""}</td>

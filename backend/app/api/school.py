@@ -1193,7 +1193,11 @@ def student_dashboard(db: Session = Depends(get_db), account: Account = Depends(
         if not t: continue
         entry=staff.setdefault(t.id,{"teacher_id":t.id,"teacher_name":t.account.full_name,"phone":t.phone,"subjects":[],"is_class_teacher":False})
         entry["subjects"].append(a.subject)
-    teachers=sorted(staff.values(),key=lambda e:(not e["is_class_teacher"],e["subjects"][0] if e["subjects"] else "",e["teacher_name"]))
+    # Same subject order as the class's report card (Tamil, English, ...); unknown subjects go last.
+    order={sub:i for i,sub in enumerate(subjects_for_class(cls))}
+    for e in staff.values(): e["subjects"].sort(key=lambda sub:order.get(sub,len(order)))
+    rank=lambda e:min((order.get(sub,len(order)) for sub in e["subjects"]),default=len(order)+1)
+    teachers=sorted(staff.values(),key=lambda e:(not e["is_class_teacher"],rank(e),e["teacher_name"]))
     return {"student_id":student.id,"full_name":account.full_name,"registration_no":student.registration_no,"class_code":cls.code,"notices":notices_out(db,notices),"subject_teachers":teachers,"certificate_requests":db.query(CertificateRequest).filter_by(student_id=student.id).order_by(CertificateRequest.created_at.desc()).all()}
 
 

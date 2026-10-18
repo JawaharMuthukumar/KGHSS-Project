@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Icon from "../ui/Icon";
 
 /**
  * Text box + dropdown: shows matching subjects as soon as a letter is typed (or the full list on
- * focus / arrow click). Free text is still allowed for one-off periods. The list is position:fixed
- * so it isn't clipped by the timetable's horizontal scroll container.
+ * focus / arrow click). Free text is still allowed for one-off periods. The list is portalled to
+ * <body> with position:fixed, so no scroll container or transformed ancestor can clip or shift it.
  */
-export default function SubjectCombobox({ value, onChange, options, placeholder = "Subject", className = "" }) {
+export default function SubjectCombobox({ id, value, onChange, options, placeholder = "Subject", className = "" }) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const [rect, setRect] = useState(null);
@@ -70,6 +71,7 @@ export default function SubjectCombobox({ value, onChange, options, placeholder 
     <div className="relative">
       <input
         ref={inputRef}
+        id={id}
         type="text"
         role="combobox"
         aria-expanded={open}
@@ -104,12 +106,12 @@ export default function SubjectCombobox({ value, onChange, options, placeholder 
       >
         <Icon name="ChevronDown" size={14} className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && rect && list.length > 0 && (
+      {open && rect && list.length > 0 && createPortal(
         <ul
           ref={listRef}
           role="listbox"
           style={{ position: "fixed", top: rect.bottom + 4, left: rect.left, minWidth: Math.max(rect.width, 160) }}
-          className="z-50 max-h-56 overflow-y-auto bg-white border border-navy/10 rounded-xl shadow-lg py-1 text-left"
+          className="z-[200] max-h-56 overflow-y-auto bg-white border border-navy/10 rounded-xl shadow-lg py-1 text-left"
         >
           {list.map((option, i) => (
             <li
@@ -122,7 +124,7 @@ export default function SubjectCombobox({ value, onChange, options, placeholder 
                 choose(option);
               }}
               onMouseEnter={() => setHighlight(i)}
-              className={`flex items-center justify-between gap-2 px-3 py-2 text-xs cursor-pointer ${
+              className={`flex items-center justify-between gap-2 px-3 py-2 text-sm cursor-pointer ${
                 i === highlight ? "bg-navy/[0.06]" : ""
               } ${option === value ? "font-semibold text-navy" : "text-navy/80"}`}
             >
@@ -130,7 +132,8 @@ export default function SubjectCombobox({ value, onChange, options, placeholder 
               {option === value && <Icon name="Check" size={13} className="text-gold" />}
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body
       )}
     </div>
   );

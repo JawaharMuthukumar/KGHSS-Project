@@ -10,6 +10,7 @@ import FormField, { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError } from "../../lib/apiClient";
 import { TableSkeleton } from "../../components/ui/Skeleton";
+import { useToast } from "../../components/ui/Toast";
 
 const emptyForm = { full_name: "", subject: "", phone: "", password: "", is_active: true };
 
@@ -22,6 +23,7 @@ export default function Teachers() {
   const [drawer, setDrawer] = useState(null); // { mode: 'create' | 'view' | 'edit', teacher? }
   const [credentials, setCredentials] = useState(null);
   const [actionError, setActionError] = useState("");
+  const toast = useToast();
 
   const openTeacher = (teacher, mode = "view") => {
     setActionError("");
@@ -29,7 +31,7 @@ export default function Teachers() {
   };
 
   const filtered = useMemo(() => {
-    const list = teachers || [];
+    const list = [...(teachers || [])].sort((a, b) => a.full_name.localeCompare(b.full_name, undefined, { sensitivity: "base" }));
     const q = search.trim().toLowerCase();
     if (!q) return list;
     return list.filter(
@@ -44,6 +46,7 @@ export default function Teachers() {
       await api.delete(`/teachers/${teacher.id}`);
       openTeacher({ ...teacher, is_active: false });
       reload();
+      toast.success(`${teacher.full_name} deactivated`);
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Something went wrong.");
     }
@@ -55,6 +58,7 @@ export default function Teachers() {
       await api.patch(`/teachers/${teacher.id}`, { is_active: true });
       openTeacher({ ...teacher, is_active: true });
       reload();
+      toast.success(`${teacher.full_name} reactivated`);
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Something went wrong.");
     }
@@ -130,7 +134,7 @@ export default function Teachers() {
                   </td>
                 </tr>
               )}
-              {filtered.map((t) => (
+              {!loading && filtered.map((t) => (
                 <tr
                   key={t.id}
                   onClick={() => openTeacher(t)}
@@ -185,8 +189,13 @@ export default function Teachers() {
             onCancel={() => (drawer.mode === "edit" ? openTeacher(drawer.teacher) : setDrawer(null))}
             onSuccess={(result) => {
               reload();
-              if (drawer.mode === "create") setCredentials(result);
-              else openTeacher({ ...drawer.teacher, ...result });
+              if (drawer.mode === "create") {
+                setCredentials(result);
+                toast.success("Teacher added successfully");
+              } else {
+                openTeacher({ ...drawer.teacher, ...result });
+                toast.success("Teacher updated successfully");
+              }
             }}
           />
         )}

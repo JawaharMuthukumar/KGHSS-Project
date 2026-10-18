@@ -40,6 +40,7 @@ export default function CertificateRequestsPanel({ description }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs font-semibold uppercase tracking-wide text-navy/45 border-b border-navy/8">
+              <th className="px-4 py-3">Student</th>
               <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Note</th>
               <th className="px-4 py-3">Requested</th>
@@ -48,15 +49,21 @@ export default function CertificateRequestsPanel({ description }) {
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={5} className="p-0"><TableSkeleton rows={4} columns={4} /></td></tr>}
+            {loading && <tr><td colSpan={6} className="p-0"><TableSkeleton rows={4} columns={5} /></td></tr>}
             {!loading && (requests || []).length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-navy/40">No certificate requests.</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-navy/40">No certificate requests.</td>
               </tr>
             )}
             {(requests || []).map((r) => (
               <tr key={r.id} className="border-b border-navy/6 last:border-0">
-                <td className="px-4 py-3 font-medium text-navy capitalize">{r.certificate_type}</td>
+                <td className="px-4 py-3">
+                  <p className="font-medium text-navy">{r.student_name || "—"}</p>
+                  <p className="text-xs text-navy/45">
+                    {[r.class_code, r.registration_no].filter(Boolean).join(" · ")}
+                  </p>
+                </td>
+                <td className="px-4 py-3 text-navy capitalize">{r.certificate_type}</td>
                 <td className="px-4 py-3 text-navy/60">{r.note || "—"}</td>
                 <td className="px-4 py-3 text-navy/60">{formatDate(r.created_at)}</td>
                 <td className="px-4 py-3">

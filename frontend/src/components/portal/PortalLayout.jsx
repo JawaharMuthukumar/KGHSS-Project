@@ -5,6 +5,7 @@ import ComplaintFab from "./ComplaintFab";
 import { useAuth } from "../../context/AuthContext";
 import { portalNav, roleLabels } from "./navConfig";
 import { selectTeacherClass, useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
+import { useAutoCapitalize } from "../../hooks/useAutoCapitalize";
 
 /** Lets a teacher who is Class Teacher of several sections pick which one the portal pages work on. */
 function TeacherClassSwitcher() {
@@ -36,6 +37,7 @@ export default function PortalLayout({ role }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const items = portalNav[role] || [];
+  useAutoCapitalize(role === "admin" || role === "teacher");
 
   const handleLogout = () => {
     logout();

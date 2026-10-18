@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PortalPageHeader from "../../components/portal/PortalPageHeader";
 import Card from "../../components/ui/Card";
 import Icon from "../../components/ui/Icon";
@@ -30,19 +30,28 @@ export default function SubjectTeacherAssignment() {
   const selectedClass = (classes || []).find((c) => c.code === classCode);
   const teacherFor = (subject) => assignments?.find((a) => a.subject === subject)?.teacher_id || "";
 
+  const sortedTeachers = useMemo(
+    () => [...(teachers || [])].sort((a, b) => a.full_name.localeCompare(b.full_name)),
+    [teachers]
+  );
+
   const handleAssign = async (subject, teacherId) => {
     setSavedSubject(null);
+    setError("");
+    // Show the new choice immediately; the save runs in the background and is rolled back on failure.
+    const previous = assignments;
+    const others = (assignments || []).filter((a) => a.subject !== subject);
+    setAssignments(teacherId ? [...others, { subject, teacher_id: Number(teacherId) }] : others);
     try {
       if (!teacherId) {
         await api.delete(`/classes/${classCode}/subject-teachers/${encodeURIComponent(subject)}`);
       } else {
         await api.put(`/classes/${classCode}/subject-teachers`, { teacher_id: Number(teacherId), subject });
       }
-      const assignRes = await api.get(`/classes/${classCode}/subject-teachers`);
-      setAssignments(assignRes);
       setSavedSubject(subject);
       setTimeout(() => setSavedSubject((s) => (s === subject ? null : s)), 1500);
     } catch (err) {
+      setAssignments(previous);
       setError(err.message);
     }
   };
@@ -108,7 +117,7 @@ export default function SubjectTeacherAssignment() {
                       className={inputClass + " max-w-xs"}
                     >
                       <option value="">— Unassigned —</option>
-                      {(teachers || []).map((t) => (
+                      {sortedTeachers.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.full_name}
                         </option>

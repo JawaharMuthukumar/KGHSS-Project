@@ -4,6 +4,7 @@ import Layout from "./components/layout/Layout";
 import PageLoader from "./components/utility/PageLoader";
 import { LanguageProvider } from "./context/LanguageContext";
 import { AuthProvider } from "./context/AuthContext";
+import { ToastProvider } from "./components/ui/Toast";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PortalLayout from "./components/portal/PortalLayout";
 import Home from "./pages/Home";
@@ -62,6 +63,7 @@ const MyLeave = lazy(() => import("./pages/student/MyLeave"));
 export default function App() {
   return (
     <LanguageProvider>
+      <ToastProvider>
       <BrowserRouter>
         <AuthProvider>
           <Suspense fallback={<PageLoader />}>
@@ -138,6 +140,7 @@ export default function App() {
           </Suspense>
         </AuthProvider>
       </BrowserRouter>
+      </ToastProvider>
     </LanguageProvider>
   );
 }

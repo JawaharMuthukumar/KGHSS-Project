@@ -6,7 +6,7 @@ const CHANGE_EVENT = "kghss:teacher-class-change";
 
 function readStoredClass() {
   try {
-    return localStorage.getItem(STORAGE_KEY);
+    return sessionStorage.getItem(STORAGE_KEY);
   } catch {
     return null;
   }
@@ -15,7 +15,7 @@ function readStoredClass() {
 /** Switch which of the teacher's classes every teacher page works on. */
 export function selectTeacherClass(code) {
   try {
-    localStorage.setItem(STORAGE_KEY, code);
+    sessionStorage.setItem(STORAGE_KEY, code);
   } catch {
     /* storage blocked: the selection still applies for this page view */
   }

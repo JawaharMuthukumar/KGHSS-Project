@@ -202,6 +202,17 @@ def update_student(student_id: int, data: StudentUpdate, db: Session = Depends(g
     return student_detail(student)
 
 
+@router.delete("/students/{student_id}", status_code=204, response_class=Response, summary="Delete a student and their records (admin or class teacher)")
+def delete_student(student_id: int, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    student = db.get(Student, student_id)
+    if not student: raise HTTPException(404, "Student not found")
+    if account.role == "teacher" and not is_class_teacher_of(db, teacher_profile(db, account), student.school_class): raise HTTPException(403, "Only the class teacher can delete this student")
+    # Marks, attendance, certificate/leave requests and complaints go with it via ON DELETE CASCADE.
+    login = student.account
+    db.delete(student); db.flush(); db.delete(login); db.commit()
+    return Response(status_code=204)
+
+
 def student_detail(student: Student) -> dict:
     return {"id": student.id, "registration_no": student.registration_no, "admission_no": student.admission_no, "emis_no": student.emis_no, "umis_no": student.umis_no, "full_name": student.account.full_name, "class_code": student.school_class.code, "gender": student.gender, "date_of_birth": student.date_of_birth, "community": student.community, "medium": student.medium, "blood_group": student.blood_group, "father_name": student.father_name, "mother_name": student.mother_name, "father_phone": student.father_phone, "mother_phone": student.mother_phone, "guardian_phone": student.guardian_phone, "address": student.address}
 
@@ -660,7 +671,15 @@ def certificate_requests(db: Session = Depends(get_db), account: Account = Depen
         class_ids=[c.id for c in assigned_classes(db,teacher_profile(db,account))]
         if not class_ids: return []
         ids=[s.id for s in db.query(Student).filter(Student.class_id.in_(class_ids)).all()]; q=q.filter(CertificateRequest.student_id.in_(ids))
-    return q.order_by(CertificateRequest.created_at.desc()).all()
+    return [certificate_out(db, req) for req in q.order_by(CertificateRequest.created_at.desc()).all()]
+
+
+def certificate_out(db: Session, req: CertificateRequest) -> dict:
+    student = db.get(Student, req.student_id)
+    return {"id": req.id, "student_id": req.student_id, "student_name": student.account.full_name if student else None,
+            "registration_no": student.registration_no if student else None, "class_code": student.school_class.code if student else None,
+            "certificate_type": req.certificate_type, "note": req.note, "status": req.status, "decision_by": req.decision_by,
+            "decision_note": req.decision_note, "created_at": req.created_at, "decided_at": req.decided_at, "downloaded_at": req.downloaded_at}
 
 
 @router.patch("/certificates/requests/{request_id}")

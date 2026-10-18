@@ -8,7 +8,7 @@ const USER_KEY = "ghss_user";
 
 function readStoredUser() {
   try {
-    const raw = localStorage.getItem(USER_KEY);
+    const raw = sessionStorage.getItem(USER_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -21,8 +21,8 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(USER_KEY);
       setUser(null);
     });
   }, []);
@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let cancelled = false;
     async function verify() {
-      const token = localStorage.getItem(TOKEN_KEY);
+      const token = sessionStorage.getItem(TOKEN_KEY);
       if (!token) {
         setReady(true);
         return;
@@ -40,8 +40,8 @@ export function AuthProvider({ children }) {
         if (!cancelled) setUser(me);
       } catch {
         if (!cancelled) {
-          localStorage.removeItem(TOKEN_KEY);
-          localStorage.removeItem(USER_KEY);
+          sessionStorage.removeItem(TOKEN_KEY);
+          sessionStorage.removeItem(USER_KEY);
           setUser(null);
         }
       } finally {
@@ -60,15 +60,15 @@ export function AuthProvider({ children }) {
       password,
       class_code: classCode || undefined,
     });
-    localStorage.setItem(TOKEN_KEY, data.access_token);
-    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    sessionStorage.setItem(TOKEN_KEY, data.access_token);
+    sessionStorage.setItem(USER_KEY, JSON.stringify(data.user));
     setUser(data.user);
     return data.user;
   };
 
   const logout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(USER_KEY);
     setUser(null);
   };
 

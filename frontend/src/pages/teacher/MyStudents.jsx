@@ -10,11 +10,15 @@ import { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { TableSkeleton } from "../../components/ui/Skeleton";
+import { useToast } from "../../components/ui/Toast";
+import { api, ApiError } from "../../lib/apiClient";
 
 export default function MyStudents() {
   const { classCode, loading: loadingProfile } = useMyTeacherProfile();
   const [search, setSearch] = useState("");
   const [activeStudent, setActiveStudent] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const toast = useToast();
   const { data: students, loading, error, reload } = useApiResource("/students", {
     query: { class_code: classCode },
     enabled: Boolean(classCode),
@@ -27,6 +31,21 @@ export default function MyStudents() {
     if (!q) return list;
     return list.filter((s) => s.full_name.toLowerCase().includes(q) || s.registration_no.toLowerCase().includes(q));
   }, [students, search]);
+
+  const handleDelete = async (student) => {
+    if (!window.confirm(`Delete ${student.full_name}? Their marks, attendance and requests will also be removed. This cannot be undone.`)) return;
+    setDeletingId(student.id);
+    try {
+      await api.delete(`/students/${student.id}`);
+      if (activeStudent === student.id) setActiveStudent(null);
+      await reload();
+      toast.success(`${student.full_name} deleted successfully`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not delete this student.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div>
@@ -65,7 +84,7 @@ export default function MyStudents() {
                   <th className="px-4 py-3">Register No</th>
                   <th className="px-4 py-3">Gender</th>
                   <th className="px-4 py-3">Guardian Phone</th>
-                  <th className="px-4 py-3"></th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -92,8 +111,23 @@ export default function MyStudents() {
                     <td className="px-4 py-3 text-navy/70">{s.registration_no}</td>
                     <td className="px-4 py-3 text-navy/70">{s.gender || "—"}</td>
                     <td className="px-4 py-3 text-navy/70">{s.guardian_phone || "—"}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Icon name="ChevronRight" size={16} className="text-navy/30" />
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          disabled={deletingId === s.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(s);
+                          }}
+                          aria-label={`Delete ${s.full_name}`}
+                          className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg disabled:opacity-50"
+                        >
+                          <Icon name="Trash2" size={14} />
+                          {deletingId === s.id ? "Deleting…" : "Delete"}
+                        </button>
+                        <Icon name="ChevronRight" size={16} className="text-navy/30" />
+                      </div>
                     </td>
                   </tr>
                 ))}

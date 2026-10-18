@@ -25,7 +25,7 @@ export function setUnauthorizedHandler(handler) {
 
 function getToken() {
   try {
-    return localStorage.getItem("ghss_token");
+    return sessionStorage.getItem("ghss_token");
   } catch {
     return null;
   }

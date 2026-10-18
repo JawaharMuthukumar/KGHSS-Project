@@ -92,18 +92,20 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
         </table>
       </div>
 
-      <table className="w-full border-collapse table-fixed">
+      {/* Auto layout: the colgroup widths are targets, but a column grows to fit its longest
+          (unbreakable) Tamil word instead of letting text spill over the cell border. */}
+      <table className="w-full border-collapse table-auto">
         <colgroup>
-          <col style={{ width: "17%" }} />
+          <col style={{ width: "18%" }} />
           {meta.subjects.map((s) => (
             <col key={s} />
           ))}
-          <col style={{ width: "6.5%" }} />
-          <col style={{ width: "7.5%" }} />
-          <col style={{ width: "6.5%" }} />
-          <col style={{ width: "7.5%" }} />
+          <col style={{ width: "6%" }} />
           <col style={{ width: "7%" }} />
+          <col style={{ width: "6.5%" }} />
+          <col style={{ width: "8.5%" }} />
           <col style={{ width: "7%" }} />
+          <col style={{ width: "8.5%" }} />
         </colgroup>
         <thead>
           <tr>

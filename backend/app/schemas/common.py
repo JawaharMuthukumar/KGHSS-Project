@@ -101,7 +101,7 @@ class AttendanceIn(BaseModel):
 
 
 class TimetableEntryIn(BaseModel):
-    weekday: int = Field(ge=0, le=5)
+    weekday: int = Field(ge=0, le=4)  # Mon-Fri only
     period: int = Field(ge=1, le=8)
     subject: str | None = None
     teacher_id: int | None = None

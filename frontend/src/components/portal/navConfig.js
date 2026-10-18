@@ -1,9 +1,16 @@
 export const portalNav = {
   admin: [
     { to: "/admin", label: "Dashboard", icon: "LayoutDashboard", end: true },
-    { to: "/admin/teachers", label: "Teachers", icon: "Users" },
-    { to: "/admin/class-teachers", label: "Class Teacher Assignment", icon: "UserCog" },
-    { to: "/admin/subject-teachers", label: "Subject Teachers", icon: "BookOpen" },
+    {
+      label: "Teachers",
+      icon: "Users",
+      // A collapsible group: opens on click, and stays open while one of its pages is active.
+      children: [
+        { to: "/admin/teachers", label: "All Teachers", icon: "Users" },
+        { to: "/admin/class-teachers", label: "Class Teacher Assignment", icon: "UserCog" },
+        { to: "/admin/subject-teachers", label: "Subject Teachers", icon: "BookOpen" },
+      ],
+    },
     { to: "/admin/students", label: "Students", icon: "GraduationCap" },
     { to: "/admin/timetables", label: "Timetables", icon: "CalendarRange" },
     { to: "/admin/reports", label: "Results & Reports", icon: "BarChart3" },

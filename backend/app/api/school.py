@@ -1161,6 +1161,19 @@ def admin_dashboard(db: Session = Depends(get_db), _: Account = Depends(require_
     return {"school":public_school_profile(),"class_count":db.query(func.count(AcademicClass.id)).filter_by(is_active=True).scalar(),"teacher_count":db.query(func.count(Teacher.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"student_count":db.query(func.count(Student.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"pending_certificate_requests":db.query(func.count(CertificateRequest.id)).filter_by(status="pending").scalar(),"open_complaint_threads":db.query(func.count(ComplaintThread.id)).scalar(),"recent_notices":db.query(Notice).filter_by(published=True).order_by(Notice.created_at.desc()).limit(5).all()}
 
 
+@router.get("/timetable/day", summary="Every class's timetable for one weekday (0 = Mon … 4 = Fri), for the HM dashboard")
+def school_day_timetable(weekday: int = Query(..., ge=0, le=4), db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+    classes=db.query(AcademicClass).filter_by(is_active=True).order_by(AcademicClass.grade,AcademicClass.code).all()
+    by_id={c.id:c for c in classes}
+    rows=db.query(TimetableEntry).filter(TimetableEntry.weekday==weekday,TimetableEntry.class_id.in_(list(by_id) or [-1])).all()
+    names={t.id:t.account.full_name for t in db.query(Teacher).filter(Teacher.id.in_({r.teacher_id for r in rows if r.teacher_id} or {-1})).all()}
+    order={c.code:i for i,c in enumerate(classes)}
+    entries=[{"class_code":by_id[r.class_id].code,"group_name":by_id[r.class_id].group_name,"medium":by_id[r.class_id].medium,"period":r.period,
+              "subject":r.subject,"teacher_name":names.get(r.teacher_id)} for r in rows if r.academic_year==by_id[r.class_id].academic_year]
+    entries.sort(key=lambda e:(e["period"],order[e["class_code"]]))
+    return {"weekday":weekday,"class_count":len(classes),"entries":entries}
+
+
 @router.get("/dashboards/teacher")
 def teacher_dashboard(class_code: str | None = None, db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
     """`class_code` picks which of the teacher's classes the stats are for (defaults to their first class)."""

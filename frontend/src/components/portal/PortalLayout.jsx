@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import Icon from "../ui/Icon";
 import ComplaintFab from "./ComplaintFab";
 import { useAuth } from "../../context/AuthContext";
@@ -39,6 +39,58 @@ function CountBadge({ count, className = "" }) {
     <span className={`min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center leading-none ${className}`}>
       {count > 99 ? "99+" : count}
     </span>
+  );
+}
+
+const navLinkClass = ({ isActive }) =>
+  `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+    isActive ? "bg-gold text-navy-dark" : "text-white/70 hover:text-white hover:bg-white/8"
+  }`;
+
+function NavItem({ item, count, onNavigate, nested = false }) {
+  return (
+    <NavLink to={item.to} end={item.end} onClick={onNavigate} className={(state) => `${navLinkClass(state)} ${nested ? "py-2" : ""}`}>
+      <Icon name={item.icon} size={nested ? 15 : 17} />
+      <span className="truncate">{item.label}</span>
+      <CountBadge count={count} className="ml-auto shrink-0" />
+    </NavLink>
+  );
+}
+
+/** Sidebar entry that slides its sub-pages down; open by default while one of them is the current page. */
+function NavGroup({ item, counts, onNavigate }) {
+  const { pathname } = useLocation();
+  const containsActive = item.children.some((c) => pathname === c.to || pathname.startsWith(`${c.to}/`));
+  const [open, setOpen] = useState(containsActive);
+  const expanded = open || containsActive;
+  const total = item.children.reduce((sum, c) => sum + ((c.badge && counts[c.badge]) || 0), 0);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !(v || containsActive))}
+        aria-expanded={expanded}
+        className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+          containsActive ? "text-white bg-white/8" : "text-white/70 hover:text-white hover:bg-white/8"
+        }`}
+      >
+        <Icon name={item.icon} size={17} />
+        <span className="truncate">{item.label}</span>
+        {!expanded && <CountBadge count={total} className="ml-auto shrink-0" />}
+        <Icon name="ChevronDown" size={15} className={`shrink-0 transition-transform duration-200 ${expanded ? "rotate-180" : ""} ${expanded || !total ? "ml-auto" : ""}`} />
+      </button>
+      {/* grid-rows 0fr → 1fr animates the height for a smooth slide-down */}
+      <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+        <div className="overflow-hidden">
+          <div className="flex flex-col gap-1 pt-1 pl-4 ml-3.5 border-l border-white/10">
+            {item.children.map((child) => (
+              <NavItem key={child.to} item={child} count={child.badge && counts[child.badge]} onNavigate={onNavigate} nested />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -171,23 +223,13 @@ function PortalShell({ role }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1">
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              onClick={() => setMobileOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  isActive ? "bg-gold text-navy-dark" : "text-white/70 hover:text-white hover:bg-white/8"
-                }`
-              }
-            >
-              <Icon name={item.icon} size={17} />
-              <span className="truncate">{item.label}</span>
-              <CountBadge count={item.badge && counts[item.badge]} className="ml-auto shrink-0" />
-            </NavLink>
-          ))}
+          {items.map((item) =>
+            item.children ? (
+              <NavGroup key={item.label} item={item} counts={counts} onNavigate={() => setMobileOpen(false)} />
+            ) : (
+              <NavItem key={item.to} item={item} count={item.badge && counts[item.badge]} onNavigate={() => setMobileOpen(false)} />
+            )
+          )}
         </nav>
       </aside>
 

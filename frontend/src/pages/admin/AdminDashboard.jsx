@@ -3,11 +3,10 @@ import PortalPageHeader from "../../components/portal/PortalPageHeader";
 import StatCard from "../../components/portal/StatCard";
 import Card from "../../components/ui/Card";
 import Icon from "../../components/ui/Icon";
-import Badge from "../../components/ui/Badge";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useAuth } from "../../context/AuthContext";
-import { formatDate } from "../../utils/formatDate";
 import { DashboardSkeleton } from "../../components/ui/Skeleton";
+import TodayTimetableCard from "../../components/timetable/TodayTimetableCard";
 
 const quickActions = [
   { to: "/admin/teachers", label: "Add Teacher", icon: "UserPlus" },
@@ -72,28 +71,7 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-heading font-bold text-navy">Recent Notices</h2>
-            <Link to="/admin/notices" className="text-xs font-semibold text-gold-dark hover:text-gold">
-              View all
-            </Link>
-          </div>
-          <div className="flex flex-col gap-3">
-            {!loading && (data?.recent_notices || []).length === 0 && (
-              <p className="text-sm text-navy/50">No notices posted yet.</p>
-            )}
-            {(data?.recent_notices || []).map((notice) => (
-              <div key={notice.id} className="pb-3 border-b border-navy/6 last:border-0 last:pb-0">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className="text-sm font-semibold text-navy truncate">{notice.title}</p>
-                  <Badge tone="navy">{notice.audience}</Badge>
-                </div>
-                <p className="text-xs text-navy/50">{formatDate(notice.created_at)}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
+        <TodayTimetableCard />
       </div>}
     </div>
   );

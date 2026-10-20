@@ -629,7 +629,8 @@ def notices_out(db: Session, notices: list[Notice]) -> list[dict]:
 def portal_notices(db: Session = Depends(get_db), account: Account = Depends(current_account)):
     """Notices visible to the signed-in role and, for students, their class."""
     if account.role=="admin":
-        query=db.query(Notice).filter_by(published=True)
+        # Teachers' class notices go to their students only; the HM sees school-wide notices.
+        query=db.query(Notice).filter(Notice.published.is_(True),Notice.audience!="class")
     elif account.role=="teacher":
         query=db.query(Notice).filter(Notice.published.is_(True),Notice.audience.in_(["all","teachers"]))
     elif account.role=="student":
@@ -1158,7 +1159,7 @@ def public_school_profile():
 
 @router.get("/dashboards/admin")
 def admin_dashboard(db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
-    return {"school":public_school_profile(),"class_count":db.query(func.count(AcademicClass.id)).filter_by(is_active=True).scalar(),"teacher_count":db.query(func.count(Teacher.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"student_count":db.query(func.count(Student.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"pending_certificate_requests":db.query(func.count(CertificateRequest.id)).filter_by(status="pending").scalar(),"open_complaint_threads":db.query(func.count(ComplaintThread.id)).scalar(),"recent_notices":db.query(Notice).filter_by(published=True).order_by(Notice.created_at.desc()).limit(5).all()}
+    return {"school":public_school_profile(),"class_count":db.query(func.count(AcademicClass.id)).filter_by(is_active=True).scalar(),"teacher_count":db.query(func.count(Teacher.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"student_count":db.query(func.count(Student.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"pending_certificate_requests":db.query(func.count(CertificateRequest.id)).filter_by(status="pending").scalar(),"open_complaint_threads":db.query(func.count(ComplaintThread.id)).scalar(),"recent_notices":db.query(Notice).filter(Notice.published.is_(True),Notice.audience!="class").order_by(Notice.created_at.desc()).limit(5).all()}
 
 
 @router.get("/timetable/day", summary="Every class's timetable for one weekday (0 = Mon … 4 = Fri), for the HM dashboard")

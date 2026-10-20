@@ -110,18 +110,6 @@ export default function ClassTimetableEditor({ classCode }) {
   if (error) return <Banner tone="error" className="mb-4">{error.message}</Banner>;
   if (loading) return <Card className="p-0 overflow-hidden"><TableSkeleton rows={5} columns={6} /></Card>;
 
-  const saveButton = (
-    <button
-      type="button"
-      onClick={handleSave}
-      disabled={saving || !dirty}
-      className="flex items-center gap-1.5 bg-gold text-navy-dark font-semibold text-sm px-5 py-2.5 rounded-full hover:bg-gold-light transition-colors disabled:opacity-50"
-    >
-      <Icon name="Save" size={15} />
-      {saving ? "Saving…" : "Save Timetable"}
-    </button>
-  );
-
   return (
     <div>
       {saveError && <Banner tone="error" className="mb-4">{saveError}</Banner>}
@@ -130,10 +118,7 @@ export default function ClassTimetableEditor({ classCode }) {
         <p className="text-sm text-navy/55">
           {filled} of {WEEKDAYS.length * PERIODS.length} periods filled · click a period to set its subject and teacher
         </p>
-        <div className="flex items-center gap-3">
-          {dirty && <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">Unsaved changes</span>}
-          {saveButton}
-        </div>
+        {dirty && <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">Unsaved changes</span>}
       </div>
 
       <Card className="p-0 overflow-hidden">
@@ -169,7 +154,17 @@ export default function ClassTimetableEditor({ classCode }) {
         />
       </Card>
 
-      <div className="mt-5 flex justify-end">{saveButton}</div>
+      <div className="mt-5 flex justify-end">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || !dirty}
+          className="flex items-center gap-1.5 bg-gold text-navy-dark font-semibold text-sm px-5 py-2.5 rounded-full hover:bg-gold-light transition-colors disabled:opacity-50"
+        >
+          <Icon name="Save" size={15} />
+          {saving ? "Saving…" : "Save Timetable"}
+        </button>
+      </div>
 
       <Drawer
         open={Boolean(editing)}

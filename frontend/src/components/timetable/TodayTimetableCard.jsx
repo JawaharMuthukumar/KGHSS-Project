@@ -12,6 +12,15 @@ const todayIndex = () => {
   return day >= 1 && day <= 5 ? day - 1 : null;
 };
 
+// Date of the given school weekday (0 = Mon) in this week; on a weekend, the coming week.
+const dateForWeekday = (weekday) => {
+  const date = new Date();
+  const day = date.getDay();
+  const monday = day === 0 ? 1 : day === 6 ? 2 : 1 - day;
+  date.setDate(date.getDate() + monday + weekday);
+  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+};
+
 /** HM dashboard: pick a day and period to see what every class has, with its subject teacher. */
 export default function TodayTimetableCard() {
   const today = todayIndex();
@@ -29,7 +38,7 @@ export default function TodayTimetableCard() {
         <div>
           <h2 className="font-heading font-bold text-navy">{isToday ? "Today's Timetable" : "Timetable"}</h2>
           <p className="text-xs text-navy/50">
-            {WEEKDAY_NAMES[weekday]}
+            {WEEKDAY_NAMES[weekday]} · {dateForWeekday(weekday)}
             {today === null && " · no school today"}
           </p>
         </div>

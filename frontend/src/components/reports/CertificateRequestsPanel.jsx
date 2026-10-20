@@ -17,6 +17,18 @@ const decidedByLabel = (r) => {
   return null;
 };
 
+const decisionDetails = (r) => (
+  <>
+    {r.status !== "pending" && r.decided_by_name && (
+      <p className="text-[11px] text-navy/50 mt-1">
+        by {decidedByLabel(r)} · {r.decided_by_name}
+        {r.decided_at && ` · ${formatDate(r.decided_at)}`}
+      </p>
+    )}
+    {r.decision_note && <p className="text-[11px] text-navy/45 italic mt-0.5">“{r.decision_note}”</p>}
+  </>
+);
+
 export default function CertificateRequestsPanel({ description, showClassTeacher = false }) {
   const columns = showClassTeacher ? 7 : 6;
   const { data: requests, loading, error, reload } = useApiResource("/certificates/requests", { live: "certificates" });
@@ -79,13 +91,7 @@ export default function CertificateRequestsPanel({ description, showClassTeacher
                 <td data-label="Requested" className="px-4 py-3 text-navy/60">{formatDate(r.created_at)}</td>
                 <td className="tc-aside px-4 py-3">
                   <Badge tone={statusTone[r.status] || "navy"}>{r.status}</Badge>
-                  {r.status !== "pending" && r.decided_by_name && (
-                    <p className="text-[11px] text-navy/50 mt-1">
-                      by {decidedByLabel(r)} · {r.decided_by_name}
-                      {r.decided_at && ` · ${formatDate(r.decided_at)}`}
-                    </p>
-                  )}
-                  {r.decision_note && <p className="text-[11px] text-navy/45 italic mt-0.5">“{r.decision_note}”</p>}
+                  <div className="hidden md:block">{decisionDetails(r)}</div>
                 </td>
                 <td className="tc-full pt-1 px-4 py-3">
                   {r.status === "pending" && (
@@ -111,6 +117,10 @@ export default function CertificateRequestsPanel({ description, showClassTeacher
                     </div>
                   )}
                 </td>
+                {/* Phones: the decision gets its own line in the stacked card instead of crowding the badge. */}
+                {r.status !== "pending" && r.decided_by_name && (
+                  <td data-label="Decided" className="md:hidden px-4 py-3 text-right">{decisionDetails(r)}</td>
+                )}
               </tr>
             ))}
           </tbody>

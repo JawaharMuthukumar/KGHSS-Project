@@ -11,7 +11,14 @@ import { TableSkeleton } from "../ui/Skeleton";
 
 const statusTone = { pending: "navy", approved: "success", rejected: "danger" };
 
-export default function CertificateRequestsPanel({ description }) {
+const decidedByLabel = (r) => {
+  if (r.decided_by_role === "admin") return "HM";
+  if (r.decided_by_role === "teacher") return r.decided_by_name === r.class_teacher_name ? "Class teacher" : "Teacher";
+  return null;
+};
+
+export default function CertificateRequestsPanel({ description, showClassTeacher = false }) {
+  const columns = showClassTeacher ? 7 : 6;
   const { data: requests, loading, error, reload } = useApiResource("/certificates/requests", { live: "certificates" });
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState("");
@@ -43,16 +50,17 @@ export default function CertificateRequestsPanel({ description }) {
               <th className="px-4 py-3">Student</th>
               <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Note</th>
+              {showClassTeacher && <th className="px-4 py-3">Class Teacher</th>}
               <th className="px-4 py-3">Requested</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={6} className="p-0"><TableSkeleton rows={4} columns={5} /></td></tr>}
+            {loading && <tr><td colSpan={columns} className="p-0"><TableSkeleton rows={4} columns={columns - 1} /></td></tr>}
             {!loading && (requests || []).length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-navy/40">No certificate requests.</td>
+                <td colSpan={columns} className="px-4 py-8 text-center text-navy/40">No certificate requests.</td>
               </tr>
             )}
             {(requests || []).map((r) => (
@@ -65,9 +73,19 @@ export default function CertificateRequestsPanel({ description }) {
                 </td>
                 <td data-label="Type" className="px-4 py-3 text-navy capitalize">{r.certificate_type}</td>
                 <td data-label="Note" className="px-4 py-3 text-navy/60">{r.note || "—"}</td>
+                {showClassTeacher && (
+                  <td data-label="Class Teacher" className="px-4 py-3 text-navy/70">{r.class_teacher_name || "Not assigned"}</td>
+                )}
                 <td data-label="Requested" className="px-4 py-3 text-navy/60">{formatDate(r.created_at)}</td>
                 <td className="tc-aside px-4 py-3">
                   <Badge tone={statusTone[r.status] || "navy"}>{r.status}</Badge>
+                  {r.status !== "pending" && r.decided_by_name && (
+                    <p className="text-[11px] text-navy/50 mt-1">
+                      by {decidedByLabel(r)} · {r.decided_by_name}
+                      {r.decided_at && ` · ${formatDate(r.decided_at)}`}
+                    </p>
+                  )}
+                  {r.decision_note && <p className="text-[11px] text-navy/45 italic mt-0.5">“{r.decision_note}”</p>}
                 </td>
                 <td className="tc-full pt-1 px-4 py-3">
                   {r.status === "pending" && (

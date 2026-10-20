@@ -527,7 +527,7 @@ def unlock_attendance(class_code: str, month: str, db: Session = Depends(get_db)
 @router.get("/reports/attendance")
 def attendance_report(month: str | None = None, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
     report=[]
-    for cls in db.query(AcademicClass).all():
+    for cls in db.query(AcademicClass).filter_by(is_active=True).order_by(AcademicClass.grade,AcademicClass.code):
         q=db.query(AttendanceMonth).filter_by(class_id=cls.id)
         if month: q=q.filter_by(month=month)
         records=q.all(); rates=[]
@@ -616,8 +616,9 @@ def notice_author(db: Session, notice: Notice, cache: dict | None = None) -> dic
 
 
 def notice_out(db: Session, notice: Notice, cache: dict | None = None) -> dict:
+    cls = db.get(AcademicClass, notice.class_id) if notice.class_id else None
     return {"id": notice.id, "title": notice.title, "body": notice.body, "audience": notice.audience, "class_id": notice.class_id,
-            "author_id": notice.author_id, "published": notice.published, "created_at": notice.created_at, **notice_author(db, notice, cache)}
+            "class_code": cls.code if cls else None, "author_id": notice.author_id, "published": notice.published, "created_at": notice.created_at, **notice_author(db, notice, cache)}
 
 
 def notices_out(db: Session, notices: list[Notice]) -> list[dict]:
@@ -629,8 +630,7 @@ def notices_out(db: Session, notices: list[Notice]) -> list[dict]:
 def portal_notices(db: Session = Depends(get_db), account: Account = Depends(current_account)):
     """Notices visible to the signed-in role and, for students, their class."""
     if account.role=="admin":
-        # Teachers' class notices go to their students only; the HM sees school-wide notices.
-        query=db.query(Notice).filter(Notice.published.is_(True),Notice.audience!="class")
+        query=db.query(Notice).filter_by(published=True)
     elif account.role=="teacher":
         query=db.query(Notice).filter(Notice.published.is_(True),Notice.audience.in_(["all","teachers"]))
     elif account.role=="student":
@@ -760,8 +760,13 @@ def certificate_requests(db: Session = Depends(get_db), account: Account = Depen
 
 def certificate_out(db: Session, req: CertificateRequest) -> dict:
     student = db.get(Student, req.student_id)
+    assignment = db.query(ClassTeacherAssignment).filter_by(class_id=student.class_id).first() if student else None
+    class_teacher = db.get(Teacher, assignment.teacher_id) if assignment else None
+    decider = db.get(Account, req.decision_by) if req.decision_by else None
     return {"id": req.id, "student_id": req.student_id, "student_name": student.account.full_name if student else None,
             "registration_no": student.registration_no if student else None, "class_code": student.school_class.code if student else None,
+            "class_teacher_name": class_teacher.account.full_name if class_teacher else None,
+            "decided_by_name": decider.full_name if decider else None, "decided_by_role": decider.role if decider else None,
             "certificate_type": req.certificate_type, "note": req.note, "status": req.status, "decision_by": req.decision_by,
             "decision_note": req.decision_note, "created_at": req.created_at, "decided_at": req.decided_at, "downloaded_at": req.downloaded_at}
 

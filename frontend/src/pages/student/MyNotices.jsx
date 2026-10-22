@@ -5,9 +5,10 @@ import Banner from "../../components/portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
 import { formatDate } from "../../utils/formatDate";
 import { ContentSkeleton } from "../../components/ui/Skeleton";
+import NoticeAuthor from "../../components/portal/NoticeAuthor";
 
 export default function MyNotices() {
-  const { data: notices, loading, error } = useApiResource("/portal/notices");
+  const { data: notices, loading, error } = useApiResource("/portal/notices", { live: "notices" });
 
   return (
     <div>
@@ -23,10 +24,13 @@ export default function MyNotices() {
             <div key={n.id} className="pb-4 border-b border-navy/6 last:border-0">
               <div className="flex items-center justify-between gap-2 mb-1">
                 <p className="text-sm font-semibold text-navy">{n.title}</p>
-                <Badge tone="navy">{n.audience}</Badge>
+                <Badge tone="navy">{n.class_id ? "Class" : "School"}</Badge>
               </div>
-              <p className="text-sm text-navy/60">{n.body}</p>
-              <p className="text-xs text-navy/40 mt-1.5">{formatDate(n.created_at)}</p>
+              <p className="text-sm text-navy/60 whitespace-pre-line">{n.body}</p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                <NoticeAuthor notice={n} />
+                <p className="text-xs text-navy/40">{formatDate(n.created_at)}</p>
+              </div>
             </div>
           ))}
         </div>}

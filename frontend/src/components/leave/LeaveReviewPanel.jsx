@@ -17,7 +17,7 @@ const filters = [
 
 // Approve/reject list: class teacher sees their class's student requests, admin sees teacher requests.
 export default function LeaveReviewPanel({ showClass = false, emptyText = "No leave requests." }) {
-  const { data: requests, loading, error, reload } = useApiResource("/leave-requests", { query: { scope: "review" } });
+  const { data: requests, loading, error, reload } = useApiResource("/leave-requests", { query: { scope: "review" }, live: "leave" });
   const [filter, setFilter] = useState("pending");
   const [busyId, setBusyId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
@@ -65,7 +65,7 @@ export default function LeaveReviewPanel({ showClass = false, emptyText = "No le
 
       <Card className="p-0 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="table-cards w-full text-sm">
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-navy/45 border-b border-navy/8">
                 <th className="px-4 py-3">Applicant</th>
@@ -86,27 +86,27 @@ export default function LeaveReviewPanel({ showClass = false, emptyText = "No le
               )}
               {rows.map((r) => (
                 <tr key={r.id} className="border-b border-navy/6 last:border-0 align-top">
-                  <td className="px-4 py-3">
+                  <td className="tc-primary px-4 py-3">
                     <p className="font-medium text-navy whitespace-nowrap">{r.applicant_name}</p>
                     <p className="text-xs text-navy/45 whitespace-nowrap">
                       {r.applicant_username}
                       {showClass && r.class_code && ` · ${r.class_code}`}
                     </p>
                   </td>
-                  <td className="px-4 py-3 text-navy/70 whitespace-nowrap">{LEAVE_TYPE_LABELS[r.leave_type] || r.leave_type}</td>
-                  <td className="px-4 py-3 text-navy/70 whitespace-nowrap">
+                  <td data-label="Type" className="px-4 py-3 text-navy/70 whitespace-nowrap">{LEAVE_TYPE_LABELS[r.leave_type] || r.leave_type}</td>
+                  <td data-label="Dates" className="px-4 py-3 text-navy/70 whitespace-nowrap">
                     {formatDate(r.from_date)}
                     {r.to_date !== r.from_date && <> – {formatDate(r.to_date)}</>}
                   </td>
-                  <td className="px-4 py-3 text-center text-navy/70">{r.days}</td>
-                  <td className="px-4 py-3 text-navy/60 min-w-[12rem]">
+                  <td data-label="Days" className="px-4 py-3 text-center text-navy/70">{r.days}</td>
+                  <td data-label="Reason" className="px-4 py-3 text-navy/60 min-w-[12rem]">
                     {r.reason}
                     {r.decision_note && <p className="text-xs italic text-navy/50 mt-0.5">Note: {r.decision_note}</p>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="tc-aside px-4 py-3">
                     <Badge tone={LEAVE_STATUS_TONE[r.status] || "navy"}>{r.status}</Badge>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="tc-full pt-1 px-4 py-3">
                     {r.status === "pending" && rejectingId !== r.id && (
                       <div className="flex items-center justify-end gap-2">
                         <button

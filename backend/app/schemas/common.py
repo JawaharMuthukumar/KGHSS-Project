@@ -1,8 +1,20 @@
+import re
 from datetime import date, datetime
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 from pydantic import EmailStr
+
+
+def _check_mobile(value: str | None) -> str | None:
+    """Mobile numbers are exactly 10 digits; a blank value means "not given"."""
+    if value is None or not value.strip(): return None
+    value = value.strip()
+    if not re.fullmatch(r"\d{10}", value): raise ValueError("Mobile number must be exactly 10 digits")
+    return value
+
+
+MobileNo = Annotated[str | None, AfterValidator(_check_mobile)]
 
 
 class ORMModel(BaseModel):
@@ -24,14 +36,14 @@ class TokenOut(BaseModel):
 class TeacherCreate(BaseModel):
     full_name: str = Field(min_length=2, max_length=160)
     subject: str = Field(min_length=1, max_length=100)
-    phone: str | None = None
+    phone: MobileNo = None
     password: str = Field(min_length=8, max_length=128)
 
 
 class TeacherUpdate(BaseModel):
     full_name: str | None = None
     subject: str | None = None
-    phone: str | None = None
+    phone: MobileNo = None
     is_active: bool | None = None
 
 
@@ -50,8 +62,35 @@ class StudentCreate(BaseModel):
     blood_group: str | None = None
     father_name: str | None = None
     mother_name: str | None = None
-    guardian_phone: str | None = None
+    father_phone: MobileNo = None
+    mother_phone: MobileNo = None
+    guardian_phone: MobileNo = None
     address: str | None = None
+
+
+class StudentUpdate(BaseModel):
+    full_name: str | None = Field(default=None, min_length=2, max_length=160)
+    admission_no: str | None = None
+    emis_no: str | None = None
+    gender: str | None = None
+    date_of_birth: date | None = None
+    community: str | None = None
+    medium: str | None = None
+    blood_group: str | None = None
+    father_name: str | None = None
+    mother_name: str | None = None
+    father_phone: MobileNo = None
+    mother_phone: MobileNo = None
+    address: str | None = None
+
+
+class StudentSelfUpdate(BaseModel):
+    """The few profile fields a student may correct themselves; everything else stays with the school."""
+    date_of_birth: date | None = None
+    blood_group: str | None = Field(default=None, max_length=10)
+    father_name: str | None = Field(default=None, max_length=160)
+    mother_name: str | None = Field(default=None, max_length=160)
+    address: str | None = Field(default=None, max_length=500)
 
 
 class ClassIn(BaseModel):
@@ -83,7 +122,7 @@ class AttendanceIn(BaseModel):
 
 
 class TimetableEntryIn(BaseModel):
-    weekday: int = Field(ge=0, le=5)
+    weekday: int = Field(ge=0, le=4)  # Mon-Fri only
     period: int = Field(ge=1, le=8)
     subject: str | None = None
     teacher_id: int | None = None
@@ -160,7 +199,7 @@ class GalleryIn(BaseModel):
 class PublicContactIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr
-    phone: str | None = None
+    phone: MobileNo = None
     subject: str | None = Field(default=None, max_length=200)
     message: str = Field(min_length=5, max_length=5000)
 

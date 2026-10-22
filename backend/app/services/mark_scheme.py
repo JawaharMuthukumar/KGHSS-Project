@@ -22,10 +22,18 @@ def terms_for_grade(grade: int) -> list[str]:
     return TERMS_SENIOR if grade >= 10 else TERMS_MIDDLE
 
 
+# Higher-secondary group (P/C/B/M = Physics, Chemistry, Biology, Maths, …) -> its four core subjects.
+GROUP_SUBJECTS = {
+    "P/C/B/M": ["Biology", "Chemistry", "Physics", "Maths"],
+    "P/C/M/CS": ["Computer Science", "Chemistry", "Physics", "Maths"],
+    "P/C/B/CS": ["Biology", "Computer Science", "Chemistry", "Physics"],
+}
+
+
 def subjects_for_class(cls: AcademicClass) -> list[str]:
     if cls.grade >= 11:
-        electives = ["Biology"] if cls.group_name == "Bio-Maths" else ["Computer Science"]
-        return ["Tamil", "English", *electives, "Chemistry", "Physics", "Maths"]
+        core = GROUP_SUBJECTS.get(cls.group_name, GROUP_SUBJECTS["P/C/M/CS"])
+        return ["Tamil", "English", *core]
     return ["Tamil", "English", "Maths", "Science", "Social Science"]
 
 

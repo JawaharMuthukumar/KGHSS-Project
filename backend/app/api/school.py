@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import current_account, require_roles
 from app.core.security import hash_password
-from app.services.permissions import teacher_profile, student_profile, assigned_class, can_access_class
+from app.services.permissions import teacher_profile, student_profile, assigned_class, assigned_classes, is_class_teacher_of, can_access_class
 from app.services.permissions import require_teacher_class_scope
 from app.services.mark_scheme import class_scheme, subject_components, subjects_for_class, terms_for_grade
 from app.models.entities import (Account, AcademicClass, Teacher, Student, ClassTeacherAssignment,
@@ -20,7 +20,7 @@ from app.models.entities import (Account, AcademicClass, Teacher, Student, Class
     Notice, CertificateRequest, LeaveRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage,
     PagePost, PagePostImage)
 from app.schemas.common import (ClassIn, ClassTeacherIn, SubjectTeacherIn, TeacherCreate, TeacherUpdate,
-    StudentCreate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, NoticeUpdate, CertificateIn, DecisionIn,
+    StudentCreate, StudentUpdate, StudentSelfUpdate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, NoticeUpdate, CertificateIn, DecisionIn,
     LeaveRequestIn, ComplaintMessageIn, EventIn, EventUpdate, GalleryIn, PublicContactIn)
 
 router = APIRouter(tags=["School"])
@@ -45,7 +45,7 @@ def list_classes(db: Session = Depends(get_db), account: Account = Depends(requi
         count = db.query(func.count(Student.id)).filter(Student.class_id == cls.id).scalar()
         ct = db.query(ClassTeacherAssignment).filter_by(class_id=cls.id, academic_year=cls.academic_year).first()
         teacher = db.get(Teacher, ct.teacher_id) if ct else None
-        result.append({"id": cls.id, "code": cls.code, "grade": cls.grade, "section": cls.section, "group_name": cls.group_name, "academic_year": cls.academic_year, "student_count": count, "class_teacher_id": teacher.id if teacher else None, "class_teacher_name": teacher.account.full_name if teacher else None})
+        result.append({"id": cls.id, "code": cls.code, "grade": cls.grade, "section": cls.section, "group_name": cls.group_name, "medium": cls.medium, "strength": cls.strength, "academic_year": cls.academic_year, "student_count": count, "class_teacher_id": teacher.id if teacher else None, "class_teacher_name": teacher.account.full_name if teacher else None, "class_teacher_phone": teacher.phone if teacher else None})
     return result
 
 
@@ -102,10 +102,8 @@ def delete_teacher(teacher_id: int, db: Session = Depends(get_db), _: Account = 
 def assign_class_teacher(class_code: str, data: ClassTeacherIn, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
     cls = get_class(db, class_code); teacher = db.get(Teacher, data.teacher_id)
     if not teacher: raise HTTPException(404, "Teacher not found")
+    # One class teacher per class; a teacher may be class teacher of several classes.
     old = db.query(ClassTeacherAssignment).filter_by(class_id=cls.id, academic_year=cls.academic_year).first()
-    other = db.query(ClassTeacherAssignment).filter_by(teacher_id=teacher.id, academic_year=cls.academic_year).first()
-    if other and other.class_id != cls.id:
-        db.delete(other); db.flush()
     if old: old.teacher_id = teacher.id
     else: db.add(ClassTeacherAssignment(class_id=cls.id, teacher_id=teacher.id, academic_year=cls.academic_year))
     db.commit(); return {"class_code": cls.code, "teacher_id": teacher.id, "teacher_name": teacher.account.full_name}
@@ -155,7 +153,7 @@ def list_students(class_code: str | None = None, db: Session = Depends(get_db), 
         cls = assigned_class(db, teacher_profile(db, account))
         if not cls: return []
         query = query.filter_by(class_id=cls.id)
-    return [{"id": s.id, "registration_no": s.registration_no, "admission_no": s.admission_no, "full_name": s.account.full_name, "class_code": s.school_class.code, "gender": s.gender, "guardian_phone": s.guardian_phone} for s in query.order_by(Student.id).all()]
+    return [{"id": s.id, "registration_no": s.registration_no, "admission_no": s.admission_no, "full_name": s.account.full_name, "class_code": s.school_class.code, "gender": s.gender, "guardian_phone": s.guardian_phone, "father_name": s.father_name, "parent_phone": s.father_phone or s.mother_phone or s.guardian_phone} for s in query.order_by(Student.id).all()]
 
 
 @router.post("/students", status_code=201)
@@ -163,17 +161,17 @@ def create_student(data: StudentCreate, db: Session = Depends(get_db), account: 
     cls = get_class(db, data.class_code)
     if account.role == "teacher":
         teacher_or_admin(account, db, cls)
-        assigned = assigned_class(db, teacher_profile(db, account))
-        if not assigned or assigned.id != cls.id: raise HTTPException(403, "Only the class teacher can enroll students")
+        if not is_class_teacher_of(db, teacher_profile(db, account), cls): raise HTTPException(403, "Only the class teacher can enroll students")
     registration = data.registration_no or f"GHSS/{cls.academic_year.split('-')[0]}/{(db.query(func.count(Student.id)).scalar() or 0) + 1:04d}"
     username = registration
     if db.query(Account).filter_by(username=username).first() or db.query(Student).filter_by(registration_no=registration).first(): raise HTTPException(409, "Registration number already exists")
+    if data.admission_no and db.query(Student).filter_by(admission_no=data.admission_no).first(): raise HTTPException(409, f"Admission number {data.admission_no} already exists")
     payload = data.model_dump(exclude={"password", "class_code", "registration_no", "full_name"})
     acc = Account(username=username, role="student", full_name=data.full_name, password_hash=hash_password(data.password))
     db.add(acc); db.flush()
     student = Student(account_id=acc.id, class_id=cls.id, registration_no=registration, **payload)
     db.add(student); db.commit(); db.refresh(student)
-    return {"id": student.id, "registration_no": registration, "username": username, "full_name": acc.full_name, "class_code": cls.code}
+    return {"id": student.id, "registration_no": registration, "admission_no": student.admission_no, "username": username, "full_name": acc.full_name, "class_code": cls.code}
 
 
 @router.get("/students/{student_id}")
@@ -182,7 +180,41 @@ def get_student(student_id: int, db: Session = Depends(get_db), account: Account
     if not student: raise HTTPException(404, "Student not found")
     if account.role == "student" and student.account_id != account.id: raise HTTPException(403, "Student record access denied")
     if account.role == "teacher" and not can_access_class(db, account, student.school_class): raise HTTPException(403, "Class access denied")
-    return {"id": student.id, "registration_no": student.registration_no, "admission_no": student.admission_no, "emis_no": student.emis_no, "umis_no": student.umis_no, "full_name": student.account.full_name, "class_code": student.school_class.code, "gender": student.gender, "date_of_birth": student.date_of_birth, "community": student.community, "medium": student.medium, "blood_group": student.blood_group, "father_name": student.father_name, "mother_name": student.mother_name, "guardian_phone": student.guardian_phone, "address": student.address}
+    return student_detail(student)
+
+
+@router.patch("/students/{student_id}", summary="Edit a student's profile (admin or class teacher)")
+def update_student(student_id: int, data: StudentUpdate, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    student = db.get(Student, student_id)
+    if not student: raise HTTPException(404, "Student not found")
+    if account.role == "teacher" and not is_class_teacher_of(db, teacher_profile(db, account), student.school_class): raise HTTPException(403, "Only the class teacher can edit this student")
+    # Blank strings from the form clear a field.
+    values = {key: (value.strip() or None) if isinstance(value, str) else value for key, value in data.model_dump(exclude_unset=True).items()}
+    if "full_name" in values:
+        if not values["full_name"]: raise HTTPException(422, "Full name is required")
+        student.account.full_name = values.pop("full_name")
+    if values.get("admission_no") and db.query(Student).filter(Student.admission_no == values["admission_no"], Student.id != student.id).first():
+        raise HTTPException(409, f"Admission number {values['admission_no']} already exists")
+    for key, value in values.items(): setattr(student, key, value)
+    if "father_phone" in values or "mother_phone" in values:
+        student.guardian_phone = student.father_phone or student.mother_phone or student.guardian_phone
+    db.commit(); db.refresh(student)
+    return student_detail(student)
+
+
+@router.delete("/students/{student_id}", status_code=204, response_class=Response, summary="Delete a student and their records (admin or class teacher)")
+def delete_student(student_id: int, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    student = db.get(Student, student_id)
+    if not student: raise HTTPException(404, "Student not found")
+    if account.role == "teacher" and not is_class_teacher_of(db, teacher_profile(db, account), student.school_class): raise HTTPException(403, "Only the class teacher can delete this student")
+    # Marks, attendance, certificate/leave requests and complaints go with it via ON DELETE CASCADE.
+    login = student.account
+    db.delete(student); db.flush(); db.delete(login); db.commit()
+    return Response(status_code=204)
+
+
+def student_detail(student: Student) -> dict:
+    return {"id": student.id, "registration_no": student.registration_no, "admission_no": student.admission_no, "emis_no": student.emis_no, "umis_no": student.umis_no, "full_name": student.account.full_name, "class_code": student.school_class.code, "gender": student.gender, "date_of_birth": student.date_of_birth, "community": student.community, "medium": student.medium, "blood_group": student.blood_group, "father_name": student.father_name, "mother_name": student.mother_name, "father_phone": student.father_phone, "mother_phone": student.mother_phone, "guardian_phone": student.guardian_phone, "address": student.address}
 
 
 # Marks, scorecards, and result analysis
@@ -314,7 +346,8 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
 
     # ---- HM summary ----
     mediums = [medium_key(s) for s in students if s.medium]
-    medium = max(set(mediums), key=mediums.count) if mediums else ("EM" if cls.section.upper().endswith("B") else "TM")
+    class_medium = ("EM" if cls.medium == "English" else "TM") if cls.medium else ("EM" if cls.section.upper().endswith("B") else "TM")
+    medium = max(set(mediums), key=mediums.count) if mediums else class_medium
     def by_gender(pred):
         out = {"M": 0, "F": 0}
         for r in rows:
@@ -357,12 +390,81 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
         hi = lo
     ranges.append({"label": f"LESS THAN {edges[-1]}", "bin": edges[-1], "count": sum(1 for t in tt if t < edges[-1])})
 
-    return {"class_code": cls.code, "title": f"{ROMAN.get(cls.grade, cls.grade)} - {cls.section}", "academic_year": cls.academic_year,
+    return {"class_code": cls.code, "title": f"{ROMAN.get(cls.grade, cls.grade)} - {cls.group_name + ' ' if cls.group_name else ''}{cls.section}", "academic_year": cls.academic_year,
         "term": term, "subjects": [SUBJECT_ABBR.get(s, s) for s in subjects], "max_marks": 100, "pass_marks": PASS,
         "working_days": working_days if months else None, "students": rows,
         "hm": {"medium": medium, "roll": roll, "appeared": appd, "passed": passd, "pass_percent": pass_pct,
             "subject_result": subject_result, "toppers": toppers, "failed_counts": failed_counts,
             "total_failed": appd["TOT"] - passd["TOT"], "absent": roll["TOT"] - appd["TOT"], "ranges": ranges}}
+
+
+# Report card remark (தகுதி) by total percentage, highest band first; replaces Pass/Fail on the card.
+REMARK_BANDS = [(90, "மிகச் சிறப்பு"), (75, "மிக நன்று"), (60, "நன்று"), (35, "சராசரி"), (0, "முன்னேற்றம் தேவை")]
+
+
+def report_remark(percent: float) -> str:
+    return next(label for floor, label in REMARK_BANDS if percent >= floor)
+
+
+def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | None = None) -> dict:
+    """Per-student report cards (every exam of the year as a row), as printed on the school's progress card.
+    Class-wide data is always loaded because each row shows the class's top total for that exam."""
+    subjects = subjects_for_class(cls)
+    students = db.query(Student).filter_by(class_id=cls.id).order_by(Student.registration_no).all()
+    assessments = {a.term: a for a in db.query(Assessment).filter_by(class_id=cls.id, academic_year=cls.academic_year).all()}
+    marks = defaultdict(lambda: defaultdict(dict))  # term -> student_id -> subject -> Mark
+    if assessments:
+        term_of = {a.id: t for t, a in assessments.items()}
+        for m in db.query(Mark).filter(Mark.assessment_id.in_(term_of)).all(): marks[term_of[m.assessment_id]][m.student_id][m.subject] = m
+
+    def term_total(term, sid):
+        sm = marks[term].get(sid)
+        return sum(m.score for m in sm.values() if not m.absent) if sm else None
+
+    class_top = {t: max([v for v in (term_total(t, s.id) for s in students) if v is not None], default=None) for t in terms_for_grade(cls.grade)}
+
+    # Attendance is recorded per month, not per exam, so the card shows the cumulative figure on the latest exam row.
+    months = db.query(AttendanceMonth).filter_by(class_id=cls.id).all()
+    working_days = sum(mo.total_days for mo in months)
+    present = defaultdict(int)
+    if months:
+        for r in db.query(AttendanceRecord).filter(AttendanceRecord.attendance_month_id.in_([mo.id for mo in months])).all(): present[r.student_id] += r.present_days
+
+    full = 100 * len(subjects)
+    cards = []
+    for s in students:
+        if only_student_id is not None and s.id != only_student_id: continue
+        rows = []
+        for term in terms_for_grade(cls.grade):
+            sm = marks[term].get(s.id)
+            if not sm:
+                rows.append({"term": term, "scores": [None] * len(subjects), "total": None, "remark": None, "class_top": class_top[term], "attendance": None}); continue
+            scores = [None if subj not in sm else "AB" if sm[subj].absent else sm[subj].score for subj in subjects]
+            total = term_total(term, s.id)
+            rows.append({"term": term, "scores": scores, "total": total, "remark": report_remark(total * 100 / full),
+                "class_top": class_top[term], "attendance": None})
+        last = max((i for i, r in enumerate(rows) if r["total"] is not None), default=None)
+        if last is not None and working_days: rows[last]["attendance"] = {"present": present.get(s.id, 0), "working": working_days}
+        cards.append({"student_id": s.id, "registration_no": s.registration_no, "name": s.account.full_name, "rows": rows})
+    return {"class_code": cls.code, "grade": cls.grade, "academic_year": cls.academic_year, "subjects": subjects,
+        "max_total": full, "cards": cards}
+
+
+@router.get("/classes/{class_code}/report-cards", summary="Printable progress cards for every student in a class")
+def class_report_cards(class_code: str, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    cls = get_class(db, class_code)
+    if not can_access_class(db, account, cls, allow_subject=False): raise HTTPException(403, "Only the class teacher can view report cards")
+    return build_report_cards(db, cls)
+
+
+@router.get("/students/{student_id}/report-card", summary="One student's progress card")
+def student_report_card(student_id: int, db: Session = Depends(get_db), account: Account = Depends(current_account)):
+    student = db.get(Student, student_id)
+    if not student: raise HTTPException(404, "Student not found")
+    if account.role == "student" and student.account_id != account.id: raise HTTPException(403, "Report card access denied")
+    if account.role == "teacher" and not can_access_class(db, account, student.school_class): raise HTTPException(403, "Class access denied")
+    data = build_report_cards(db, student.school_class, only_student_id=student.id)
+    return {**{k: v for k, v in data.items() if k != "cards"}, "card": data["cards"][0]}
 
 
 @router.get("/reports/results")
@@ -425,7 +527,7 @@ def unlock_attendance(class_code: str, month: str, db: Session = Depends(get_db)
 @router.get("/reports/attendance")
 def attendance_report(month: str | None = None, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
     report=[]
-    for cls in db.query(AcademicClass).all():
+    for cls in db.query(AcademicClass).filter_by(is_active=True).order_by(AcademicClass.grade,AcademicClass.code):
         q=db.query(AttendanceMonth).filter_by(class_id=cls.id)
         if month: q=q.filter_by(month=month)
         records=q.all(); rates=[]
@@ -481,8 +583,7 @@ def replace_teacher_timetable(data: TimetableIn, db: Session = Depends(get_db), 
 def replace_class_timetable(class_code: str, data: TimetableIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
     cls=get_class(db,class_code); teacher_or_admin(account,db,cls)
     if account.role=="teacher":
-        mine=teacher_profile(db,account); assigned=assigned_class(db,mine)
-        if not assigned or assigned.id!=cls.id: raise HTTPException(403,"Only the class teacher may edit this timetable")
+        if not is_class_teacher_of(db,teacher_profile(db,account),cls): raise HTTPException(403,"Only the class teacher may edit this timetable")
     db.query(TimetableEntry).filter_by(class_id=cls.id,academic_year=data.academic_year).delete()
     db.add_all([TimetableEntry(class_id=cls.id,teacher_id=e.teacher_id,weekday=e.weekday,period=e.period,subject=e.subject,room=e.room,academic_year=data.academic_year) for e in data.entries])
     db.commit(); return {"class_code":cls.code,"entries_saved":len(data.entries)}
@@ -493,6 +594,36 @@ def replace_class_timetable(class_code: str, data: TimetableIn, db: Session = De
 def list_notices(db: Session = Depends(get_db)):
     """Publicly published website announcements only."""
     return db.query(Notice).filter_by(published=True,audience="website").order_by(Notice.created_at.desc()).all()
+
+
+def notice_author(db: Session, notice: Notice, cache: dict | None = None) -> dict:
+    """Who posted a notice, for display: the HM, or a teacher with their subject and class-teacher role."""
+    cache = {} if cache is None else cache
+    key = (notice.author_id, notice.class_id)
+    if key in cache: return cache[key]
+    author = db.get(Account, notice.author_id) if notice.author_id else None
+    info = {"author_name": None, "author_role": None, "author_subject": None, "author_teacher_id": None, "author_is_class_teacher": False}
+    if author and author.role == "admin":
+        info.update(author_name=author.full_name, author_role="admin")
+    elif author and author.role == "teacher":
+        teacher = db.query(Teacher).filter_by(account_id=author.id).first()
+        cls = db.get(AcademicClass, notice.class_id) if notice.class_id else None
+        info.update(author_name=author.full_name, author_role="teacher", author_subject=teacher.subject if teacher else None,
+                    author_teacher_id=teacher.id if teacher else None,
+                    author_is_class_teacher=bool(teacher and cls and is_class_teacher_of(db, teacher, cls)))
+    cache[key] = info
+    return info
+
+
+def notice_out(db: Session, notice: Notice, cache: dict | None = None) -> dict:
+    cls = db.get(AcademicClass, notice.class_id) if notice.class_id else None
+    return {"id": notice.id, "title": notice.title, "body": notice.body, "audience": notice.audience, "class_id": notice.class_id,
+            "class_code": cls.code if cls else None, "author_id": notice.author_id, "published": notice.published, "created_at": notice.created_at, **notice_author(db, notice, cache)}
+
+
+def notices_out(db: Session, notices: list[Notice]) -> list[dict]:
+    cache: dict = {}
+    return [notice_out(db, n, cache) for n in notices]
 
 
 @router.get("/portal/notices")
@@ -506,14 +637,68 @@ def portal_notices(db: Session = Depends(get_db), account: Account = Depends(cur
         student=student_profile(db,account)
         query=db.query(Notice).filter(Notice.published.is_(True),((Notice.class_id==student.class_id)|(Notice.class_id.is_(None)&Notice.audience.in_(["all","students"]))))
     else: raise HTTPException(403,"Notices not available for this role")
-    return query.order_by(Notice.created_at.desc()).all()
+    return notices_out(db, query.order_by(Notice.created_at.desc()).all())
+
+
+@router.get("/portal/alerts", summary="Badge counts, pending items and change markers for live portal updates (polled)")
+def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(current_account)):
+    """`versions` change whenever anything in that topic changes, so the client knows what to refresh.
+    `items` are things waiting on this user; `notices` lists recent visible notice ids for unread badges."""
+    def version(q, model, decided=True):
+        cols = [func.count(model.id), func.max(model.id)] + ([func.max(model.decided_at)] if decided else [])
+        return ":".join(str(v) for v in q.with_entities(*cols).one())
+
+    certs = db.query(CertificateRequest); leaves = db.query(LeaveRequest); notices = db.query(Notice).filter(Notice.published.is_(True))
+    cert_pending = leave_pending = None; cert_link = leave_link = None
+    if account.role == "admin":
+        cert_pending = certs.filter(CertificateRequest.status == "pending"); cert_link = "/admin/certificates"
+        leaves = leaves.filter(LeaveRequest.applicant_role == "teacher"); leave_pending = leaves.filter(LeaveRequest.status == "pending"); leave_link = "/admin/leave-requests"
+        notices = notices.filter(Notice.id < 0)  # the HM writes notices; nothing to alert on
+    elif account.role == "teacher":
+        class_ids = [c.id for c in assigned_classes(db, teacher_profile(db, account))] or [-1]
+        certs = certs.join(Student, Student.id == CertificateRequest.student_id).filter(Student.class_id.in_(class_ids))
+        cert_pending = certs.filter(CertificateRequest.status == "pending"); cert_link = "/teacher/certificates"
+        leaves = leaves.filter(LeaveRequest.applicant_role == "student", LeaveRequest.class_id.in_(class_ids))
+        leave_pending = leaves.filter(LeaveRequest.status == "pending"); leave_link = "/teacher/leave-requests"
+        notices = notices.filter(Notice.audience.in_(["all", "teachers"]))
+    elif account.role == "student":
+        student = student_profile(db, account)
+        certs = certs.filter(CertificateRequest.student_id == student.id); leaves = leaves.filter(LeaveRequest.applicant_id == account.id)
+        notices = notices.filter((Notice.class_id == student.class_id) | (Notice.class_id.is_(None) & Notice.audience.in_(["all", "students"])))
+    else: raise HTTPException(403, "Alerts not available for this role")
+
+    items = []
+    if cert_pending is not None:
+        for req in cert_pending.order_by(CertificateRequest.id.desc()).limit(10).all():
+            s = db.get(Student, req.student_id)
+            items.append({"key": f"certificate-{req.id}", "kind": "certificate", "title": "New certificate request",
+                          "detail": f"{s.account.full_name if s else 'Student'} · {req.certificate_type.title()}", "to": cert_link, "created_at": req.created_at})
+    if leave_pending is not None:
+        for req in leave_pending.order_by(LeaveRequest.id.desc()).limit(10).all():
+            items.append({"key": f"leave-{req.id}", "kind": "leave", "title": "New leave request",
+                          "detail": f"{db.get(Account, req.applicant_id).full_name} · {req.days} day{'s' if req.days != 1 else ''}", "to": leave_link, "created_at": req.created_at})
+    if account.role == "student":
+        # Approved certificates waiting to be downloaded count as "for you".
+        for req in certs.filter(CertificateRequest.status == "approved", CertificateRequest.downloaded_at.is_(None)).order_by(CertificateRequest.id.desc()).limit(10).all():
+            items.append({"key": f"certificate-ready-{req.id}", "kind": "certificate", "title": "Certificate approved",
+                          "detail": f"{req.certificate_type.title()} is ready to download", "to": "/student/certificates", "created_at": req.decided_at})
+        for req in leaves.filter(LeaveRequest.status != "pending", LeaveRequest.decided_at >= datetime.utcnow() - timedelta(days=3)).order_by(LeaveRequest.id.desc()).limit(5).all():
+            items.append({"key": f"leave-{req.id}-{req.status}", "kind": "leave", "title": f"Leave {req.status}", "detail": f"{req.from_date:%d %b} – {req.to_date:%d %b}",
+                          "to": "/student/leave", "created_at": req.decided_at, "silent_badge": True})
+    items.sort(key=lambda i: i["created_at"] or datetime.min, reverse=True)
+
+    counts = {"certificates": sum(1 for i in items if i["kind"] == "certificate"), "leave": sum(1 for i in items if i["kind"] == "leave" and not i.get("silent_badge"))}
+    cache: dict = {}
+    recent_notices = [{"id": n.id, "title": n.title, "author_teacher_id": notice_author(db, n, cache)["author_teacher_id"]} for n in notices.order_by(Notice.id.desc()).limit(30).all()]
+    return {"counts": counts, "items": items, "notices": recent_notices,
+            "versions": {"certificates": version(certs, CertificateRequest), "leave": version(leaves, LeaveRequest), "notices": version(notices, Notice, decided=False)}}
 
 
 @router.get("/classes/{class_code}/notices")
 def class_notices(class_code: str, db: Session = Depends(get_db), account: Account = Depends(current_account)):
     cls=get_class(db,class_code)
     if not can_access_class(db,account,cls): raise HTTPException(403,"Class access denied")
-    return db.query(Notice).filter_by(class_id=cls.id,published=True).order_by(Notice.created_at.desc()).all()
+    return notices_out(db, db.query(Notice).filter_by(class_id=cls.id,published=True).order_by(Notice.created_at.desc()).all())
 
 
 @router.post("/notices", status_code=201)
@@ -567,10 +752,23 @@ def certificate_requests(db: Session = Depends(get_db), account: Account = Depen
     q=db.query(CertificateRequest)
     if account.role=="student": q=q.filter_by(student_id=student_profile(db,account).id)
     elif account.role=="teacher":
-        cls=assigned_class(db,teacher_profile(db,account))
-        if not cls: return []
-        ids=[s.id for s in db.query(Student).filter_by(class_id=cls.id).all()]; q=q.filter(CertificateRequest.student_id.in_(ids))
-    return q.order_by(CertificateRequest.created_at.desc()).all()
+        class_ids=[c.id for c in assigned_classes(db,teacher_profile(db,account))]
+        if not class_ids: return []
+        ids=[s.id for s in db.query(Student).filter(Student.class_id.in_(class_ids)).all()]; q=q.filter(CertificateRequest.student_id.in_(ids))
+    return [certificate_out(db, req) for req in q.order_by(CertificateRequest.created_at.desc()).all()]
+
+
+def certificate_out(db: Session, req: CertificateRequest) -> dict:
+    student = db.get(Student, req.student_id)
+    assignment = db.query(ClassTeacherAssignment).filter_by(class_id=student.class_id).first() if student else None
+    class_teacher = db.get(Teacher, assignment.teacher_id) if assignment else None
+    decider = db.get(Account, req.decision_by) if req.decision_by else None
+    return {"id": req.id, "student_id": req.student_id, "student_name": student.account.full_name if student else None,
+            "registration_no": student.registration_no if student else None, "class_code": student.school_class.code if student else None,
+            "class_teacher_name": class_teacher.account.full_name if class_teacher else None,
+            "decided_by_name": decider.full_name if decider else None, "decided_by_role": decider.role if decider else None,
+            "certificate_type": req.certificate_type, "note": req.note, "status": req.status, "decision_by": req.decision_by,
+            "decision_note": req.decision_note, "created_at": req.created_at, "decided_at": req.decided_at, "downloaded_at": req.downloaded_at}
 
 
 @router.patch("/certificates/requests/{request_id}")
@@ -637,9 +835,9 @@ def list_leave_requests(scope: str = Query("mine", pattern="^(mine|review)$"), d
     q = db.query(LeaveRequest)
     if scope == "mine" or account.role == "student": q = q.filter_by(applicant_id=account.id)
     elif account.role == "teacher":
-        cls = assigned_class(db, teacher_profile(db, account))
-        if not cls: return []
-        q = q.filter_by(applicant_role="student", class_id=cls.id)
+        class_ids = [c.id for c in assigned_classes(db, teacher_profile(db, account))]
+        if not class_ids: return []
+        q = q.filter(LeaveRequest.applicant_role == "student", LeaveRequest.class_id.in_(class_ids))
     else: q = q.filter_by(applicant_role="teacher")
     return [leave_out(db, r) for r in q.order_by(LeaveRequest.created_at.desc()).all()]
 
@@ -966,30 +1164,75 @@ def public_school_profile():
 
 @router.get("/dashboards/admin")
 def admin_dashboard(db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
-    return {"school":public_school_profile(),"class_count":db.query(func.count(AcademicClass.id)).filter_by(is_active=True).scalar(),"teacher_count":db.query(func.count(Teacher.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"student_count":db.query(func.count(Student.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"pending_certificate_requests":db.query(func.count(CertificateRequest.id)).filter_by(status="pending").scalar(),"open_complaint_threads":db.query(func.count(ComplaintThread.id)).scalar(),"recent_notices":db.query(Notice).filter_by(published=True).order_by(Notice.created_at.desc()).limit(5).all()}
+    return {"school":public_school_profile(),"class_count":db.query(func.count(AcademicClass.id)).filter_by(is_active=True).scalar(),"teacher_count":db.query(func.count(Teacher.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"student_count":db.query(func.count(Student.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"pending_certificate_requests":db.query(func.count(CertificateRequest.id)).filter_by(status="pending").scalar(),"open_complaint_threads":db.query(func.count(ComplaintThread.id)).scalar(),"recent_notices":db.query(Notice).filter(Notice.published.is_(True),Notice.audience!="class").order_by(Notice.created_at.desc()).limit(5).all()}
+
+
+@router.get("/timetable/day", summary="Every class's timetable for one weekday (0 = Mon … 4 = Fri), for the HM dashboard")
+def school_day_timetable(weekday: int = Query(..., ge=0, le=4), db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+    classes=db.query(AcademicClass).filter_by(is_active=True).order_by(AcademicClass.grade,AcademicClass.code).all()
+    by_id={c.id:c for c in classes}
+    rows=db.query(TimetableEntry).filter(TimetableEntry.weekday==weekday,TimetableEntry.class_id.in_(list(by_id) or [-1])).all()
+    names={t.id:t.account.full_name for t in db.query(Teacher).filter(Teacher.id.in_({r.teacher_id for r in rows if r.teacher_id} or {-1})).all()}
+    order={c.code:i for i,c in enumerate(classes)}
+    entries=[{"class_code":by_id[r.class_id].code,"group_name":by_id[r.class_id].group_name,"medium":by_id[r.class_id].medium,"period":r.period,
+              "subject":r.subject,"teacher_name":names.get(r.teacher_id)} for r in rows if r.academic_year==by_id[r.class_id].academic_year]
+    entries.sort(key=lambda e:(e["period"],order[e["class_code"]]))
+    return {"weekday":weekday,"class_count":len(classes),"entries":entries}
 
 
 @router.get("/dashboards/teacher")
-def teacher_dashboard(db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
-    teacher=teacher_profile(db,account); cls=assigned_class(db,teacher)
+def teacher_dashboard(class_code: str | None = None, db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
+    """`class_code` picks which of the teacher's classes the stats are for (defaults to their first class)."""
+    teacher=teacher_profile(db,account); classes=assigned_classes(db,teacher)
+    cls=assigned_class(db,teacher,class_code) or (classes[0] if classes else None)
     pending=0; count=0
     if cls:
         ids=[s.id for s in db.query(Student).filter_by(class_id=cls.id).all()]; count=len(ids)
         pending=db.query(func.count(CertificateRequest.id)).filter(CertificateRequest.student_id.in_(ids),CertificateRequest.status=="pending").scalar() if ids else 0
-    return {"teacher_id":teacher.id,"full_name":account.full_name,"subject":teacher.subject,"class_code":cls.code if cls else None,"student_count":count,"pending_certificate_requests":pending,"timetable":my_teacher_timetable(db,account)}
+    subject_rows=(db.query(SubjectTeacherAssignment,AcademicClass).join(AcademicClass,AcademicClass.id==SubjectTeacherAssignment.class_id)
+                  .filter(SubjectTeacherAssignment.teacher_id==teacher.id,SubjectTeacherAssignment.academic_year==AcademicClass.academic_year)
+                  .order_by(AcademicClass.grade,AcademicClass.code,SubjectTeacherAssignment.subject).all())
+    return {"teacher_id":teacher.id,"full_name":account.full_name,"subject":teacher.subject,"class_code":cls.code if cls else None,
+            "classes":[{"code":c.code,"grade":c.grade,"section":c.section,"group_name":c.group_name,"medium":c.medium,"strength":c.strength} for c in classes],
+            "subject_classes":[{"code":c.code,"subject":a.subject,"group_name":c.group_name,"medium":c.medium} for a,c in subject_rows],
+            "student_count":count,"strength":cls.strength if cls else None,"pending_certificate_requests":pending,"timetable":my_teacher_timetable(db,account)}
 
 
 @router.get("/dashboards/student")
 def student_dashboard(db: Session = Depends(get_db), account: Account = Depends(require_roles("student"))):
     student=student_profile(db,account); cls=student.school_class
     notices=db.query(Notice).filter(Notice.published.is_(True),((Notice.class_id==cls.id)|(Notice.class_id.is_(None)&Notice.audience.in_(["all","students","website"])))) .order_by(Notice.created_at.desc()).limit(10).all()
-    teachers=get_subject_teachers(cls.code,db,account)
-    return {"student_id":student.id,"full_name":account.full_name,"registration_no":student.registration_no,"class_code":cls.code,"notices":notices,"subject_teachers":teachers,"certificate_requests":db.query(CertificateRequest).filter_by(student_id=student.id).order_by(CertificateRequest.created_at.desc()).all()}
+    # Class teacher first, then subject teachers; each with phone so students/parents can reach them.
+    staff={}
+    for link in db.query(ClassTeacherAssignment).filter_by(class_id=cls.id,academic_year=cls.academic_year).all():
+        t=db.get(Teacher,link.teacher_id)
+        if t: staff[t.id]={"teacher_id":t.id,"teacher_name":t.account.full_name,"phone":t.phone,"subjects":[],"is_class_teacher":True}
+    for a in db.query(SubjectTeacherAssignment).filter_by(class_id=cls.id,academic_year=cls.academic_year).order_by(SubjectTeacherAssignment.subject).all():
+        t=db.get(Teacher,a.teacher_id)
+        if not t: continue
+        entry=staff.setdefault(t.id,{"teacher_id":t.id,"teacher_name":t.account.full_name,"phone":t.phone,"subjects":[],"is_class_teacher":False})
+        entry["subjects"].append(a.subject)
+    # Same subject order as the class's report card (Tamil, English, ...); unknown subjects go last.
+    order={sub:i for i,sub in enumerate(subjects_for_class(cls))}
+    for e in staff.values(): e["subjects"].sort(key=lambda sub:order.get(sub,len(order)))
+    rank=lambda e:min((order.get(sub,len(order)) for sub in e["subjects"]),default=len(order)+1)
+    teachers=sorted(staff.values(),key=lambda e:(not e["is_class_teacher"],rank(e),e["teacher_name"]))
+    return {"student_id":student.id,"full_name":account.full_name,"registration_no":student.registration_no,"class_code":cls.code,"notices":notices_out(db,notices),"subject_teachers":teachers,"certificate_requests":db.query(CertificateRequest).filter_by(student_id=student.id).order_by(CertificateRequest.created_at.desc()).all()}
 
 
 @router.get("/students/me/profile")
 def my_student_profile(db: Session = Depends(get_db), account: Account = Depends(require_roles("student"))):
     return get_student(student_profile(db,account).id,db,account)
+
+
+@router.patch("/students/me/profile", summary="Student edits their own DOB, blood group, parent names and address")
+def update_my_student_profile(data: StudentSelfUpdate, db: Session = Depends(get_db), account: Account = Depends(require_roles("student"))):
+    student=student_profile(db,account)
+    # Only the fields in StudentSelfUpdate can change here; blank strings clear a field.
+    for key,value in data.model_dump(exclude_unset=True).items():
+        setattr(student,key,(value.strip() or None) if isinstance(value,str) else value)
+    db.commit(); db.refresh(student)
+    return student_detail(student)
 
 
 @router.post("/public/contact", status_code=202)

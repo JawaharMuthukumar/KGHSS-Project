@@ -6,6 +6,7 @@ import Icon from "../components/ui/Icon";
 import Button from "../components/ui/Button";
 import SEO from "../components/utility/SEO";
 import { schoolInfo } from "../data/schoolData";
+import { mobileInputProps } from "../utils/mobile";
 import { api, ApiError } from "../lib/apiClient";
 
 const initialForm = { name: "", phone: "", email: "", subject: "", message: "" };
@@ -114,7 +115,7 @@ export default function Contact() {
             ) : (
               <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-navy/8 shadow-soft p-6 sm:p-8 grid sm:grid-cols-2 gap-5">
                 <Field label="Name" name="name" value={form.name} onChange={handleChange} required />
-                <Field label="Phone" name="phone" type="tel" value={form.phone} onChange={handleChange} />
+                <Field label="Phone" name="phone" {...mobileInputProps} value={form.phone} onChange={handleChange} />
                 <div className="sm:col-span-2">
                   <Field label="Email" name="email" type="email" value={form.email} onChange={handleChange} required />
                 </div>
@@ -166,7 +167,7 @@ function InfoCard({ icon, title, children }) {
   );
 }
 
-function Field({ label, name, value, onChange, type = "text", required = false }) {
+function Field({ label, name, value, onChange, type = "text", required = false, ...rest }) {
   return (
     <div>
       <label className="block text-xs font-semibold text-navy/70 mb-1.5" htmlFor={name}>{label}</label>
@@ -177,6 +178,7 @@ function Field({ label, name, value, onChange, type = "text", required = false }
         value={value}
         onChange={onChange}
         required={required}
+        {...rest}
         className="w-full px-4 py-3 rounded-xl border border-navy/12 text-sm focus:border-gold outline-none"
       />
     </div>

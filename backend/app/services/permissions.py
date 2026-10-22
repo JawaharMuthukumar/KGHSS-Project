@@ -19,9 +19,24 @@ def student_profile(db: Session, account: Account) -> Student:
     return student
 
 
-def assigned_class(db: Session, teacher: Teacher) -> AcademicClass | None:
-    row = db.query(ClassTeacherAssignment, AcademicClass).join(AcademicClass, AcademicClass.id == ClassTeacherAssignment.class_id).filter(ClassTeacherAssignment.teacher_id == teacher.id, ClassTeacherAssignment.academic_year == AcademicClass.academic_year).first()
-    return row[1] if row else None
+def assigned_classes(db: Session, teacher: Teacher) -> list[AcademicClass]:
+    """Every class this teacher is Class Teacher of (a teacher may hold several sections)."""
+    rows = (db.query(AcademicClass).join(ClassTeacherAssignment, AcademicClass.id == ClassTeacherAssignment.class_id)
+            .filter(ClassTeacherAssignment.teacher_id == teacher.id, ClassTeacherAssignment.academic_year == AcademicClass.academic_year)
+            .order_by(AcademicClass.grade, AcademicClass.code).all())
+    return rows
+
+
+def assigned_class(db: Session, teacher: Teacher, class_code: str | None = None) -> AcademicClass | None:
+    """The teacher's class matching `class_code`, or their first class when no code is given."""
+    classes = assigned_classes(db, teacher)
+    if class_code:
+        return next((c for c in classes if c.code == class_code), None)
+    return classes[0] if classes else None
+
+
+def is_class_teacher_of(db: Session, teacher: Teacher, cls: AcademicClass) -> bool:
+    return db.query(ClassTeacherAssignment).filter_by(class_id=cls.id, teacher_id=teacher.id, academic_year=cls.academic_year).first() is not None
 
 
 def can_access_class(db: Session, account: Account, cls: AcademicClass, *, allow_subject: bool = True) -> bool:

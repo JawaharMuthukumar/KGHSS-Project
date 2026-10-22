@@ -10,12 +10,19 @@ import { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { TableSkeleton } from "../../components/ui/Skeleton";
+import { useToast } from "../../components/ui/Toast";
+import { api, ApiError } from "../../lib/apiClient";
 
 export default function MyStudents() {
   const { classCode, loading: loadingProfile } = useMyTeacherProfile();
   const [search, setSearch] = useState("");
   const [activeStudent, setActiveStudent] = useState(null);
-  const { data: students, loading, error } = useApiResource("/students", { enabled: Boolean(classCode) });
+  const toast = useToast();
+  const { data: students, loading, error, reload } = useApiResource("/students", {
+    query: { class_code: classCode },
+    enabled: Boolean(classCode),
+    deps: [classCode],
+  });
 
   const filtered = useMemo(() => {
     const list = students || [];
@@ -23,6 +30,18 @@ export default function MyStudents() {
     if (!q) return list;
     return list.filter((s) => s.full_name.toLowerCase().includes(q) || s.registration_no.toLowerCase().includes(q));
   }, [students, search]);
+
+  const handleDelete = async (student) => {
+    if (!window.confirm(`Delete ${student.full_name}? Their marks, attendance and requests will also be removed. This cannot be undone.`)) return;
+    try {
+      await api.delete(`/students/${student.id}`);
+      setActiveStudent(null);
+      await reload();
+      toast.success(`${student.full_name} deleted successfully`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not delete this student.");
+    }
+  };
 
   return (
     <div>
@@ -54,30 +73,31 @@ export default function MyStudents() {
           </Card>
 
           <Card className="p-0 overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="table-cards w-full text-sm">
               <thead>
                 <tr className="text-left text-xs font-semibold uppercase tracking-wide text-navy/45 border-b border-navy/8">
                   <th className="px-4 py-3">Student</th>
                   <th className="px-4 py-3">Register No</th>
                   <th className="px-4 py-3">Gender</th>
-                  <th className="px-4 py-3">Guardian Phone</th>
+                  <th className="px-4 py-3">Father Name</th>
+                  <th className="px-4 py-3">Parent Phone</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {loading && <tr><td colSpan={5} className="p-0"><TableSkeleton rows={6} columns={4} /></td></tr>}
+                {loading && <tr><td colSpan={6} className="p-0"><TableSkeleton rows={6} columns={5} /></td></tr>}
                 {!loading && filtered.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-navy/40">No students found.</td>
+                    <td colSpan={6} className="px-4 py-8 text-center text-navy/40">No students found.</td>
                   </tr>
                 )}
                 {filtered.map((s) => (
                   <tr
                     key={s.id}
                     onClick={() => setActiveStudent(s.id)}
-                    className="border-b border-navy/6 last:border-0 hover:bg-navy/[0.02] cursor-pointer"
+                    className="border-b border-navy/6 last:border-0 hover:bg-navy/[0.05] cursor-pointer"
                   >
-                    <td className="px-4 py-3">
+                    <td className="tc-primary px-4 py-3">
                       <div className="flex items-center gap-3">
                         <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy/8 text-navy text-xs font-bold shrink-0">
                           {s.full_name.slice(0, 1)}
@@ -85,10 +105,11 @@ export default function MyStudents() {
                         <span className="font-medium text-navy">{s.full_name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-navy/70">{s.registration_no}</td>
-                    <td className="px-4 py-3 text-navy/70">{s.gender || "—"}</td>
-                    <td className="px-4 py-3 text-navy/70">{s.guardian_phone || "—"}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td data-label="Register No" className="px-4 py-3 text-navy/70">{s.registration_no}</td>
+                    <td data-label="Gender" className="px-4 py-3 text-navy/70">{s.gender || "—"}</td>
+                    <td data-label="Father Name" className="px-4 py-3 text-navy/70">{s.father_name || "—"}</td>
+                    <td data-label="Parent Phone" className="px-4 py-3 text-navy/70">{s.parent_phone || "—"}</td>
+                    <td className="tc-aside px-4 py-3 text-right">
                       <Icon name="ChevronRight" size={16} className="text-navy/30" />
                     </td>
                   </tr>
@@ -100,7 +121,7 @@ export default function MyStudents() {
       )}
 
       <Drawer open={Boolean(activeStudent)} onClose={() => setActiveStudent(null)} title="Student Profile">
-        {activeStudent && <StudentProfilePanel studentId={activeStudent} />}
+        {activeStudent && <StudentProfilePanel studentId={activeStudent} editable onSaved={reload} onDelete={handleDelete} />}
       </Drawer>
     </div>
   );

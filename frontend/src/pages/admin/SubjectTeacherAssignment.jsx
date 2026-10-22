@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PortalPageHeader from "../../components/portal/PortalPageHeader";
 import Card from "../../components/ui/Card";
 import Icon from "../../components/ui/Icon";
@@ -30,19 +30,28 @@ export default function SubjectTeacherAssignment() {
   const selectedClass = (classes || []).find((c) => c.code === classCode);
   const teacherFor = (subject) => assignments?.find((a) => a.subject === subject)?.teacher_id || "";
 
+  const sortedTeachers = useMemo(
+    () => [...(teachers || [])].sort((a, b) => a.full_name.localeCompare(b.full_name)),
+    [teachers]
+  );
+
   const handleAssign = async (subject, teacherId) => {
     setSavedSubject(null);
+    setError("");
+    // Show the new choice immediately; the save runs in the background and is rolled back on failure.
+    const previous = assignments;
+    const others = (assignments || []).filter((a) => a.subject !== subject);
+    setAssignments(teacherId ? [...others, { subject, teacher_id: Number(teacherId) }] : others);
     try {
       if (!teacherId) {
         await api.delete(`/classes/${classCode}/subject-teachers/${encodeURIComponent(subject)}`);
       } else {
         await api.put(`/classes/${classCode}/subject-teachers`, { teacher_id: Number(teacherId), subject });
       }
-      const assignRes = await api.get(`/classes/${classCode}/subject-teachers`);
-      setAssignments(assignRes);
       setSavedSubject(subject);
       setTimeout(() => setSavedSubject((s) => (s === subject ? null : s)), 1500);
     } catch (err) {
+      setAssignments(previous);
       setError(err.message);
     }
   };
@@ -59,7 +68,7 @@ export default function SubjectTeacherAssignment() {
           id="class-select"
           value={classCode}
           onChange={(e) => setClassCode(e.target.value)}
-          className={inputClass + " max-w-xs"}
+          className={inputClass + " md:max-w-xs"}
           disabled={loadingClasses}
         >
           <option value="">Select a class…</option>
@@ -89,7 +98,7 @@ export default function SubjectTeacherAssignment() {
 
       {classCode && subjects && (
         <Card className="p-0 overflow-hidden">
-          <table className="w-full text-sm">
+          <table className="table-cards w-full text-sm">
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-navy/45 border-b border-navy/8">
                 <th className="px-4 py-3">Subject</th>
@@ -100,22 +109,22 @@ export default function SubjectTeacherAssignment() {
             <tbody>
               {subjects.map((subject) => (
                 <tr key={subject} className="border-b border-navy/6 last:border-0">
-                  <td className="px-4 py-3 font-medium text-navy">{subject}</td>
-                  <td className="px-4 py-3">
+                  <td className="tc-primary px-4 py-3 font-medium text-navy">{subject}</td>
+                  <td className="tc-full px-4 py-3">
                     <select
                       value={teacherFor(subject)}
                       onChange={(e) => handleAssign(subject, e.target.value)}
-                      className={inputClass + " max-w-xs"}
+                      className={inputClass + " md:max-w-xs"}
                     >
                       <option value="">— Unassigned —</option>
-                      {(teachers || []).map((t) => (
+                      {sortedTeachers.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.full_name}
                         </option>
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-3 text-emerald-600">
+                  <td className="tc-aside px-4 py-3 text-emerald-600">
                     {savedSubject === subject && <Icon name="Check" size={16} />}
                   </td>
                 </tr>

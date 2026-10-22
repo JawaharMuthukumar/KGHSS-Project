@@ -6,6 +6,8 @@ import Banner from "../../components/portal/Banner";
 import FormField, { inputClass } from "../../components/portal/FormField";
 import { useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { api, ApiError } from "../../lib/apiClient";
+import { BLOOD_GROUPS } from "../../constants/academic";
+import { mobileInputProps } from "../../utils/mobile";
 
 const emptyForm = {
   full_name: "",
@@ -16,12 +18,16 @@ const emptyForm = {
   medium: "",
   admission_no: "",
   emis_no: "",
-  umis_no: "",
   father_name: "",
+  father_phone: "",
   mother_name: "",
-  guardian_phone: "",
+  mother_phone: "",
   address: "",
 };
+
+// The saved value stays selectable even if it is an old free-text entry outside the list.
+const bloodGroupOptions = (current) => (current && !BLOOD_GROUPS.includes(current) ? [current, ...BLOOD_GROUPS] : BLOOD_GROUPS);
+const mobileProps = mobileInputProps;
 
 const communities = ["OTH", "BC", "BCM", "MBC", "SC", "SCA", "ST"];
 
@@ -37,14 +43,20 @@ export default function AddStudent() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    // The father's mobile is the login password; fall back to the mother's when there is none.
+    const loginPhone = form.father_phone || form.mother_phone;
+    if (!loginPhone) {
+      setError("Enter the father's or mother's mobile number.");
+      return;
+    }
     setSubmitting(true);
     try {
-      const payload = { ...form, class_code: classCode, password: form.guardian_phone };
+      const payload = { ...form, class_code: classCode, guardian_phone: loginPhone, password: loginPhone };
       Object.keys(payload).forEach((key) => {
         if (payload[key] === "") delete payload[key];
       });
       const result = await api.post("/students", payload);
-      setCreated({ ...result, password: form.guardian_phone });
+      setCreated({ ...result, password: loginPhone });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
     } finally {
@@ -72,8 +84,8 @@ export default function AddStudent() {
         <Card className="p-6 max-w-md">
           <Banner tone="success" className="mb-4">Student enrolled successfully.</Banner>
           <div className="bg-navy-dark text-white rounded-2xl p-5 mb-5">
-            <p className="text-xs text-white/50 uppercase tracking-wide mb-1">Register No (Login)</p>
-            <p className="font-heading font-bold text-lg mb-4">{created.registration_no}</p>
+            <p className="text-xs text-white/50 uppercase tracking-wide mb-1">Admission No (Login)</p>
+            <p className="font-heading font-bold text-lg mb-4">{created.admission_no}</p>
             <p className="text-xs text-white/50 uppercase tracking-wide mb-1">Password (Parent's Mobile)</p>
             <p className="font-heading font-bold text-lg">{created.password}</p>
           </div>
@@ -117,7 +129,12 @@ export default function AddStudent() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Blood Group" htmlFor="blood_group">
-              <input id="blood_group" name="blood_group" placeholder="e.g. O+" value={form.blood_group} onChange={handleChange} className={inputClass} />
+              <select id="blood_group" name="blood_group" value={form.blood_group} onChange={handleChange} className={inputClass}>
+                <option value="">Select…</option>
+                {bloodGroupOptions(form.blood_group).map((g) => (
+                  <option key={g}>{g}</option>
+                ))}
+              </select>
             </FormField>
             <FormField label="Medium" htmlFor="medium">
               <select id="medium" name="medium" value={form.medium} onChange={handleChange} className={inputClass}>
@@ -135,51 +152,33 @@ export default function AddStudent() {
               ))}
             </select>
           </FormField>
+          <FormField label="Admission No" htmlFor="admission_no" required>
+            <input id="admission_no" name="admission_no" required value={form.admission_no} onChange={handleChange} className={inputClass} />
+          </FormField>
+          <FormField label="EMIS No" htmlFor="emis_no">
+            <input id="emis_no" name="emis_no" value={form.emis_no} onChange={handleChange} className={inputClass} />
+          </FormField>
         </Card>
 
         <div className="flex flex-col gap-5">
           <Card className="p-5 flex flex-col gap-4">
-            <h2 className="font-heading font-bold text-navy text-sm">Identification Numbers</h2>
-            <FormField label="Admission No" htmlFor="admission_no" hint="Optional, auto-generated if left blank">
-              <input id="admission_no" name="admission_no" value={form.admission_no} onChange={handleChange} className={inputClass} />
-            </FormField>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="EMIS No" htmlFor="emis_no">
-                <input id="emis_no" name="emis_no" value={form.emis_no} onChange={handleChange} className={inputClass} />
-              </FormField>
-              <FormField label="UMIS No" htmlFor="umis_no">
-                <input id="umis_no" name="umis_no" value={form.umis_no} onChange={handleChange} className={inputClass} />
-              </FormField>
-            </div>
-          </Card>
-
-          <Card className="p-5 flex flex-col gap-4">
             <h2 className="font-heading font-bold text-navy text-sm">Parent / Guardian Details</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Father's Name" htmlFor="father_name">
-                <input id="father_name" name="father_name" value={form.father_name} onChange={handleChange} className={inputClass} />
-              </FormField>
-              <FormField label="Mother's Name" htmlFor="mother_name">
-                <input id="mother_name" name="mother_name" value={form.mother_name} onChange={handleChange} className={inputClass} />
-              </FormField>
-            </div>
-            <FormField
-              label="Parent's Mobile"
-              htmlFor="guardian_phone"
-              required
-              hint="This becomes the student's login password — the student/guardian can change it later."
-            >
-              <input
-                id="guardian_phone"
-                name="guardian_phone"
-                required
-                pattern="[0-9]{10}"
-                title="10-digit mobile number"
-                value={form.guardian_phone}
-                onChange={handleChange}
-                className={inputClass}
-              />
+            <FormField label="Father's Name" htmlFor="father_name">
+              <input id="father_name" name="father_name" value={form.father_name} onChange={handleChange} className={inputClass} />
             </FormField>
+            <FormField label="Mother's Name" htmlFor="mother_name">
+              <input id="mother_name" name="mother_name" value={form.mother_name} onChange={handleChange} className={inputClass} />
+            </FormField>
+            <FormField label="Father's Mobile" htmlFor="father_phone">
+              <input id="father_phone" name="father_phone" {...mobileProps} value={form.father_phone} onChange={handleChange} className={inputClass} />
+            </FormField>
+            <FormField label="Mother's Mobile" htmlFor="mother_phone">
+              <input id="mother_phone" name="mother_phone" {...mobileProps} value={form.mother_phone} onChange={handleChange} className={inputClass} />
+            </FormField>
+            <p className="text-xs text-navy/50 -mt-1">
+              At least one mobile number is required. The father's mobile (or the mother's, if no father's number) becomes the
+              student's login password — it can be changed later.
+            </p>
             <FormField label="Address" htmlFor="address">
               <textarea id="address" name="address" rows={2} value={form.address} onChange={handleChange} className={inputClass} />
             </FormField>

@@ -13,7 +13,7 @@ export default function Students() {
   const { data: classes } = useApiResource("/classes");
   const [classCode, setClassCode] = useState("");
   const [search, setSearch] = useState("");
-  const { data: students, loading, error } = useApiResource("/students", {
+  const { data: students, loading, error, reload } = useApiResource("/students", {
     query: classCode ? { class_code: classCode } : {},
     deps: [classCode],
   });
@@ -54,7 +54,7 @@ export default function Students() {
       {error && <Banner tone="error" className="mb-4">Could not load students. {error.message}</Banner>}
 
       <Card className="p-0 overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="table-cards w-full text-sm">
           <thead>
             <tr className="text-left text-xs font-semibold uppercase tracking-wide text-navy/45 border-b border-navy/8">
               <th className="px-4 py-3">Student</th>
@@ -76,9 +76,9 @@ export default function Students() {
               <tr
                 key={s.id}
                 onClick={() => setActiveStudent(s.id)}
-                className="border-b border-navy/6 last:border-0 hover:bg-navy/[0.02] cursor-pointer"
+                className="border-b border-navy/6 last:border-0 hover:bg-navy/[0.05] cursor-pointer"
               >
-                <td className="px-4 py-3">
+                <td className="tc-primary px-4 py-3">
                   <div className="flex items-center gap-3">
                     <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy/8 text-navy text-xs font-bold shrink-0">
                       {s.full_name.slice(0, 1)}
@@ -86,11 +86,11 @@ export default function Students() {
                     <span className="font-medium text-navy">{s.full_name}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-navy/70">{s.registration_no}</td>
-                <td className="px-4 py-3 text-navy/70">{s.class_code}</td>
-                <td className="px-4 py-3 text-navy/70">{s.gender || "—"}</td>
-                <td className="px-4 py-3 text-navy/70">{s.guardian_phone || "—"}</td>
-                <td className="px-4 py-3 text-right">
+                <td data-label="Register No" className="px-4 py-3 text-navy/70">{s.registration_no}</td>
+                <td data-label="Class" className="px-4 py-3 text-navy/70">{s.class_code}</td>
+                <td data-label="Gender" className="px-4 py-3 text-navy/70">{s.gender || "—"}</td>
+                <td data-label="Guardian Phone" className="px-4 py-3 text-navy/70">{s.guardian_phone || "—"}</td>
+                <td className="tc-aside px-4 py-3 text-right">
                   <Icon name="ChevronRight" size={16} className="text-navy/30" />
                 </td>
               </tr>
@@ -100,7 +100,7 @@ export default function Students() {
       </Card>
 
       <Drawer open={Boolean(activeStudent)} onClose={() => setActiveStudent(null)} title="Student Profile">
-        {activeStudent && <StudentProfilePanel studentId={activeStudent} />}
+        {activeStudent && <StudentProfilePanel studentId={activeStudent} editable onSaved={reload} />}
       </Drawer>
     </div>
   );

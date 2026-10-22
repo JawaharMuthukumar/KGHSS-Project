@@ -12,7 +12,7 @@ import { ContentSkeleton } from "../ui/Skeleton";
 
 // Apply-for-leave form plus the applicant's own request history. Used by students and teachers.
 export default function MyLeavePanel({ types, approverLabel }) {
-  const { data: requests, loading, error, reload } = useApiResource("/leave-requests", { query: { scope: "mine" } });
+  const { data: requests, loading, error, reload } = useApiResource("/leave-requests", { query: { scope: "mine" }, live: "leave" });
   const emptyForm = { leave_type: types[0].value, from_date: "", to_date: "", reason: "" };
   const [form, setForm] = useState(emptyForm);
   const [submitError, setSubmitError] = useState("");

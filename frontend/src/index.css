@@ -54,10 +54,99 @@
 
 .portal-dark .skeleton-shimmer::after {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 html {
   scroll-behavior: smooth;
+}
+
+/* ------------------------------------------------------------------
+ * Portal on phones & tablets (below lg). Desktop styles are untouched.
+ * ------------------------------------------------------------------ */
+@media (max-width: 1023px) {
+  /* 16px stops iOS Safari zooming the page whenever a field is focused. */
+  .portal-shell input:not([type="checkbox"]):not([type="radio"]),
+  .portal-shell select,
+  .portal-shell textarea {
+    font-size: 16px;
+  }
+
+  /* Wide report/grid tables scroll sideways inside their card instead of stretching the page. */
+  .portal-shell :has(> table:not(.table-cards)) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Underlined tab rows (Results & Reports, Class Notices, …) swipe sideways instead of wrapping. */
+  .portal-shell div:has(> button.border-b-2) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .portal-shell div:has(> button.border-b-2)::-webkit-scrollbar { display: none; }
+  .portal-shell div:has(> button.border-b-2) > button.border-b-2 {
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin-bottom: 0;
+  }
+
+  /* No sticky hover tint after a tap on touch screens. */
+  .portal-shell button:not(:disabled):hover,
+  .portal-shell tbody tr:hover {
+    filter: none;
+  }
+}
+
+/*
+ * List tables marked `.table-cards` turn into stacked cards on phones:
+ *   td.tc-primary  – the row's title (name), top-left
+ *   td.tc-aside    – a status badge / chevron, top-right
+ *   td[data-label] – "Label ........ value" lines underneath
+ *   td.tc-hide     – hidden on phones
+ */
+@media (max-width: 767px) {
+  .table-cards thead { display: none; }
+  .table-cards, .table-cards tbody { display: block; width: 100%; }
+  .table-cards tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.75rem;
+    row-gap: 0.3rem;
+    padding: 0.875rem 1rem;
+  }
+  .table-cards td {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0 !important;
+    text-align: right;
+    font-size: 0.8125rem;
+    min-width: 0;
+  }
+  .table-cards td[data-label]::before {
+    content: attr(data-label);
+    color: rgb(6 54 74 / 0.45);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-align: left;
+    flex-shrink: 0;
+  }
+  .table-cards td.tc-primary { grid-column: 1; text-align: left; justify-content: flex-start; font-size: 0.875rem; }
+  .table-cards td.tc-aside { grid-column: 2; grid-row: 1; justify-content: flex-end; }
+  .table-cards td.tc-hide { display: none; }
+  .table-cards td.tc-full { display: block; text-align: left; }
+  .table-cards td[colspan] { display: block; text-align: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -94,6 +183,36 @@ h1, h2, h3, h4, h5, h6 {
   outline: 2px solid var(--color-gold);
   outline-offset: 3px;
   border-radius: 4px;
+}
+
+/*
+ * Hover feedback. Tailwind v4's preflight gives buttons `cursor: default`, so
+ * restore the pointer everywhere. Inside the portal, every button and table row
+ * gets a baseline hover; these live in the base layer, so any explicit
+ * `bg-*` / `hover:*` utility on an element still wins over them.
+ */
+@layer base {
+  button:not(:disabled),
+  [role="button"],
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  .portal-shell button {
+    transition: background-color 0.15s, filter 0.15s, color 0.15s;
+  }
+  .portal-shell button:not(:disabled):hover {
+    background-color: rgb(6 54 74 / 0.06);
+    filter: brightness(0.96);
+  }
+
+  .portal-shell tbody tr {
+    transition: background-color 0.15s;
+  }
+  .portal-shell tbody tr:hover {
+    background-color: rgb(6 54 74 / 0.045);
+  }
 }
 
 /* Custom scrollbar (progressive enhancement) */

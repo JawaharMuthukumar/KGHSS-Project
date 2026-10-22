@@ -7,6 +7,7 @@ import Badge from "../components/ui/Badge";
 import Icon from "../components/ui/Icon";
 import Button from "../components/ui/Button";
 import SEO from "../components/utility/SEO";
+import { mobileInputProps } from "../utils/mobile";
 import { alumniInfo, centenaryBlocks } from "../data/schoolData";
 
 const initialForm = { name: "", passingYear: "", classLabel: "", phone: "", email: "", profession: "", message: "" };
@@ -115,7 +116,7 @@ export default function Alumni() {
               <Field label="Name" name="name" value={form.name} onChange={handleChange} required />
               <Field label="Passing Year" name="passingYear" value={form.passingYear} onChange={handleChange} required />
               <Field label="Class" name="classLabel" value={form.classLabel} onChange={handleChange} />
-              <Field label="Phone" name="phone" type="tel" value={form.phone} onChange={handleChange} />
+              <Field label="Phone" name="phone" {...mobileInputProps} value={form.phone} onChange={handleChange} />
               <Field label="Email" name="email" type="email" value={form.email} onChange={handleChange} />
               <Field label="Current Profession" name="profession" value={form.profession} onChange={handleChange} />
               <div className="sm:col-span-2">
@@ -141,7 +142,7 @@ export default function Alumni() {
   );
 }
 
-function Field({ label, name, value, onChange, type = "text", required = false }) {
+function Field({ label, name, value, onChange, type = "text", required = false, ...rest }) {
   return (
     <div>
       <label className="block text-xs font-semibold text-navy/70 mb-1.5" htmlFor={name}>{label}</label>
@@ -152,6 +153,7 @@ function Field({ label, name, value, onChange, type = "text", required = false }
         value={value}
         onChange={onChange}
         required={required}
+        {...rest}
         className="w-full px-4 py-3 rounded-xl border border-navy/12 text-sm focus:border-gold outline-none"
       />
     </div>

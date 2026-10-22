@@ -4,6 +4,8 @@ import Layout from "./components/layout/Layout";
 import PageLoader from "./components/utility/PageLoader";
 import { LanguageProvider } from "./context/LanguageContext";
 import { AuthProvider } from "./context/AuthContext";
+import { ToastProvider } from "./components/ui/Toast";
+import { useMobileInputGuard } from "./hooks/useMobileInputGuard";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PortalLayout from "./components/portal/PortalLayout";
 import Home from "./pages/Home";
@@ -59,10 +61,17 @@ const MyNotices = lazy(() => import("./pages/student/MyNotices"));
 const MyCertificates = lazy(() => import("./pages/student/MyCertificates"));
 const MyLeave = lazy(() => import("./pages/student/MyLeave"));
 
+function GlobalInputGuards() {
+  useMobileInputGuard();
+  return null;
+}
+
 export default function App() {
   return (
     <LanguageProvider>
+      <GlobalInputGuards />
       <BrowserRouter>
+        <ToastProvider>
         <AuthProvider>
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -137,6 +146,7 @@ export default function App() {
             </Routes>
           </Suspense>
         </AuthProvider>
+        </ToastProvider>
       </BrowserRouter>
     </LanguageProvider>
   );

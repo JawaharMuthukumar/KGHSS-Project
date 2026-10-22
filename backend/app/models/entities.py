@@ -24,6 +24,8 @@ class AcademicClass(Base):
     grade: Mapped[int] = mapped_column(Integer)
     section: Mapped[str] = mapped_column(String(40))
     group_name: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    medium: Mapped[str | None] = mapped_column(String(20), nullable=True)  # "Tamil" / "English"
+    strength: Mapped[int | None] = mapped_column(Integer, nullable=True)  # sanctioned class strength
     academic_year: Mapped[str] = mapped_column(String(9), default="2026-2027")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -55,6 +57,8 @@ class Student(Base):
     blood_group: Mapped[str | None] = mapped_column(String(8), nullable=True)
     father_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     mother_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    father_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    mother_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     guardian_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -64,7 +68,8 @@ class Student(Base):
 
 class ClassTeacherAssignment(Base):
     __tablename__ = "class_teacher_assignments"
-    __table_args__ = (UniqueConstraint("class_id", "academic_year"), UniqueConstraint("teacher_id", "academic_year"))
+    # One class teacher per class; a teacher may be class teacher of several classes.
+    __table_args__ = (UniqueConstraint("class_id", "academic_year"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     class_id: Mapped[int] = mapped_column(ForeignKey("classes.id", ondelete="CASCADE"), index=True)
     teacher_id: Mapped[int] = mapped_column(ForeignKey("teachers.id", ondelete="CASCADE"), index=True)

@@ -43,7 +43,7 @@ python -m app.create_admin
 uvicorn app.main:app --reload
 ```
 
-The admin setup command asks for a username, name, and password without storing plaintext. On first server startup, the initial schema and mockup class list (6A–10B, 11G1–12G2) are created. No teachers, students, demo users, or fake marks are seeded. Create teachers and students through the API after signing in.
+The admin setup command asks for a username, name, and password without storing plaintext. On first server startup, the initial schema and mockup class list (6A–10B; 11th P/C/B/M and P/C/M/CS, 12th P/C/M/CS, P/C/B/M and P/C/B/CS, each with sections A1/A2) are created. No teachers, students, demo users, or fake marks are seeded. Create teachers and students through the API after signing in.
 
 `Base.metadata.create_all()` is included for initial local development. Before production schema evolution, add/use versioned Alembic migrations and take database backups.
 

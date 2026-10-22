@@ -16,14 +16,17 @@ export default function StudentLogin() {
         description="Student login for Government Higher Secondary School, Kangayampalayam."
       />
 
-      <section className="bg-navy-dark h-full overflow-y-auto flex items-center py-6">
-        <Container>
-          {selected ? (
-            <SignInCard classInfo={selected} onBack={() => setSelected(null)} />
-          ) : (
-            <ClassPicker onSelect={setSelected} />
-          )}
-        </Container>
+      {/* my-auto (not items-center) centres short content but lets tall content scroll from its top instead of clipping it. */}
+      <section className="bg-navy-dark h-full overflow-y-auto flex py-6">
+        <div className="my-auto w-full">
+          <Container>
+            {selected ? (
+              <SignInCard classInfo={selected} onBack={() => setSelected(null)} />
+            ) : (
+              <ClassPicker onSelect={setSelected} />
+            )}
+          </Container>
+        </div>
       </section>
     </>
   );
@@ -31,10 +34,12 @@ export default function StudentLogin() {
 
 function groupClasses(classes) {
   const secondary = classes.filter((c) => c.grade < 11).sort((a, b) => a.grade - b.grade || a.section.localeCompare(b.section));
-  const higher = classes.filter((c) => c.grade >= 11).sort((a, b) => a.grade - b.grade || a.code.localeCompare(b.code));
   const groups = [];
-  if (secondary.length) groups.push({ title: "Classes 6 – 10", items: secondary });
-  if (higher.length) groups.push({ title: "Higher Secondary", items: higher });
+  if (secondary.length) groups.push({ title: "Classes 6 – 10", items: secondary, cols: "sm:grid-cols-5" });
+  for (const grade of [11, 12]) {
+    const items = classes.filter((c) => c.grade === grade).sort((a, b) => a.code.localeCompare(b.code));
+    if (items.length) groups.push({ title: `Higher Secondary · Class ${grade}`, items, cols: "sm:grid-cols-3 lg:grid-cols-6" });
+  }
   return groups;
 }
 
@@ -78,7 +83,7 @@ function ClassPicker({ onSelect }) {
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40 mb-2">
               {group.title}
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <div className={`grid grid-cols-2 ${group.cols} gap-2`}>
               {group.items.map((item) => (
                 <button
                   key={item.code}
@@ -87,18 +92,12 @@ function ClassPicker({ onSelect }) {
                   className="text-left bg-white/5 hover:bg-white/10 border border-white/10 hover:border-gold/40 rounded-xl px-3 py-2.5 transition-colors duration-150"
                 >
                   <span className="block font-heading font-bold text-sm text-white">
-                    {item.group_name ? (
-                      <>
-                        {item.grade} <span className="text-gold-light">· {item.group_name}</span>
-                      </>
-                    ) : (
-                      <>
-                        {item.grade}
-                        <span className="text-gold-light">{item.section}</span>
-                      </>
-                    )}
+                    {item.grade}
+                    <span className="text-gold-light">{item.section}</span>
                   </span>
-                  <span className="block text-[11px] text-white/45 mt-0.5">{item.code}</span>
+                  <span className="block text-[11px] text-white/45 mt-0.5 truncate">
+                    {item.group_name || item.code}
+                  </span>
                 </button>
               ))}
             </div>
@@ -157,17 +156,21 @@ function SignInCard({ classInfo, onBack }) {
           </span>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-white/40">Signing in as</p>
-            <p className="text-sm font-bold text-white">{classInfo.code}</p>
+            <p className="text-sm font-bold text-white">
+              Class {classInfo.grade}
+              {classInfo.section}
+              {classInfo.group_name && <span className="text-white/55 font-medium"> · {classInfo.group_name}</span>}
+            </p>
           </div>
         </div>
 
         <h1 className="font-heading font-bold text-white text-xl mb-1">Student Sign In</h1>
-        <p className="text-sm text-white/55 mb-5">Use your Register Number and password to continue.</p>
+        <p className="text-sm text-white/55 mb-5">Use your Admission Number (or Register Number) and password to continue.</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <label className="block text-xs font-semibold text-white/70 mb-1.5" htmlFor="register">
-              Register Number
+              Admission Number
             </label>
             <input
               id="register"
@@ -175,7 +178,7 @@ function SignInCard({ classInfo, onBack }) {
               type="text"
               required
               autoComplete="username"
-              placeholder="e.g. GHSS/2026/0001"
+              placeholder="e.g. 12345"
               value={form.register}
               onChange={handleChange}
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-sm text-white placeholder:text-white/30 focus:border-gold outline-none"

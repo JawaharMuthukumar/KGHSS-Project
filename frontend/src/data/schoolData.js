@@ -179,6 +179,12 @@ export const higherSecondaryStreams = [
     subjects: ["Physics", "Chemistry", "Computer Science", "Mathematics"],
     isSample: true,
   },
+  {
+    id: "bio-cs",
+    name: "Bio – Computer Science",
+    subjects: ["Physics", "Chemistry", "Biology", "Computer Science"],
+    isSample: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

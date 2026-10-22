@@ -7,6 +7,7 @@ import ClassMarkReport from "../../components/reports/ClassMarkReport";
 import ClassScorecard from "../../components/reports/ClassScorecard";
 import HmClassReport from "../../components/reports/HmClassReport";
 import MyClassReport from "../../components/reports/MyClassReport";
+import ClassReportCards from "../../components/reports/ClassReportCards";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { termsForGrade } from "../../constants/academic";
@@ -16,6 +17,7 @@ const TABS = {
   scorecard: "Scorecard",
   "hm-report": "HM Report",
   "my-report": "My Report",
+  "report-cards": "Report Cards",
 };
 
 export default function Reports() {
@@ -76,6 +78,7 @@ export default function Reports() {
           {tab === "scorecard" && <ClassScorecard classCode={classCode} term={term} />}
           {tab === "hm-report" && <HmClassReport classCode={classCode} term={term} />}
           {tab === "my-report" && <MyClassReport classCode={classCode} term={term} />}
+          {tab === "report-cards" && <ClassReportCards classCode={classCode} />}
         </>
       )}
     </div>

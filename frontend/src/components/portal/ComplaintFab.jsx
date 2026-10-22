@@ -44,7 +44,7 @@ export default function ComplaintFab() {
   return (
     <>
       {open && (
-        <div className="fixed bottom-24 right-5 z-50 w-[22rem] max-w-[calc(100vw-2.5rem)] h-[28rem] bg-white rounded-3xl shadow-2xl border border-navy/10 flex flex-col overflow-hidden">
+        <div className="fixed bottom-44 lg:bottom-24 right-4 lg:right-5 z-50 w-[22rem] max-w-[calc(100vw-2rem)] h-[28rem] max-h-[calc(100svh-14rem)] lg:max-h-none bg-white rounded-3xl shadow-2xl border border-navy/10 flex flex-col overflow-hidden">
           <div className="bg-navy-dark text-white px-4 py-3.5 flex items-center justify-between shrink-0">
             <p className="font-heading font-bold text-sm">Message Admin</p>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close">
@@ -94,7 +94,7 @@ export default function ComplaintFab() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-5 right-5 z-50 flex items-center justify-center w-14 h-14 rounded-full bg-gold text-navy-dark shadow-xl hover:bg-gold-light transition-colors"
+        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-5 right-4 lg:right-5 z-40 flex items-center justify-center w-14 h-14 rounded-full bg-gold text-navy-dark shadow-xl hover:bg-gold-light transition-colors"
         aria-label="Message admin"
       >
         <Icon name={open ? "X" : "MessageCircleHeart"} size={22} />

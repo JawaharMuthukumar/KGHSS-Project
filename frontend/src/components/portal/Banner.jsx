@@ -3,6 +3,7 @@ import Icon from "../ui/Icon";
 const tones = {
   error: { wrap: "bg-red-50 border-red-200 text-red-700", icon: "CircleAlert" },
   success: { wrap: "bg-emerald-50 border-emerald-200 text-emerald-700", icon: "CircleCheck" },
+  warning: { wrap: "bg-amber-50 border-amber-200 text-amber-800", icon: "AlertTriangle" },
   info: { wrap: "bg-navy/5 border-navy/10 text-navy/80", icon: "Info" },
 };
 

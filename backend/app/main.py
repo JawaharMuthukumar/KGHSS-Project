@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
+from app.api.promotions import router as promotions_router
 from app.api.school import router as school_router
 from app.core.config import settings
 from app.core.database import Base, engine, get_db
@@ -31,6 +32,7 @@ app.add_middleware(
 )
 app.include_router(auth_router, prefix=settings.api_v1_prefix)
 app.include_router(school_router, prefix=settings.api_v1_prefix)
+app.include_router(promotions_router, prefix=settings.api_v1_prefix)
 app.mount("/uploads", StaticFiles(directory="uploads", check_dir=False), name="uploads")
 
 
@@ -52,12 +54,16 @@ def initialize_schema_and_reference_classes():
         ("classes", "strength", "INTEGER"),
         ("students", "father_phone", "VARCHAR(30)"),
         ("students", "mother_phone", "VARCHAR(30)"),
+        ("students", "status", "VARCHAR(20)"),
     ]
     inspector = inspect(engine)
     for table, column, ddl_type in added_columns:
         if column not in {c["name"] for c in inspector.get_columns(table)}:
             with engine.begin() as conn:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type} NULL"))
+    # Students from before promotions existed are all current students.
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE students SET status = 'active' WHERE status IS NULL"))
     # A teacher may now be class teacher of several classes; drop the old one-class-per-teacher constraint.
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE class_teacher_assignments DROP CONSTRAINT IF EXISTS class_teacher_assignments_teacher_id_academic_year_key"))

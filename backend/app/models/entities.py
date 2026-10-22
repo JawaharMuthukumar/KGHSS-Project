@@ -62,6 +62,9 @@ class Student(Base):
     guardian_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # "active", or "left" (TC) / "passed_out" (12th) after a new academic year starts; those keep
+    # their records but drop out of class lists and lose their login.
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
     account: Mapped[Account] = relationship()
     school_class: Mapped[AcademicClass] = relationship()
 
@@ -266,3 +269,29 @@ class ContactMessage(Base):
     message: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
     read: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class PromotionList(Base):
+    """A class teacher's year-end promotion decisions for one class, approved by the HM."""
+    __tablename__ = "promotion_lists"
+    __table_args__ = (UniqueConstraint("class_id", "academic_year"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    class_id: Mapped[int] = mapped_column(ForeignKey("classes.id", ondelete="CASCADE"), index=True)
+    academic_year: Mapped[str] = mapped_column(String(9))  # the year being finished
+    status: Mapped[str] = mapped_column(String(20), default="draft")  # draft / submitted / returned / approved
+    submitted_by: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)  # HM's reason when sending a list back
+    entries: Mapped[list["PromotionEntry"]] = relationship(cascade="all, delete-orphan")
+
+
+class PromotionEntry(Base):
+    __tablename__ = "promotion_entries"
+    __table_args__ = (UniqueConstraint("list_id", "student_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    list_id: Mapped[int] = mapped_column(ForeignKey("promotion_lists.id", ondelete="CASCADE"), index=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"), index=True)
+    decision: Mapped[str] = mapped_column(String(20))  # promoted / not_promoted / left / passed_out
+    target_class_id: Mapped[int | None] = mapped_column(ForeignKey("classes.id", ondelete="SET NULL"), nullable=True)

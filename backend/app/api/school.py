@@ -33,6 +33,22 @@ def get_class(db: Session, code: str) -> AcademicClass:
     return obj
 
 
+def class_students(db: Session, cls: AcademicClass):
+    """Current students of a class; TC / passed-out students keep their records but are left out."""
+    return db.query(Student).filter(Student.class_id == cls.id, Student.status == "active")
+
+
+def year_months(academic_year: str) -> tuple[str, str]:
+    """First and last attendance month (YYYY-MM) of an academic year: June to May."""
+    start = int(academic_year[:4])
+    return f"{start}-06", f"{start + 1}-05"
+
+
+def current_academic_year(db: Session) -> str:
+    """The school's running academic year (every class moves to the next one together)."""
+    return db.query(func.max(AcademicClass.academic_year)).filter(AcademicClass.is_active.is_(True)).scalar() or "2026-2027"
+
+
 def teacher_or_admin(account: Account, db: Session, cls: AcademicClass, subject: str | None = None):
     return require_teacher_class_scope(db, account, cls, subject)
 
@@ -42,7 +58,7 @@ def teacher_or_admin(account: Account, db: Session, cls: AcademicClass, subject:
 def list_classes(db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
     result = []
     for cls in db.query(AcademicClass).filter_by(is_active=True).order_by(AcademicClass.grade, AcademicClass.code):
-        count = db.query(func.count(Student.id)).filter(Student.class_id == cls.id).scalar()
+        count = class_students(db, cls).count()
         ct = db.query(ClassTeacherAssignment).filter_by(class_id=cls.id, academic_year=cls.academic_year).first()
         teacher = db.get(Teacher, ct.teacher_id) if ct else None
         result.append({"id": cls.id, "code": cls.code, "grade": cls.grade, "section": cls.section, "group_name": cls.group_name, "medium": cls.medium, "strength": cls.strength, "academic_year": cls.academic_year, "student_count": count, "class_teacher_id": teacher.id if teacher else None, "class_teacher_name": teacher.account.full_name if teacher else None, "class_teacher_phone": teacher.phone if teacher else None})
@@ -144,7 +160,7 @@ def remove_subject_teacher(class_code: str, subject: str, db: Session = Depends(
 # Student records
 @router.get("/students")
 def list_students(class_code: str | None = None, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
-    query = db.query(Student)
+    query = db.query(Student).filter(Student.status == "active")
     if class_code:
         cls = get_class(db, class_code)
         if not can_access_class(db, account, cls): raise HTTPException(403, "Class access denied")
@@ -220,13 +236,13 @@ def student_detail(student: Student) -> dict:
 # Marks, scorecards, and result analysis
 @router.put("/classes/{class_code}/marks/{term}")
 def save_class_marks(class_code: str, term: str, data: MarksIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
-    cls = get_class(db, class_code); students = db.query(Student).filter_by(class_id=cls.id).all()
+    cls = get_class(db, class_code); students = class_students(db, cls).all()
     teacher_or_admin(account, db, cls)
     if term not in terms_for_grade(cls.grade): raise HTTPException(422, f"'{term}' is not an exam for class {cls.code}")
     subjects = set(subjects_for_class(cls))
-    assessment = db.query(Assessment).filter_by(class_id=cls.id, term=term, academic_year=data.academic_year).first()
+    assessment = db.query(Assessment).filter_by(class_id=cls.id, term=term, academic_year=cls.academic_year).first()
     if not assessment:
-        assessment = Assessment(class_id=cls.id, term=term, academic_year=data.academic_year); db.add(assessment); db.flush()
+        assessment = Assessment(class_id=cls.id, term=term, academic_year=cls.academic_year); db.add(assessment); db.flush()
     saved = 0
     for student in students:
         values = data.students.get(str(student.id), {})
@@ -268,7 +284,7 @@ def student_results(student_id: int, term: str | None = None, db: Session = Depe
 def class_scorecard(class_code: str, term: str, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
     cls = get_class(db, class_code)
     if not can_access_class(db, account, cls, allow_subject=False): raise HTTPException(403, "Only the class teacher can view this report")
-    students = db.query(Student).filter_by(class_id=cls.id).all(); output=[]
+    students = class_students(db, cls).all(); output=[]
     for student in students:
         q = db.query(func.sum(Mark.score), func.sum(Mark.maximum_score)).join(Assessment).filter(Mark.student_id==student.id, Assessment.term==term)
         score, maximum = q.first()
@@ -287,7 +303,7 @@ def class_mark_report(class_code: str, term: str, db: Session = Depends(get_db),
     order={sub:i for i,sub in enumerate(subjects_for_class(cls))}
     sort_key=lambda subject:(order.get(subject,len(order)),subject)
     rows=[]; seen=set()
-    for student in db.query(Student).filter_by(class_id=cls.id).order_by(Student.id).all():
+    for student in class_students(db, cls).order_by(Student.id).all():
         marks=sorted(db.query(Mark).filter_by(student_id=student.id,assessment_id=assessment.id).all(),key=lambda m:sort_key(m.subject))
         seen.update(m.subject for m in marks)
         maximum=sum(m.maximum_score for m in marks); total=sum(m.score for m in marks)
@@ -307,7 +323,7 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
     cls = get_class(db, class_code)
     if not can_access_class(db, account, cls, allow_subject=False): raise HTTPException(403, "Only the class teacher can view this report")
     subjects = subjects_for_class(cls)
-    students = db.query(Student).filter_by(class_id=cls.id).order_by(Student.registration_no).all()
+    students = class_students(db, cls).order_by(Student.registration_no).all()
     assessment = db.query(Assessment).filter_by(class_id=cls.id, term=term, academic_year=cls.academic_year).first()
     marks = defaultdict(dict)
     if assessment:
@@ -414,7 +430,7 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
     """Per-student report cards (every exam of the year as a row), as printed on the school's progress card.
     Class-wide data is always loaded because each row shows the class's top total for that exam."""
     subjects = subjects_for_class(cls)
-    students = db.query(Student).filter_by(class_id=cls.id).order_by(Student.registration_no).all()
+    students = class_students(db, cls).order_by(Student.registration_no).all()
     assessments = {a.term: a for a in db.query(Assessment).filter_by(class_id=cls.id, academic_year=cls.academic_year).all()}
     marks = defaultdict(lambda: defaultdict(dict))  # term -> student_id -> subject -> Mark
     if assessments:
@@ -476,8 +492,7 @@ def results_report(term: str = Query(...), academic_year: str | None = None, db:
     q = db.query(AcademicClass)
     output=[]
     for cls in q.all():
-        assess = db.query(Assessment).filter_by(class_id=cls.id, term=term)
-        if academic_year: assess=assess.filter_by(academic_year=academic_year)
+        assess = db.query(Assessment).filter_by(class_id=cls.id, term=term, academic_year=academic_year or cls.academic_year)
         ids=[a.id for a in assess.all()]
         count=db.query(func.count(func.distinct(Mark.student_id))).filter(Mark.assessment_id.in_(ids)).scalar() if ids else 0
         avg=db.query(func.avg(Mark.score*100.0/Mark.maximum_score)).filter(Mark.assessment_id.in_(ids)).scalar() if ids else None
@@ -491,10 +506,10 @@ def save_attendance(class_code: str, data: AttendanceIn, db: Session = Depends(g
     cls=get_class(db,class_code)
     if account.role=="teacher":
         teacher=teacher_profile(db,account)
-        if not db.query(ClassTeacherAssignment).filter_by(class_id=cls.id,teacher_id=teacher.id).first(): raise HTTPException(403,"Only the class teacher may take attendance")
+        if not is_class_teacher_of(db,teacher,cls): raise HTTPException(403,"Only the class teacher may take attendance")
     record=db.query(AttendanceMonth).filter_by(class_id=cls.id,month=data.month).first()
     if record and record.locked: raise HTTPException(409,"Attendance month is locked; ask an admin to unlock it")
-    students={s.id for s in db.query(Student).filter_by(class_id=cls.id).all()}
+    students={s.id for s in class_students(db,cls).all()}
     if set(data.records)-students: raise HTTPException(422,"Attendance includes a student outside this class")
     if any(n<0 or n>data.total_days for n in data.records.values()): raise HTTPException(422,"Present days must be between zero and total days")
     if not record:
@@ -509,7 +524,8 @@ def save_attendance(class_code: str, data: AttendanceIn, db: Session = Depends(g
 def get_attendance(class_code: str, month: str | None = None, db: Session = Depends(get_db), account: Account = Depends(current_account)):
     cls=get_class(db,class_code)
     if not can_access_class(db,account,cls): raise HTTPException(403,"Class access denied")
-    q=db.query(AttendanceMonth).filter_by(class_id=cls.id)
+    first,last=year_months(cls.academic_year)
+    q=db.query(AttendanceMonth).filter(AttendanceMonth.class_id==cls.id,AttendanceMonth.month>=first,AttendanceMonth.month<=last)
     if month: q=q.filter_by(month=month)
     items=[]
     for rec in q.order_by(AttendanceMonth.month.desc()).all():
@@ -532,7 +548,8 @@ def unlock_attendance(class_code: str, month: str, db: Session = Depends(get_db)
 def attendance_report(month: str | None = None, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
     report=[]
     for cls in db.query(AcademicClass).filter_by(is_active=True).order_by(AcademicClass.grade,AcademicClass.code):
-        q=db.query(AttendanceMonth).filter_by(class_id=cls.id)
+        first,last=year_months(cls.academic_year)
+        q=db.query(AttendanceMonth).filter(AttendanceMonth.class_id==cls.id,AttendanceMonth.month>=first,AttendanceMonth.month<=last)
         if month: q=q.filter_by(month=month)
         records=q.all(); rates=[]
         for rec in records:
@@ -554,7 +571,9 @@ def class_timetable(class_code: str, db: Session = Depends(get_db), account: Acc
 @router.get("/teachers/me/timetable")
 def my_teacher_timetable(db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
     teacher=teacher_profile(db,account)
-    entries=db.query(TimetableEntry).filter_by(teacher_id=teacher.id).order_by(TimetableEntry.weekday,TimetableEntry.period).all()
+    entries=(db.query(TimetableEntry).join(AcademicClass,AcademicClass.id==TimetableEntry.class_id)
+             .filter(TimetableEntry.teacher_id==teacher.id,TimetableEntry.academic_year==AcademicClass.academic_year)
+             .order_by(TimetableEntry.weekday,TimetableEntry.period).all())
     return [{"class_code":db.get(AcademicClass,e.class_id).code,"weekday":e.weekday,"period":e.period,"subject":e.subject,"room":e.room,"academic_year":e.academic_year} for e in entries]
 
 
@@ -563,7 +582,9 @@ def teacher_timetable_by_id(teacher_id: int, db: Session = Depends(get_db), _: A
     """Read-only view of one teacher's aggregated weekly schedule across every class they teach."""
     teacher=db.get(Teacher,teacher_id)
     if not teacher: raise HTTPException(404,"Teacher not found")
-    entries=db.query(TimetableEntry).filter_by(teacher_id=teacher.id).order_by(TimetableEntry.weekday,TimetableEntry.period).all()
+    entries=(db.query(TimetableEntry).join(AcademicClass,AcademicClass.id==TimetableEntry.class_id)
+             .filter(TimetableEntry.teacher_id==teacher.id,TimetableEntry.academic_year==AcademicClass.academic_year)
+             .order_by(TimetableEntry.weekday,TimetableEntry.period).all())
     return [{"class_code":db.get(AcademicClass,e.class_id).code,"weekday":e.weekday,"period":e.period,"subject":e.subject,"room":e.room,"academic_year":e.academic_year} for e in entries]
 
 
@@ -588,8 +609,8 @@ def replace_class_timetable(class_code: str, data: TimetableIn, db: Session = De
     cls=get_class(db,class_code); teacher_or_admin(account,db,cls)
     if account.role=="teacher":
         if not is_class_teacher_of(db,teacher_profile(db,account),cls): raise HTTPException(403,"Only the class teacher may edit this timetable")
-    db.query(TimetableEntry).filter_by(class_id=cls.id,academic_year=data.academic_year).delete()
-    db.add_all([TimetableEntry(class_id=cls.id,teacher_id=e.teacher_id,weekday=e.weekday,period=e.period,subject=e.subject,room=e.room,academic_year=data.academic_year) for e in data.entries])
+    db.query(TimetableEntry).filter_by(class_id=cls.id,academic_year=cls.academic_year).delete()
+    db.add_all([TimetableEntry(class_id=cls.id,teacher_id=e.teacher_id,weekday=e.weekday,period=e.period,subject=e.subject,room=e.room,academic_year=cls.academic_year) for e in data.entries])
     db.commit(); return {"class_code":cls.code,"entries_saved":len(data.entries)}
 
 
@@ -764,7 +785,7 @@ def certificate_requests(db: Session = Depends(get_db), account: Account = Depen
 
 def certificate_out(db: Session, req: CertificateRequest) -> dict:
     student = db.get(Student, req.student_id)
-    assignment = db.query(ClassTeacherAssignment).filter_by(class_id=student.class_id).first() if student else None
+    assignment = db.query(ClassTeacherAssignment).filter_by(class_id=student.class_id, academic_year=student.school_class.academic_year).first() if student else None
     class_teacher = db.get(Teacher, assignment.teacher_id) if assignment else None
     decider = db.get(Account, req.decision_by) if req.decision_by else None
     return {"id": req.id, "student_id": req.student_id, "student_name": student.account.full_name if student else None,
@@ -782,7 +803,7 @@ def decide_certificate(request_id: int, data: DecisionIn, db: Session = Depends(
     if account.role=="teacher":
         student=db.get(Student,req.student_id); cls=student.school_class
         teacher=teacher_profile(db,account)
-        if not db.query(ClassTeacherAssignment).filter_by(class_id=cls.id,teacher_id=teacher.id).first(): raise HTTPException(403,"Only the assigned class teacher may decide this request")
+        if not is_class_teacher_of(db,teacher,cls): raise HTTPException(403,"Only the assigned class teacher may decide this request")
     if req.status!="pending": raise HTTPException(409,"Request has already been decided")
     req.status="approved" if data.approve else "rejected"; req.decision_by=account.id; req.decision_note=data.note; req.decided_at=datetime.utcnow()
     db.commit(); return req
@@ -853,7 +874,7 @@ def decide_leave(request_id: int, data: DecisionIn, db: Session = Depends(get_db
     if req.applicant_role == "teacher" and account.role != "admin": raise HTTPException(403, "Only the HM may decide teacher leave")
     if req.applicant_role == "student":
         if account.role != "teacher": raise HTTPException(403, "Student leave is decided by the class teacher")
-        if not db.query(ClassTeacherAssignment).filter_by(class_id=req.class_id, teacher_id=teacher_profile(db, account).id).first():
+        if not is_class_teacher_of(db, teacher_profile(db, account), db.get(AcademicClass, req.class_id)):
             raise HTTPException(403, "Only the assigned class teacher may decide this request")
     if req.status != "pending": raise HTTPException(409, "Request has already been decided")
     req.status = "approved" if data.approve else "rejected"; req.decision_by = account.id; req.decision_note = data.note; req.decided_at = datetime.utcnow()
@@ -1191,7 +1212,7 @@ def teacher_dashboard(class_code: str | None = None, db: Session = Depends(get_d
     cls=assigned_class(db,teacher,class_code) or (classes[0] if classes else None)
     pending=0; count=0
     if cls:
-        ids=[s.id for s in db.query(Student).filter_by(class_id=cls.id).all()]; count=len(ids)
+        ids=[s.id for s in class_students(db,cls).all()]; count=len(ids)
         pending=db.query(func.count(CertificateRequest.id)).filter(CertificateRequest.student_id.in_(ids),CertificateRequest.status=="pending").scalar() if ids else 0
     subject_rows=(db.query(SubjectTeacherAssignment,AcademicClass).join(AcademicClass,AcademicClass.id==SubjectTeacherAssignment.class_id)
                   .filter(SubjectTeacherAssignment.teacher_id==teacher.id,SubjectTeacherAssignment.academic_year==AcademicClass.academic_year)
@@ -1286,8 +1307,9 @@ def consolidated_report(term: str = Query(...), academic_year: str | None = None
     PASS_MARK = 35
     empty = {"term":term,"academic_year":academic_year,"enrollment_summary":[],"subject_stats":[],"marks_distribution":[],"subjects_failed_histogram":[],"section_comparison":[],"top_rank_holders":[]}
 
-    assess_q = db.query(Assessment).filter_by(term=term)
-    if academic_year: assess_q = assess_q.filter_by(academic_year=academic_year)
+    # Default to the running year, so the same exam name from an earlier year isn't mixed in.
+    academic_year = academic_year or current_academic_year(db)
+    assess_q = db.query(Assessment).filter_by(term=term, academic_year=academic_year)
     assessments = assess_q.all()
     if not assessments: return empty
     assess_ids = [a.id for a in assessments]
@@ -1309,7 +1331,7 @@ def consolidated_report(term: str = Query(...), academic_year: str | None = None
 
     # Enrollment & result summary, by medium x gender (roll = every currently enrolled student, not just this term's assessed classes)
     enrollment = defaultdict(lambda: {"roll": 0, "appeared": 0, "passed": 0})
-    for s in db.query(Student).all():
+    for s in db.query(Student).filter(Student.status == "active").all():
         enrollment[(s.medium or "Unspecified", s.gender or "Unspecified")]["roll"] += 1
     for sid, totals in student_totals.items():
         s = student_map.get(sid)

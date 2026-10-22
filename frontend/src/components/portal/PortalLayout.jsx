@@ -266,6 +266,19 @@ function MoreSheet({ role, user, counts, onClose, onLogout }) {
   );
 }
 
+const THEME_KEY = "ghss_theme";
+
+/** Saved portal theme; with no saved choice, follow the device's light/dark setting. */
+function readDarkMode() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved) return saved === "dark";
+  } catch {
+    // Storage blocked: fall through to the device setting.
+  }
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+}
+
 /** The current page's menu label, for the compact phone app bar (longest matching path wins). */
 function usePageTitle(role) {
   const { pathname } = useLocation();
@@ -292,7 +305,7 @@ function PortalShell({ role }) {
   const pageTitle = usePageTitle(role);
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("ghss_theme") === "dark");
+  const [darkMode, setDarkMode] = useState(readDarkMode);
   const items = portalNav[role] || [];
   useAutoCapitalize(role === "admin" || role === "teacher");
 
@@ -301,6 +314,24 @@ function PortalShell({ role }) {
 
   // Opening another page closes the More sheet.
   useEffect(() => setMoreOpen(false), [pathname]);
+
+  // Dark mode lives on <html> so drawers/toasts rendered outside the shell follow it;
+  // leaving the portal (public site, login pages) always drops back to light.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("portal-dark", darkMode);
+    return () => root.classList.remove("portal-dark");
+  }, [darkMode]);
+
+  const toggleDarkMode = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    try {
+      localStorage.setItem(THEME_KEY, next ? "dark" : "light");
+    } catch {
+      // Storage blocked (private mode): the choice just lasts for this visit.
+    }
+  };
 
   const handleLogout = () => {
     setMoreOpen(false);
@@ -316,7 +347,7 @@ function PortalShell({ role }) {
           <div className="w-10 h-10 rounded-xl bg-heritage-gradient flex items-center justify-center font-heading font-bold text-sm shrink-0">
             GK
           </div>
-          <div className={`min-w-0 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
+          <div className="min-w-0">
             <p className="font-heading font-bold text-sm leading-tight truncate">GHSS Kangayampalayam</p>
             <p className="text-[11px] text-white/50">{roleLabels[role]}</p>
           </div>
@@ -397,11 +428,7 @@ function PortalShell({ role }) {
                       role="menuitemcheckbox"
                       aria-checked={darkMode}
                       aria-label={`Switch to ${darkMode ? "light" : "dark"} mode`}
-                      onClick={() => {
-                        const next = !darkMode;
-                        setDarkMode(next);
-                        localStorage.setItem("ghss_theme", next ? "dark" : "light");
-                      }}
+                      onClick={toggleDarkMode}
                       className={`relative h-6 w-11 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${darkMode ? "bg-navy" : "bg-navy/20"}`}
                     >
                       <span className={`absolute top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow transition-transform ${darkMode ? "translate-x-[1.375rem]" : "translate-x-0.5"}`}>

@@ -269,31 +269,132 @@ h1, h2, h3, h4, h5, h6 {
   background-size: 22px 22px, auto;
 }
 
-/* Portal theme overrides; public pages keep their existing light palette. */
-.portal-dark {
-  --color-navy: #d6e3e8;
-  --color-ink: #d6e3e8;
-  --color-cream: #111c22;
-  --color-cream-dark: #1a2a32;
-  --color-mist: #111c22;
-  --color-sky: #1c3039;
-  color-scheme: dark;
+/*
+ * Portal dark mode: PortalLayout puts `portal-dark` on <html> while a portal page is open
+ * (the public site never gets it). Screen only, so printing always uses the light palette.
+ * "Paper" sheets (`bg-white text-black` report formats and `.report-card`) stay light even
+ * in dark mode, because they are on-screen previews of what gets printed.
+ */
+@media screen {
+  html.portal-dark {
+    --color-navy: #dbe7ec;
+    --color-ink: #dbe7ec;
+    --color-teal: #7cc4d9;
+    --color-teal-light: #9bd3e3;
+    --color-gold-dark: #d6b36f;
+    --color-cream: #0f1a20;
+    --color-cream-dark: #1d2f38;
+    --color-mist: #0f1a20;
+    --color-sky: #1c3039;
+    /* Status tints (badges, banners, row highlights) */
+    --color-red-50: #3a1f25;
+    --color-red-100: #4a242b;
+    --color-red-200: #6e2d36;
+    --color-emerald-50: #143128;
+    --color-emerald-100: #18392f;
+    --color-emerald-200: #1f5a45;
+    --color-amber-50: #362b14;
+    --color-amber-100: #44361a;
+    --color-amber-200: #6b5320;
+    color-scheme: dark;
+  }
+
+  html.portal-dark :is(.bg-white.text-black, .report-card) {
+    --color-navy: #06364a;
+    --color-ink: #1a2530;
+    --color-teal: #07485e;
+    --color-teal-light: #0c5c76;
+    --color-gold-dark: #a9843f;
+    --color-cream: #faf8f2;
+    --color-cream-dark: #f2ede0;
+    --color-mist: #f6f7f8;
+    --color-sky: #eaf3f7;
+    --color-red-50: oklch(97.1% 0.013 17.38);
+    --color-red-100: oklch(93.6% 0.032 17.717);
+    --color-red-200: oklch(88.5% 0.062 18.334);
+    --color-emerald-50: oklch(97.9% 0.021 166.113);
+    --color-emerald-100: oklch(95% 0.052 163.051);
+    --color-emerald-200: oklch(90.5% 0.093 164.15);
+    --color-amber-50: oklch(98.7% 0.022 95.277);
+    --color-amber-100: oklch(96.2% 0.059 95.617);
+    --color-amber-200: oklch(92.4% 0.12 95.746);
+    color-scheme: light;
+  }
+
+  /* Brand gradients keep their real navy → teal colours. */
+  html.portal-dark .bg-heritage-gradient {
+    background: linear-gradient(135deg, #06364a 0%, #07485e 100%);
+  }
+  html.portal-dark .bg-heritage-noise {
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0),
+      linear-gradient(135deg, #06364a 0%, #07485e 100%);
+  }
+
+  /* Phone card-table labels */
+  html.portal-dark .table-cards td[data-label]::before {
+    color: rgb(219 231 236 / 0.5);
+  }
+
+  /* Skeleton shimmer: a faint sweep instead of a white flash */
+  html.portal-dark .skeleton-shimmer::after {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  }
+
+  /*
+   * Utilities whose colour can't simply flip with a token. `:where()` keeps these at the
+   * specificity of the original utility, so hover:/focus: variants still win as usual.
+   */
+  @layer utilities {
+    .bg-white:where(html.portal-dark *):where(:not(:is(.bg-white.text-black, .report-card) *)):where(:not(.text-black)) {
+      background-color: #172730;
+    }
+    /* Solid navy (selected pills, avatars, navy buttons) becomes a mid teal so white text stays readable. */
+    .bg-navy:where(html.portal-dark *),
+    .hover\:bg-navy:hover:where(html.portal-dark *),
+    .disabled\:bg-navy:disabled:where(html.portal-dark *) {
+      background-color: #2d6f86;
+    }
+    .border-navy:where(html.portal-dark *) {
+      border-color: #2d6f86;
+    }
+    /* Status text: lighter shades so they read on dark cards */
+    .text-red-500:where(html.portal-dark *):where(:not(:is(.bg-white.text-black, .report-card) *)),
+    .text-red-600:where(html.portal-dark *):where(:not(:is(.bg-white.text-black, .report-card) *)) {
+      color: #f87171;
+    }
+    .text-red-700:where(html.portal-dark *):where(:not(:is(.bg-white.text-black, .report-card) *)) {
+      color: #fca5a5;
+    }
+    .text-emerald-500:where(html.portal-dark *):where(:not(:is(.bg-white.text-black, .report-card) *)),
+    .text-emerald-600:where(html.portal-dark *):where(:not(:is(.bg-white.text-black, .report-card) *)) {
+      color: #34d399;
+    }
+    .text-emerald-700:where(html.portal-dark *):where(:not(:is(.bg-white.text-black, .report-card) *)) {
+      color: #6ee7b7;
+    }
+    .text-amber-600:where(html.portal-dark *):where(:not(:is(.bg-white.text-black, .report-card) *)) {
+      color: #fbbf24;
+    }
+    .text-amber-700:where(html.portal-dark *):where(:not(:is(.bg-white.text-black, .report-card) *)),
+    .text-amber-800:where(html.portal-dark *):where(:not(:is(.bg-white.text-black, .report-card) *)) {
+      color: #fcd34d;
+    }
+    .text-blue-600:where(html.portal-dark *):where(:not(:is(.bg-white.text-black, .report-card) *)) {
+      color: #60a5fa;
+    }
+  }
 }
 
-.portal-dark .bg-white {
-  background-color: #192a32;
-}
-
-.portal-dark .bg-cream {
-  background-color: #111c22;
-}
-
-.portal-dark .bg-cream-dark {
-  background-color: #1a2a32;
-}
-
-.portal-dark input,
-.portal-dark textarea,
-.portal-dark select {
-  color-scheme: dark;
+@layer base {
+  @media screen {
+    /* Baseline portal hovers (see above) as a light tint on dark surfaces */
+    html.portal-dark .portal-shell button:not(:disabled):hover {
+      background-color: rgb(255 255 255 / 0.06);
+      filter: none;
+    }
+    html.portal-dark .portal-shell tbody tr:hover {
+      background-color: rgb(255 255 255 / 0.04);
+    }
+  }
 }

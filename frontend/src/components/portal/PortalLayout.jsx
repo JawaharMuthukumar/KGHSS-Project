@@ -421,7 +421,6 @@ function PortalShell({ role }) {
                 </div>
               </>
             )}
-            </div>
           </div>
         </header>
 

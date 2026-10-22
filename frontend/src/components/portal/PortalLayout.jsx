@@ -9,6 +9,7 @@ export default function PortalLayout({ role }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("ghss_theme") === "dark");
   const items = portalNav[role] || [];
@@ -30,18 +31,28 @@ export default function PortalLayout({ role }) {
       )}
 
       <aside
-        className={`fixed lg:sticky top-0 z-50 h-svh w-72 shrink-0 bg-navy-dark text-white flex flex-col transition-transform duration-200 ${
+        className={`fixed lg:sticky top-0 z-50 h-svh w-72 ${sidebarCollapsed ? "lg:w-20" : "lg:w-72"} shrink-0 bg-navy-dark text-white flex flex-col transition-all duration-200 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-          <div className="w-10 h-10 rounded-xl bg-heritage-gradient flex items-center justify-center font-heading font-bold text-sm shrink-0">
+        <div className={`flex items-center gap-3 py-5 border-b border-white/10 ${sidebarCollapsed ? "px-5 lg:justify-center lg:gap-2 lg:px-0" : "px-5"}`}>
+          <div className={`w-10 h-10 ${sidebarCollapsed ? "lg:h-8 lg:w-8" : ""} rounded-xl bg-heritage-gradient flex items-center justify-center font-heading font-bold text-sm shrink-0`}>
             GK
           </div>
-          <div className="min-w-0">
+          <div className={`min-w-0 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
             <p className="font-heading font-bold text-sm leading-tight truncate">GHSS Kangayampalayam</p>
             <p className="text-[11px] text-white/50">{roleLabels[role]}</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+            className="ml-auto hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors lg:inline-flex"
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-pressed={sidebarCollapsed}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <Icon name="Menu" size={21} />
+          </button>
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
@@ -59,14 +70,15 @@ export default function PortalLayout({ role }) {
               to={item.to}
               end={item.end}
               onClick={() => setMobileOpen(false)}
+              title={sidebarCollapsed ? item.label : undefined}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                `flex items-center ${sidebarCollapsed ? "justify-center gap-3 px-3.5 lg:px-0" : "gap-3 px-3.5"} py-2.5 rounded-xl text-sm font-medium transition-colors ${
                   isActive ? "bg-gold text-navy-dark" : "text-white/70 hover:text-white hover:bg-white/8"
                 }`
               }
             >
               <Icon name={item.icon} size={17} />
-              <span className="truncate">{item.label}</span>
+              <span className={`truncate ${sidebarCollapsed ? "lg:hidden" : ""}`}>{item.label}</span>
             </NavLink>
           ))}
         </nav>
@@ -82,7 +94,8 @@ export default function PortalLayout({ role }) {
           >
             <Icon name="Menu" size={22} />
           </button>
-          <div className="ml-auto relative">
+          <div className="ml-auto flex items-center gap-2">
+            <div className="relative">
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
@@ -154,6 +167,7 @@ export default function PortalLayout({ role }) {
                 </div>
               </>
             )}
+            </div>
           </div>
         </header>
 

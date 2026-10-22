@@ -282,13 +282,17 @@ def class_mark_report(class_code: str, term: str, db: Session = Depends(get_db),
     cls=get_class(db,class_code)
     if not can_access_class(db,account,cls,allow_subject=False): raise HTTPException(403,"Only the class teacher can view this report")
     assessment=db.query(Assessment).filter_by(class_id=cls.id,term=term,academic_year=cls.academic_year).first()
-    if not assessment: return {"class_code":cls.code,"term":term,"students":[]}
-    rows=[]
+    if not assessment: return {"class_code":cls.code,"term":term,"subjects":[],"students":[]}
+    # Same subject order as the report card; anything outside the class's list goes last, alphabetically.
+    order={sub:i for i,sub in enumerate(subjects_for_class(cls))}
+    sort_key=lambda subject:(order.get(subject,len(order)),subject)
+    rows=[]; seen=set()
     for student in db.query(Student).filter_by(class_id=cls.id).order_by(Student.id).all():
-        marks=db.query(Mark).filter_by(student_id=student.id,assessment_id=assessment.id).order_by(Mark.subject).all()
+        marks=sorted(db.query(Mark).filter_by(student_id=student.id,assessment_id=assessment.id).all(),key=lambda m:sort_key(m.subject))
+        seen.update(m.subject for m in marks)
         maximum=sum(m.maximum_score for m in marks); total=sum(m.score for m in marks)
         rows.append({"student_id":student.id,"registration_no":student.registration_no,"name":student.account.full_name,"marks":[{"subject":m.subject,"score":m.score,"max":m.maximum_score,"absent":m.absent,"components":m.components or {}} for m in marks],"total":total,"maximum":maximum,"percentage":round(total*100/maximum,2) if maximum else None})
-    return {"class_code":cls.code,"term":term,"students":rows}
+    return {"class_code":cls.code,"term":term,"subjects":sorted(seen,key=sort_key),"students":rows}
 
 
 SUBJECT_ABBR = {"Tamil": "TAM", "English": "ENG", "Maths": "MAT", "Science": "SCI", "Social Science": "SSCI",

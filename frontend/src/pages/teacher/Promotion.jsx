@@ -35,7 +35,16 @@ export default function Promotion() {
   }, [data]);
 
   const update = (studentId, patch) => {
-    setRows((list) => list.map((r) => (r.student_id === studentId ? { ...r, ...patch } : r)));
+    // Classes other than 10th have exactly one next class, so a re-promoted student gets it back automatically.
+    const fixedTarget = data?.options.length === 1 ? data.options[0].code : null;
+    setRows((list) =>
+      list.map((r) => {
+        if (r.student_id !== studentId) return r;
+        const next = { ...r, ...patch };
+        if (next.decision === "promoted" && !next.target_class_code && fixedTarget) next.target_class_code = fixedTarget;
+        return next;
+      })
+    );
     setDirty(true);
   };
 

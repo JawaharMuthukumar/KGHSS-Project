@@ -44,15 +44,18 @@ def next_year(year: str) -> str:
 
 
 def next_class_options(db: Session, cls: AcademicClass) -> list[AcademicClass]:
+    """Classes a promoted student may go to. Only after 10th is there a choice (the 11th group);
+    every other class moves up to the same section and group (8A → 9A, 11B1 → 12B1)."""
     if cls.grade >= 12: return []
-    return (db.query(AcademicClass).filter_by(grade=cls.grade + 1, is_active=True)
-            .order_by(AcademicClass.code).all())
+    nxt = (db.query(AcademicClass).filter_by(grade=cls.grade + 1, is_active=True)
+           .order_by(AcademicClass.code).all())
+    return nxt if cls.grade == 10 else [o for o in nxt if o.section == cls.section]
 
 
 def default_target(cls: AcademicClass, options: list[AcademicClass]) -> AcademicClass | None:
-    """Same section in the next standard (8A → 9A, 11B1 → 12B1). After 10th the teacher picks the 11th group."""
-    if cls.grade == 10: return None
-    return next((o for o in options if o.section == cls.section), None)
+    """The fixed next class; after 10th the teacher picks the 11th group, so there is no default."""
+    if cls.grade == 10 or not options: return None
+    return options[0]
 
 
 def allowed_decisions(cls: AcademicClass) -> list[str]:

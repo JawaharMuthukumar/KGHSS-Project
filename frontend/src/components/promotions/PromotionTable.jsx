@@ -74,7 +74,8 @@ export default function PromotionTable({ students, options, allowedDecisions, ed
               </td>
               <td data-label="Next Class" className="px-4 py-3">
                 {s.decision === "promoted" ? (
-                  editable ? (
+                  // Only 10th → 11th has a choice (the group); other classes move to the same section automatically.
+                  editable && options.length > 1 ? (
                     <select
                       value={s.target_class_code || ""}
                       onChange={(e) => onChange(s.student_id, { target_class_code: e.target.value || null })}

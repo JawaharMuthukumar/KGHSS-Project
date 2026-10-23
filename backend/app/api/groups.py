@@ -66,6 +66,18 @@ def group_locked(db: Session, group: SubjectGroup) -> bool:
                 or db.query(Assessment.id).filter(Assessment.class_id.in_(ids)).first())
 
 
+def has_records(db: Session, cls: AcademicClass) -> bool:
+    return bool(db.query(Student.id).filter_by(class_id=cls.id).first() or db.query(Assessment.id).filter_by(class_id=cls.id).first())
+
+
+def used_letters(db: Session) -> set[str]:
+    """Letters taken by a group, an active class, or a hidden class that still holds records."""
+    used = {g.letter for g in db.query(SubjectGroup)}
+    for c in db.query(AcademicClass).filter(AcademicClass.grade >= 11):
+        if c.is_active or has_records(db, c): used.add(c.section.rstrip(string.digits))
+    return used
+
+
 def partner(db: Session, cls: AcademicClass) -> AcademicClass | None:
     """11th ↔ 12th class with the same section."""
     other = 12 if cls.grade == 11 else 11
@@ -107,9 +119,10 @@ def class_out(db: Session, cls: AcademicClass) -> dict:
 
 
 def group_out(db: Session, group: SubjectGroup) -> dict:
+    locked = group_locked(db, group)
+    codes = sorted(c.code for c in group_classes(db, group) if c.is_active)
     return {"id": group.id, "name": group.name, "letter": group.letter, "subjects": group.subjects,
-            "locked": group_locked(db, group),
-            "class_codes": sorted(c.code for c in group_classes(db, group) if c.is_active)}
+            "locked": locked, "class_codes": codes, "can_delete": not locked and not codes}
 
 
 @router.get("", summary="Groups with their subjects, and every 11th/12th class")
@@ -125,7 +138,7 @@ def create_group(data: GroupIn, db: Session = Depends(get_db), _: Account = Depe
     name = " ".join(data.name.split())
     if db.query(SubjectGroup).filter(func.lower(SubjectGroup.name) == name.lower()).first():
         raise HTTPException(409, f"A group called {name} already exists")
-    used = {g.letter for g in db.query(SubjectGroup)} | {c.section.rstrip(string.digits) for c in db.query(AcademicClass).filter(AcademicClass.grade >= 11)}
+    used = used_letters(db)
     letter = next((l for l in string.ascii_uppercase if l not in used), None)
     if not letter: raise HTTPException(409, "No section letters left")
     group = SubjectGroup(name=name, letter=letter, subjects=clean_subjects(data.subjects))
@@ -147,6 +160,17 @@ def update_group(group_id: int, data: GroupIn, db: Session = Depends(get_db), _:
     return group_out(db, group)
 
 
+@router.delete("/{group_id}", summary="Delete a group that has no classes")
+def delete_group(group_id: int, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+    group = db.get(SubjectGroup, group_id)
+    if not group: raise HTTPException(404, "Group not found")
+    active = [c.code for c in group_classes(db, group) if c.is_active]
+    if active: raise HTTPException(409, f"Hide its classes first: {', '.join(sorted(active))}")
+    if group_locked(db, group): raise HTTPException(409, f"{group.name} has old students or marks, so it is kept for those records")
+    db.delete(group); db.commit()
+    return list_groups(db, _)
+
+
 @router.post("/classes", status_code=201, summary="Add an 11th class for a group (its 12th class is made too)")
 def create_group_class(data: GroupClassIn, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
     group = db.get(SubjectGroup, data.group_id)
@@ -162,6 +186,8 @@ def create_group_class(data: GroupClassIn, db: Session = Depends(get_db), _: Acc
             if grade == 11: raise HTTPException(409, f"{code} already exists")
             continue  # the 12th class is already there
         if cls:  # a hidden class comes back with this group's details; its old records stay attached
+            if cls.group_name != group.name and has_records(db, cls):
+                raise HTTPException(409, f"{code} still holds records of {cls.group_name}; it can't be reused for {group.name}")
             cls.is_active = True; cls.academic_year = year
         else:
             cls = AcademicClass(code=code, grade=grade, section=section, academic_year=year); db.add(cls)

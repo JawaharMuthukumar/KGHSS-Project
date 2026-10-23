@@ -20,6 +20,7 @@ export default function GroupsManager() {
   const [editing, setEditing] = useState(null); // null | "new" | group
   const [addingClass, setAddingClass] = useState(false);
   const [hiding, setHiding] = useState(null);
+  const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
@@ -42,6 +43,20 @@ export default function GroupsManager() {
       await reload();
     } catch (err) {
       toast.error(errorText(err, "Could not hide this class."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeGroup = async () => {
+    setBusy(true);
+    try {
+      await api.delete(`/groups/${deleting.id}`);
+      toast.success(`${deleting.name} removed`);
+      setDeleting(null);
+      await reload();
+    } catch (err) {
+      toast.error(errorText(err, "Could not remove this group."));
     } finally {
       setBusy(false);
     }
@@ -103,14 +118,27 @@ export default function GroupsManager() {
                   In use · subjects locked
                 </Badge>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setEditing(g)}
-                  className="flex items-center gap-1 text-xs font-semibold text-navy border border-navy/15 px-3 py-1.5 rounded-full hover:bg-navy/5"
-                >
-                  <Icon name="Pencil" size={13} />
-                  Edit
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditing(g)}
+                    className="flex items-center gap-1 text-xs font-semibold text-navy border border-navy/15 px-3 py-1.5 rounded-full hover:bg-navy/5"
+                  >
+                    <Icon name="Pencil" size={13} />
+                    Edit
+                  </button>
+                  {g.can_delete && (
+                    <button
+                      type="button"
+                      onClick={() => setDeleting(g)}
+                      aria-label={`Delete ${g.name}`}
+                      className="flex items-center gap-1 text-xs font-semibold text-red-600 px-3 py-1.5 rounded-full hover:bg-red-50"
+                    >
+                      <Icon name="Trash2" size={13} />
+                      Delete
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ))}
@@ -163,6 +191,17 @@ export default function GroupsManager() {
           />
         )}
       </Drawer>
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        danger
+        title={`Delete the ${deleting?.name} group?`}
+        message="It has no classes, students or marks. You can add it again later from Add Group."
+        confirmLabel="Yes, delete"
+        busy={busy}
+        onConfirm={removeGroup}
+        onCancel={() => setDeleting(null)}
+      />
 
       <ConfirmDialog
         open={Boolean(hiding)}

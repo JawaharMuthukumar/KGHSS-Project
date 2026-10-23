@@ -7,6 +7,7 @@ import Banner from "../../components/portal/Banner";
 import Drawer from "../../components/portal/Drawer";
 import ConfirmDialog from "../../components/portal/ConfirmDialog";
 import PromotionTable, { DecisionCounts } from "../../components/promotions/PromotionTable";
+import GroupsManager from "../../components/promotions/GroupsManager";
 import { inputClass } from "../../components/portal/FormField";
 import { TableSkeleton, ContentSkeleton } from "../../components/ui/Skeleton";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -18,6 +19,7 @@ import { formatDate } from "../../utils/formatDate";
 /** HM: review each class teacher's promotion list, approve or send back, then start the new academic year. */
 export default function Promotions() {
   const { data, loading, error, reload } = useApiResource("/promotions");
+  const [tab, setTab] = useState("lists");
   const [openClass, setOpenClass] = useState(null);
   const [startOpen, setStartOpen] = useState(false);
   const [typedYear, setTypedYear] = useState("");
@@ -55,6 +57,33 @@ export default function Promotions() {
         }
       />
 
+      <div className="flex items-center gap-1 mb-5 border-b border-navy/8" role="tablist">
+        {[
+          ["lists", "Promotion Lists"],
+          ["groups", "11th & 12th Groups"],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => {
+              setTab(key);
+              if (key === "lists") reload();
+            }}
+            className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+              tab === key ? "border-gold text-navy" : "border-transparent text-navy/45 hover:text-navy"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "groups" && <GroupsManager />}
+
+      {tab === "lists" && (
+      <>
       {error && <Banner tone="error" className="mb-4">{error.message}</Banner>}
 
       <Card className="p-0 overflow-hidden mb-6">
@@ -90,6 +119,9 @@ export default function Promotions() {
                     {c.status === "none" ? <span className="text-navy/40">—</span> : <DecisionCounts counts={c.counts} className="justify-end md:justify-start" />}
                     {c.missing_count > 0 && (
                       <p className="text-[11px] text-amber-700 mt-1">{c.missing_count} new student(s) not in the list</p>
+                    )}
+                    {c.invalid_count > 0 && (
+                      <p className="text-[11px] text-amber-700 mt-1">{c.invalid_count} student(s) going to a closed or hidden class — send back</p>
                     )}
                   </td>
                   <td className="tc-aside px-4 py-3">
@@ -140,6 +172,9 @@ export default function Promotions() {
             </button>
           </div>
         </Card>
+      )}
+
+      </>
       )}
 
       <Drawer open={Boolean(openClass)} onClose={() => setOpenClass(null)} title={`Promotion · ${openClass || ""}`} width="max-w-3xl">

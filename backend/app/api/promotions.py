@@ -49,7 +49,8 @@ def next_class_options(db: Session, cls: AcademicClass) -> list[AcademicClass]:
     if cls.grade >= 12: return []
     nxt = (db.query(AcademicClass).filter_by(grade=cls.grade + 1, is_active=True)
            .order_by(AcademicClass.code).all())
-    return nxt if cls.grade == 10 else [o for o in nxt if o.section == cls.section]
+    # After 10th: only the 11th group classes the HM has left open for 10th students.
+    return [o for o in nxt if o.intake_open] if cls.grade == 10 else [o for o in nxt if o.section == cls.section]
 
 
 def default_target(cls: AcademicClass, options: list[AcademicClass]) -> AcademicClass | None:
@@ -75,6 +76,13 @@ def missing_students(db: Session, cls: AcademicClass, plist: PromotionList) -> l
     """Current students with no decision in the list (e.g. joined after it was submitted)."""
     decided = {e.student_id for e in plist.entries}
     return [s for s in class_students(db, cls).all() if s.id not in decided]
+
+
+def invalid_targets(db: Session, cls: AcademicClass, plist: PromotionList) -> list[str]:
+    """Promoted students whose chosen next class is no longer allowed (closed or hidden since the list was made)."""
+    allowed = {o.id for o in next_class_options(db, cls)}
+    return [db.get(Student, e.student_id).account.full_name for e in plist.entries
+            if e.decision == "promoted" and e.target_class_id not in allowed]
 
 
 def class_teacher_name(db: Session, cls: AcademicClass) -> str | None:
@@ -164,11 +172,12 @@ def promotion_overview(db: Session = Depends(get_db), _: Account = Depends(requi
         plist = class_list(db, cls)
         count = class_students(db, cls).count()
         missing = len(missing_students(db, cls, plist)) if plist else 0
+        invalid = len(invalid_targets(db, cls, plist)) if plist else 0
         summary = list_summary(db, cls, plist)
-        if count and (summary["status"] != "approved" or missing): blockers.append(cls.code)
+        if count and (summary["status"] != "approved" or missing or invalid): blockers.append(cls.code)
         classes.append({"class_code": cls.code, "grade": cls.grade, "group_name": cls.group_name, "medium": cls.medium,
                         "class_teacher_name": class_teacher_name(db, cls), "student_count": count,
-                        "missing_count": missing, **summary})
+                        "missing_count": missing, "invalid_count": invalid, **summary})
     return {"academic_year": year, "next_academic_year": next_year(year), "classes": classes,
             "ready": not blockers, "blockers": blockers}
 
@@ -181,6 +190,9 @@ def approve_class_promotion(class_code: str, db: Session = Depends(get_db), acco
     if missing:
         names = ", ".join(s.account.full_name for s in missing[:5])
         raise HTTPException(409, f"{len(missing)} student(s) joined after this list was submitted ({names}). Send it back so the class teacher can add them.")
+    invalid = invalid_targets(db, cls, plist)
+    if invalid:
+        raise HTTPException(409, f"The next class chosen for {', '.join(invalid[:5])} is closed or hidden now. Send the list back so the class teacher can choose again.")
     plist.status = "approved"; plist.decided_by = account.id; plist.decided_at = datetime.utcnow(); plist.note = None
     db.commit()
     return get_class_promotion(class_code, db, account)

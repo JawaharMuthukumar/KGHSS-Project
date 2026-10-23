@@ -240,6 +240,7 @@ def save_class_marks(class_code: str, term: str, data: MarksIn, db: Session = De
     teacher_or_admin(account, db, cls)
     if term not in terms_for_grade(cls.grade): raise HTTPException(422, f"'{term}' is not an exam for class {cls.code}")
     subjects = set(subjects_for_class(cls))
+    schemes = {s: subject_components(cls, s) for s in subjects}  # once per save, not per student
     assessment = db.query(Assessment).filter_by(class_id=cls.id, term=term, academic_year=cls.academic_year).first()
     if not assessment:
         assessment = Assessment(class_id=cls.id, term=term, academic_year=cls.academic_year); db.add(assessment); db.flush()
@@ -249,7 +250,7 @@ def save_class_marks(class_code: str, term: str, data: MarksIn, db: Session = De
         for subject, value in values.items():
             if subject not in subjects: raise HTTPException(422, f"{subject} is not a subject for class {cls.code}")
             teacher_or_admin(account, db, cls, subject)
-            scheme = subject_components(cls.grade, subject)
+            scheme = schemes[subject]
             absent = bool(value.get("absent", False)); entered = value.get("components") or {}
             components = {}
             if not absent:

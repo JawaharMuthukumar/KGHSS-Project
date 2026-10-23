@@ -28,6 +28,8 @@ class AcademicClass(Base):
     strength: Mapped[int | None] = mapped_column(Integer, nullable=True)  # sanctioned class strength
     academic_year: Mapped[str] = mapped_column(String(9), default="2026-2027")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # 11th only: whether 10th students may choose this group class at promotion (existing students are unaffected).
+    intake_open: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class Teacher(Base):
@@ -295,3 +297,14 @@ class PromotionEntry(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"), index=True)
     decision: Mapped[str] = mapped_column(String(20))  # promoted / not_promoted / left / passed_out
     target_class_id: Mapped[int | None] = mapped_column(ForeignKey("classes.id", ondelete="SET NULL"), nullable=True)
+
+
+class SubjectGroup(Base):
+    """A higher-secondary group (e.g. P/C/B/M) and its core subjects; Tamil and English are always added before them.
+    `letter` is the section letter its classes use (A → 11A / 11A1, D → 11D / 11D1)."""
+    __tablename__ = "subject_groups"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(60), unique=True)
+    letter: Mapped[str] = mapped_column(String(2), unique=True)
+    subjects: Mapped[list] = mapped_column(JSON)  # [{"subject": "Physics", "practical": true}, ...]
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

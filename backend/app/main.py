@@ -5,12 +5,14 @@ from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
+from app.api.groups import router as groups_router
 from app.api.promotions import router as promotions_router
 from app.api.school import router as school_router
 from app.core.config import settings
 from app.core.database import Base, engine, get_db
 from app.models import entities  # noqa: F401 - registers models with SQLAlchemy metadata
-from app.models.entities import AcademicClass
+from app.models.entities import AcademicClass, SubjectGroup
+from app.services.mark_scheme import GROUP_SUBJECTS, HSC_PRACTICAL_SUBJECTS
 
 app = FastAPI(
     title=settings.app_name,
@@ -33,6 +35,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix=settings.api_v1_prefix)
 app.include_router(school_router, prefix=settings.api_v1_prefix)
 app.include_router(promotions_router, prefix=settings.api_v1_prefix)
+app.include_router(groups_router, prefix=settings.api_v1_prefix)
 app.mount("/uploads", StaticFiles(directory="uploads", check_dir=False), name="uploads")
 
 
@@ -55,6 +58,7 @@ def initialize_schema_and_reference_classes():
         ("students", "father_phone", "VARCHAR(30)"),
         ("students", "mother_phone", "VARCHAR(30)"),
         ("students", "status", "VARCHAR(20)"),
+        ("classes", "intake_open", "BOOLEAN"),
     ]
     inspector = inspect(engine)
     for table, column, ddl_type in added_columns:
@@ -64,6 +68,7 @@ def initialize_schema_and_reference_classes():
     # Students from before promotions existed are all current students.
     with engine.begin() as conn:
         conn.execute(text("UPDATE students SET status = 'active' WHERE status IS NULL"))
+        conn.execute(text("UPDATE classes SET intake_open = TRUE WHERE intake_open IS NULL"))
     # A teacher may now be class teacher of several classes; drop the old one-class-per-teacher constraint.
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE class_teacher_assignments DROP CONSTRAINT IF EXISTS class_teacher_assignments_teacher_id_academic_year_key"))
@@ -116,6 +121,10 @@ def initialize_schema_and_reference_classes():
             # Only fill blanks, so later edits made in the portal are not overwritten on restart.
             if cls.medium is None: cls.medium = medium
             if cls.strength is None: cls.strength = strength
+        # The school's original groups; the HM adds more from the Promotions page. Existing rows are never overwritten.
+        for letter, name in (("A", "P/C/M/CS"), ("B", "P/C/B/M"), ("C", "P/C/B/CS")):
+            if not db.query(SubjectGroup).filter((SubjectGroup.name == name) | (SubjectGroup.letter == letter)).first():
+                db.add(SubjectGroup(name=name, letter=letter, subjects=[{"subject": s, "practical": s in HSC_PRACTICAL_SUBJECTS} for s in GROUP_SUBJECTS[name]]))
         db.commit()
 
 

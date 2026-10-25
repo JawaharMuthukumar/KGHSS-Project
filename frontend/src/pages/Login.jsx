@@ -19,12 +19,13 @@ const roleCopy = {
   },
   teacher: {
     title: "Teacher Portal",
-    description: "Sign in with your Employee ID. Class Teachers also manage their assigned class from here.",
+    description: "Sign in with your name. Class Teachers also manage their assigned class from here.",
     icon: "Users",
     iconBg: "bg-gradient-to-br from-teal to-teal-light",
-    idLabel: "Employee ID",
-    idPlaceholder: "e.g. GHSS/T/101",
-    helperNote: "First-time class teacher? Use the temporary password issued by the Headmaster, then set a new one.",
+    idLabel: "Your Name",
+    idPlaceholder: "e.g. SATHYA B",
+    helperNote:
+      "Type your name as the school has it (capitals don't matter). Your Staff ID (GHSS/T/…) also works. First time? Use the password the Headmaster gave you, then change it.",
   },
 };
 

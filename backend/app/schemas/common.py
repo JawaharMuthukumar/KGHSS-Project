@@ -204,6 +204,12 @@ class PublicContactIn(BaseModel):
     message: str = Field(min_length=5, max_length=5000)
 
 
+class ChangeUsernameIn(BaseModel):
+    # Letters, digits and - / _ . only, so it is easy to type on a phone.
+    new_username: str = Field(min_length=3, max_length=40, pattern=r"^\s*[A-Za-z0-9][A-Za-z0-9/_.-]*\s*$")
+    password: str = Field(min_length=1, max_length=128)
+
+
 class ChangePasswordIn(BaseModel):
     old_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)

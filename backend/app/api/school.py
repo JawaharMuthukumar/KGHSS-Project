@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import current_account, require_roles
 from app.core.security import hash_password
+from app.api.auth import teachers_named
 from app.services.permissions import teacher_profile, student_profile, assigned_class, assigned_classes, is_class_teacher_of, can_access_class
 from app.services.permissions import require_teacher_class_scope
 from app.services.mark_scheme import class_scheme, subject_components, subjects_for_class, terms_for_grade
@@ -79,14 +80,23 @@ def list_teachers(db: Session = Depends(get_db), _: Account = Depends(require_ro
     return [{"id": t.id, "employee_id": t.employee_id, "full_name": t.account.full_name, "username": t.account.username, "subject": t.subject, "phone": t.phone, "is_active": t.account.is_active} for t in db.query(Teacher).all()]
 
 
+def unique_teacher_name(db: Session, name: str, except_account_id: int | None = None) -> str:
+    """Teachers sign in with their name, so two active teachers can't share one."""
+    clean = " ".join(name.split())
+    if any(a.id != except_account_id for a in teachers_named(db, clean)):
+        raise HTTPException(409, f"A teacher named {clean} already exists. Add an initial to tell them apart (they sign in with their name).")
+    return clean
+
+
 @router.post("/teachers", status_code=201, summary="Create teacher account")
 def create_teacher(data: TeacherCreate, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+    full_name = unique_teacher_name(db, data.full_name)
     index=(db.query(func.count(Teacher.id)).scalar() or 0)+101
     employee_id=f"GHSS/T/{index}"
     while db.query(Account).filter_by(username=employee_id).first():
         index+=1; employee_id=f"GHSS/T/{index}"
     # The admin-chosen password is temporary: the teacher is reminded to change it after signing in.
-    account = Account(username=employee_id, role="teacher", full_name=data.full_name, password_hash=hash_password(data.password), password_is_default=True)
+    account = Account(username=employee_id, role="teacher", full_name=full_name, password_hash=hash_password(data.password), password_is_default=True)
     db.add(account); db.flush()
     teacher = Teacher(account_id=account.id, employee_id=employee_id, subject=data.subject, phone=data.phone)
     db.add(teacher); db.commit(); db.refresh(teacher)
@@ -100,7 +110,7 @@ def update_teacher(teacher_id: int, data: TeacherUpdate, db: Session = Depends(g
     values = data.model_dump(exclude_unset=True)
     active = values.pop("is_active", None)
     for key, value in values.items():
-        if key == "full_name": teacher.account.full_name = value
+        if key == "full_name": teacher.account.full_name = unique_teacher_name(db, value, teacher.account_id)
         else: setattr(teacher, key, value)
     if active is not None: teacher.account.is_active = active
     db.commit(); return {"id": teacher.id, "employee_id": teacher.employee_id, "full_name": teacher.account.full_name, "subject": teacher.subject, "phone": teacher.phone, "is_active": teacher.account.is_active}

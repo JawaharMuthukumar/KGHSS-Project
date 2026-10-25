@@ -9,6 +9,7 @@ import { useAutoCapitalize } from "../../hooks/useAutoCapitalize";
 import { enableAppInstall } from "../../lib/installApp";
 import InstallAppBanner from "./InstallAppBanner";
 import ChangePasswordDialog from "./ChangePasswordDialog";
+import ChangeStaffIdDialog from "./ChangeStaffIdDialog";
 import { AlertsProvider, useAlerts } from "../../context/AlertsContext";
 import { formatDate } from "../../utils/formatDate";
 
@@ -208,7 +209,7 @@ function MobileTabBar({ role, counts, onMore, moreOpen }) {
 }
 
 /** Bottom sheet listing every page of the role's menu as an app-style icon grid, plus sign out. */
-function MoreSheet({ role, user, counts, onClose, onLogout, onChangePassword }) {
+function MoreSheet({ role, user, counts, onClose, onLogout, onChangePassword, onChangeStaffId }) {
   const items = flatNav(role);
   return (
     <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
@@ -261,6 +262,16 @@ function MoreSheet({ role, user, counts, onClose, onLogout, onChangePassword }) 
             <Icon name="KeyRound" size={17} />
             Change Password
           </button>
+          {role === "admin" && (
+            <button
+              type="button"
+              onClick={onChangeStaffId}
+              className="w-full flex items-center justify-center gap-2 rounded-full border border-navy/15 py-3 text-sm font-semibold text-navy hover:bg-navy/5"
+            >
+              <Icon name="UserCog" size={17} />
+              Change Staff ID
+            </button>
+          )}
           <button
             type="button"
             onClick={onLogout}
@@ -315,6 +326,7 @@ function PortalShell({ role }) {
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [staffIdOpen, setStaffIdOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(readDarkMode);
   const items = portalNav[role] || [];
   useAutoCapitalize(role === "admin" || role === "teacher");
@@ -458,6 +470,20 @@ function PortalShell({ role }) {
                     <Icon name="KeyRound" size={17} />
                     Change Password
                   </button>
+                  {role === "admin" && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setStaffIdOpen(true);
+                      }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-navy hover:bg-navy/5 transition-colors border-b border-navy/8"
+                    >
+                      <Icon name="UserCog" size={17} />
+                      Change Staff ID
+                    </button>
+                  )}
                   <button
                     type="button"
                     role="menuitem"
@@ -512,9 +538,14 @@ function PortalShell({ role }) {
             setMoreOpen(false);
             setPasswordOpen(true);
           }}
+          onChangeStaffId={() => {
+            setMoreOpen(false);
+            setStaffIdOpen(true);
+          }}
         />
       )}
       <ChangePasswordDialog open={passwordOpen} onClose={() => setPasswordOpen(false)} />
+      {role === "admin" && <ChangeStaffIdDialog open={staffIdOpen} onClose={() => setStaffIdOpen(false)} />}
 
       {role === "student" && <ComplaintFab />}
     </div>

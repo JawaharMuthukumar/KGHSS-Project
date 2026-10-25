@@ -217,8 +217,9 @@ export default function Teachers() {
           <div className="flex flex-col gap-4">
             <Banner tone="success">Teacher account created. Share these login details securely.</Banner>
             <div className="bg-navy-dark text-white rounded-2xl p-5">
-              <p className="text-xs text-white/50 uppercase tracking-wide mb-1">Employee ID (Login)</p>
-              <p className="font-heading font-bold text-lg mb-4">{credentials.employee_id}</p>
+              <p className="text-xs text-white/50 uppercase tracking-wide mb-1">Sign in with (Name)</p>
+              <p className="font-heading font-bold text-lg mb-1">{credentials.full_name}</p>
+              <p className="text-xs text-white/50 mb-4">Staff ID {credentials.employee_id} also works.</p>
               <p className="text-xs text-white/50 uppercase tracking-wide mb-1">Temporary Password</p>
               <p className="font-heading font-bold text-lg">{credentials.password}</p>
             </div>
@@ -351,7 +352,7 @@ function TeacherProfile({ teacher, error, onEdit, onDeactivate, onReactivate }) 
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
-        <Field label="Employee ID" value={teacher.employee_id} />
+        <Field label="Sign in with" value={`${teacher.full_name} (or ${teacher.employee_id})`} />
         <Field label="Subject" value={teacher.subject} />
         <Field label="Phone" value={teacher.phone} />
       </div>

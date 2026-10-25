@@ -60,6 +60,9 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
   const activeFocus = focus || scheme?.subjects[0]?.subject || "all";
   const shown = !scheme ? [] : activeFocus === "all" ? scheme.subjects : scheme.subjects.filter((s) => s.subject === activeFocus);
   const allMode = activeFocus === "all";
+  // One subject on a phone: drop the Grand/% columns so the mark boxes get the full width.
+  const [phone] = useState(isPhone);
+  const showGrand = allMode || !phone;
   const grandMax = (scheme?.subjects || []).reduce((sum, s) => sum + s.components.reduce((t, c) => t + c.max, 0), 0);
 
   const cellOf = (studentId, subject) => marks[studentId]?.[subject] || { absent: false, components: {} };
@@ -163,18 +166,18 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
               One subject: wide, comfortable boxes. The name column stays pinned either way. */}
           <div className="overflow-x-auto">
           <table
-            className={`w-full text-sm ${allMode ? "table-fixed" : ""}`}
+            className="w-full text-sm table-fixed"
             style={allMode ? { minWidth: `${9 + shown.reduce((n, s) => n + (s.components.length + 2) * 2.75, 0) + 7.5}rem` } : undefined}
           >
             <colgroup>
-              <col className={allMode ? "w-36" : "w-[34%]"} />
+              <col className={allMode ? "w-36" : "w-[32%] sm:w-56"} />
               {shown.flatMap(({ subject, components }) => [
                 ...components.map((c) => <col key={`${subject}-${c.key}`} />),
-                <col key={`${subject}-total`} />,
-                <col key={`${subject}-ab`} />,
+                <col key={`${subject}-total`} className={allMode ? "" : "w-11 sm:w-16"} />,
+                <col key={`${subject}-ab`} className={allMode ? "" : "w-12 sm:w-16"} />,
               ])}
-              <col className="w-16" />
-              <col className="w-14" />
+              {showGrand && <col className="w-16" />}
+              {showGrand && <col className="w-14" />}
             </colgroup>
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wide text-navy/50 border-b border-navy/8">
@@ -184,11 +187,11 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
                     {subject}
                   </th>
                 ))}
-                <th rowSpan={2} className={`px-1 py-2 text-center leading-tight border-l-2 border-navy/15 bg-navy/[0.03] ${allMode ? "" : "max-sm:hidden"}`}>
+                {showGrand && <th rowSpan={2} className="px-1 py-2 text-center leading-tight border-l-2 border-navy/15 bg-navy/[0.03]">
                   Grand
                   <span className="block text-[10px] text-navy/40">/{grandMax}</span>
-                </th>
-                <th rowSpan={2} className={`px-1 py-2 text-center bg-navy/[0.03] ${allMode ? "" : "max-sm:hidden"}`}>%</th>
+                </th>}
+                {showGrand && <th rowSpan={2} className="px-1 py-2 text-center bg-navy/[0.03]">%</th>}
               </tr>
               <tr className="text-[10px] font-semibold text-navy/40 border-b border-navy/8">
                 {shown.map(({ subject, components }) => [
@@ -238,7 +241,7 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
                                   if (raw !== "" && (!/^\d+$/.test(raw) || Number(raw) > c.max)) return;
                                   updateCell(s.id, subject, { components: { [c.key]: raw === "" ? "" : String(Number(raw)) } });
                                 }}
-                                className={`w-full min-w-0 px-0 rounded-md border text-center text-sm bg-white disabled:bg-navy/5 ${allMode ? "py-1.5" : "py-2.5"} ${
+                                className={`w-full min-w-0 px-0 rounded-md border text-center bg-white disabled:bg-navy/5 ${allMode ? "py-1.5 text-sm" : "py-3 text-base font-semibold"} ${
                                   isOverMax(value, c.max) ? "border-red-500 bg-red-50" : "border-navy/15"
                                 }`}
                               />
@@ -248,13 +251,13 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
                         <td key={`${subject}-total`} className={`px-0.5 py-2 text-center font-semibold ${cell.absent ? "text-red-600" : "text-navy"}`}>
                           {cell.absent ? "AB" : total}
                         </td>,
-                        <td key={`${subject}-ab`} className="px-0.5 py-2 text-center">
+                        <td key={`${subject}-ab`} className={`py-2 text-center ${allMode ? "px-0.5" : "px-1"}`}>
                           <button
                             type="button"
                             aria-pressed={cell.absent}
                             title={cell.absent ? "Marked absent — click to undo" : "Mark absent"}
                             onClick={() => updateCell(s.id, subject, { absent: !cell.absent })}
-                            className={`w-full max-w-[2.5rem] py-1.5 rounded-md text-[11px] font-bold border transition-colors ${
+                            className={`w-full rounded-md font-bold border transition-colors ${allMode ? "max-w-[2.5rem] py-1.5 text-[11px]" : "py-3 text-xs"} ${
                               cell.absent
                                 ? "bg-red-600 border-red-600 text-white hover:bg-red-700"
                                 : "border-navy/15 text-navy/40 hover:border-red-400 hover:text-red-600"
@@ -265,10 +268,12 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
                         </td>,
                       ];
                     })}
-                    <td className={`px-1 py-2 text-center font-bold text-navy border-l-2 border-navy/15 bg-navy/[0.03] ${allMode ? "" : "max-sm:hidden"}`}>{grandTotal}</td>
-                    <td className={`px-1 py-2 text-center text-xs font-semibold text-navy bg-navy/[0.03] ${allMode ? "" : "max-sm:hidden"}`}>
-                      {grandMax ? `${Math.round((grandTotal * 1000) / grandMax) / 10}%` : "—"}
-                    </td>
+                    {showGrand && <td className="px-1 py-2 text-center font-bold text-navy border-l-2 border-navy/15 bg-navy/[0.03]">{grandTotal}</td>}
+                    {showGrand && (
+                      <td className="px-1 py-2 text-center text-xs font-semibold text-navy bg-navy/[0.03]">
+                        {grandMax ? `${Math.round((grandTotal * 1000) / grandMax) / 10}%` : "—"}
+                      </td>
+                    )}
                   </tr>
                   );
                 })}

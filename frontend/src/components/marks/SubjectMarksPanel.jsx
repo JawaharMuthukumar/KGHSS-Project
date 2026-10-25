@@ -195,7 +195,8 @@ export default function SubjectMarksPanel({ pairs }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs font-semibold uppercase tracking-wide text-navy/45 border-b border-navy/8">
-                  <th className="px-4 py-3">Student</th>
+                  {/* Name column stays put while the mark boxes scroll sideways on a phone. */}
+                  <th className="px-4 py-3 sticky left-0 z-10 bg-white">Student</th>
                   {comps.map((c) => (
                     <th key={c.key} className="px-2 py-3 text-center">
                       {SHORT[c.key] || c.label}
@@ -212,8 +213,8 @@ export default function SubjectMarksPanel({ pairs }) {
                   const total = comps.reduce((t, c) => t + (Number(r.components[c.key]) || 0), 0);
                   return (
                     <tr key={s.student_id} className="border-b border-navy/6 last:border-0">
-                      <td className="px-4 py-2">
-                        <p className="font-medium text-navy whitespace-nowrap">{s.name}</p>
+                      <td className="px-4 py-2 sticky left-0 z-10 bg-white max-sm:max-w-[8.5rem]">
+                        <p className="font-medium text-navy whitespace-nowrap max-sm:truncate">{s.name}</p>
                         <p className="text-[11px] text-navy/40">{s.registration_no}</p>
                       </td>
                       {comps.map((c) => {

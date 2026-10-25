@@ -44,7 +44,7 @@ export default function ChangeStaffIdDialog({ open, onClose }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="sid-title">
       <button type="button" aria-label="Close" onClick={saving ? undefined : close} className="absolute inset-0 bg-navy-dark/50" />
-      <form onSubmit={submit} className="relative w-full max-w-md rounded-2xl bg-white shadow-xl p-5 sm:p-6 flex flex-col gap-4">
+      <form onSubmit={submit} className="relative w-full max-w-md max-h-[90svh] overflow-y-auto rounded-2xl bg-white shadow-xl p-5 sm:p-6 flex flex-col gap-4">
         <div className="flex items-start gap-3">
           <span className="flex items-center justify-center w-10 h-10 rounded-full bg-gold/15 text-gold-dark shrink-0">
             <Icon name="UserCog" size={20} />

@@ -5,6 +5,8 @@ import { inputClass } from "../portal/FormField";
 import { api, ApiError } from "../../lib/apiClient";
 
 const COMPONENT_SHORT = { sa: "SA", fa: "FA", theory: "Th", practical: "Pr", internal: "In", total: "Mark" };
+const PHONE = "(max-width: 767px)";
+const isPhone = () => typeof window !== "undefined" && window.matchMedia?.(PHONE).matches;
 
 // Grid for entering one class's marks for one exam. Columns come from the class's
 // mark scheme (SA/FA, Theory/Practical/Internal, …) so each grade gets its own pattern.
@@ -16,6 +18,8 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
+  // Which subject's boxes to show: phones start with one subject (a full sheet is 18+ tiny boxes), computers with all.
+  const [focus, setFocus] = useState(() => (isPhone() ? null : "all"));
 
   useEffect(() => {
     setScheme(null);
@@ -53,6 +57,9 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
       .catch((err) => setError(err.message));
   }, [classCode, scheme, term]);
 
+  const activeFocus = focus || scheme?.subjects[0]?.subject || "all";
+  const shown = !scheme ? [] : activeFocus === "all" ? scheme.subjects : scheme.subjects.filter((s) => s.subject === activeFocus);
+  const allMode = activeFocus === "all";
   const grandMax = (scheme?.subjects || []).reduce((sum, s) => sum + s.components.reduce((t, c) => t + c.max, 0), 0);
 
   const cellOf = (studentId, subject) => marks[studentId]?.[subject] || { absent: false, components: {} };
@@ -132,12 +139,36 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
       {success && <Banner tone="success" className="mb-4">{success}</Banner>}
 
       {scheme && students && (
+        <div className="flex gap-2 mb-3 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="Subject">
+          {[{ subject: "all" }, ...scheme.subjects].map(({ subject }) => (
+            <button
+              key={subject}
+              type="button"
+              role="tab"
+              aria-selected={activeFocus === subject}
+              onClick={() => setFocus(subject)}
+              className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+                activeFocus === subject ? "bg-navy text-white border-navy" : "bg-white text-navy/70 border-navy/15 hover:border-gold"
+              }`}
+            >
+              {subject === "all" ? "All subjects" : subject}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {scheme && students && (
         <Card className="p-0 overflow-hidden">
-          {/* Fixed layout: columns share the card width so the whole sheet fits without sideways scrolling. */}
-          <table className="w-full table-fixed text-sm">
+          {/* All subjects: fixed columns with a minimum width, so a small screen scrolls sideways instead of squeezing.
+              One subject: wide, comfortable boxes. The name column stays pinned either way. */}
+          <div className="overflow-x-auto">
+          <table
+            className={`w-full text-sm ${allMode ? "table-fixed" : ""}`}
+            style={allMode ? { minWidth: `${9 + shown.reduce((n, s) => n + (s.components.length + 2) * 2.75, 0) + 7.5}rem` } : undefined}
+          >
             <colgroup>
-              <col className="w-36" />
-              {scheme.subjects.flatMap(({ subject, components }) => [
+              <col className={allMode ? "w-36" : "w-[34%]"} />
+              {shown.flatMap(({ subject, components }) => [
                 ...components.map((c) => <col key={`${subject}-${c.key}`} />),
                 <col key={`${subject}-total`} />,
                 <col key={`${subject}-ab`} />,
@@ -147,20 +178,20 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
             </colgroup>
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wide text-navy/50 border-b border-navy/8">
-                <th rowSpan={2} className="px-3 py-2 text-left">Student</th>
-                {scheme.subjects.map(({ subject, components }) => (
+                <th rowSpan={2} className="px-3 py-2 text-left sticky left-0 z-10 bg-white">Student</th>
+                {shown.map(({ subject, components }) => (
                   <th key={subject} colSpan={components.length + 2} className="px-1 pt-2.5 pb-1 text-center leading-tight border-l border-navy/8">
                     {subject}
                   </th>
                 ))}
-                <th rowSpan={2} className="px-1 py-2 text-center leading-tight border-l-2 border-navy/15 bg-navy/[0.03]">
+                <th rowSpan={2} className={`px-1 py-2 text-center leading-tight border-l-2 border-navy/15 bg-navy/[0.03] ${allMode ? "" : "max-sm:hidden"}`}>
                   Grand
                   <span className="block text-[10px] text-navy/40">/{grandMax}</span>
                 </th>
-                <th rowSpan={2} className="px-1 py-2 text-center bg-navy/[0.03]">%</th>
+                <th rowSpan={2} className={`px-1 py-2 text-center bg-navy/[0.03] ${allMode ? "" : "max-sm:hidden"}`}>%</th>
               </tr>
               <tr className="text-[10px] font-semibold text-navy/40 border-b border-navy/8">
-                {scheme.subjects.map(({ subject, components }) => [
+                {shown.map(({ subject, components }) => [
                   ...components.map((c, i) => (
                     <th key={`${subject}-${c.key}`} className={`px-0.5 pb-1.5 text-center leading-tight ${i === 0 ? "border-l border-navy/8" : ""}`}>
                       {COMPONENT_SHORT[c.key] || c.label}
@@ -180,8 +211,10 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
                   }, 0);
                   return (
                   <tr key={s.id} className="border-b border-navy/6 last:border-0">
-                    <td className="px-3 py-2 font-medium text-navy truncate" title={s.full_name}>{s.full_name}</td>
-                    {scheme.subjects.map(({ subject, components }) => {
+                    <td className="px-3 py-2 font-medium text-navy truncate sticky left-0 z-10 bg-white max-w-[9rem]" title={s.full_name}>
+                      {s.full_name}
+                    </td>
+                    {shown.map(({ subject, components }) => {
                       const cell = cellOf(s.id, subject);
                       const total = components.reduce((sum, c) => sum + (Number(cell.components[c.key]) || 0), 0);
                       return [
@@ -205,7 +238,7 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
                                   if (raw !== "" && (!/^\d+$/.test(raw) || Number(raw) > c.max)) return;
                                   updateCell(s.id, subject, { components: { [c.key]: raw === "" ? "" : String(Number(raw)) } });
                                 }}
-                                className={`w-full min-w-0 px-0 py-1.5 rounded-md border text-center text-sm disabled:bg-navy/5 ${
+                                className={`w-full min-w-0 px-0 rounded-md border text-center text-sm bg-white disabled:bg-navy/5 ${allMode ? "py-1.5" : "py-2.5"} ${
                                   isOverMax(value, c.max) ? "border-red-500 bg-red-50" : "border-navy/15"
                                 }`}
                               />
@@ -232,8 +265,8 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
                         </td>,
                       ];
                     })}
-                    <td className="px-1 py-2 text-center font-bold text-navy border-l-2 border-navy/15 bg-navy/[0.03]">{grandTotal}</td>
-                    <td className="px-1 py-2 text-center text-xs font-semibold text-navy bg-navy/[0.03]">
+                    <td className={`px-1 py-2 text-center font-bold text-navy border-l-2 border-navy/15 bg-navy/[0.03] ${allMode ? "" : "max-sm:hidden"}`}>{grandTotal}</td>
+                    <td className={`px-1 py-2 text-center text-xs font-semibold text-navy bg-navy/[0.03] ${allMode ? "" : "max-sm:hidden"}`}>
                       {grandMax ? `${Math.round((grandTotal * 1000) / grandMax) / 10}%` : "—"}
                     </td>
                   </tr>
@@ -241,6 +274,7 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
                 })}
               </tbody>
           </table>
+          </div>
         </Card>
       )}
 

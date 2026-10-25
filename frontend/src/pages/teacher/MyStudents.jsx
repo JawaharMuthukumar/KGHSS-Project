@@ -11,6 +11,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { TableSkeleton } from "../../components/ui/Skeleton";
 import { useToast } from "../../components/ui/Toast";
+import DownloadButton from "../../components/ui/DownloadButton";
 import { api, ApiError } from "../../lib/apiClient";
 
 export default function MyStudents() {
@@ -45,7 +46,13 @@ export default function MyStudents() {
 
   return (
     <div>
-      <PortalPageHeader title="My Class Students" description={classCode ? `Class ${classCode}` : undefined} />
+      <PortalPageHeader
+        title="My Class Students"
+        description={classCode ? `Class ${classCode}` : undefined}
+        actions={
+          classCode && <DownloadButton path="/exports/students.csv" query={{ class_code: classCode }} filename={`students_${classCode}.csv`} />
+        }
+      />
 
       {!loadingProfile && !classCode && (
         <EmptyState

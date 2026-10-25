@@ -261,22 +261,38 @@ def save_class_marks(class_code: str, term: str, data: MarksIn, db: Session = De
         for subject, value in values.items():
             if subject not in subjects: raise HTTPException(422, f"{subject} is not a subject for class {cls.code}")
             teacher_or_admin(account, db, cls, subject)
-            scheme = schemes[subject]
-            absent = bool(value.get("absent", False)); entered = value.get("components") or {}
-            components = {}
-            if not absent:
-                for key, label, limit in scheme:
-                    try: points = int(entered.get(key, 0) or 0)
-                    except (TypeError, ValueError): raise HTTPException(422, f"Invalid {label} mark for {subject}")
-                    if points < 0 or points > limit: raise HTTPException(422, f"{subject} {label} must be between 0 and {limit}")
-                    components[key] = points
-            score = sum(components.values()); maximum = sum(limit for _, _, limit in scheme)
-            mark = db.query(Mark).filter_by(student_id=student.id, assessment_id=assessment.id, subject=subject).first()
-            if mark:
-                mark.score, mark.maximum_score, mark.absent, mark.components, mark.entered_by = score, maximum, absent, components, account.id
-            else: db.add(Mark(student_id=student.id, assessment_id=assessment.id, subject=subject, score=score, maximum_score=maximum, absent=absent, components=components, entered_by=account.id))
+            upsert_mark(db, student.id, assessment, subject, clean_mark(subject, schemes[subject], value), account)
             saved += 1
     db.commit(); return {"class_code": cls.code, "term": term, "saved_marks": saved}
+
+
+def clean_mark(subject: str, scheme: list, value: dict, who: str = "") -> dict:
+    """Validate one student's mark for one subject against its scheme: {absent, components, score, maximum}."""
+    absent = bool(value.get("absent", False)); entered = value.get("components") or {}
+    components = {}
+    if not absent:
+        for key, label, limit in scheme:
+            try: points = int(entered.get(key, 0) or 0)
+            except (TypeError, ValueError): raise HTTPException(422, f"{who}Invalid {label} mark for {subject}")
+            if points < 0 or points > limit: raise HTTPException(422, f"{who}{subject} {label} must be between 0 and {limit}")
+            components[key] = points
+    return {"absent": absent, "components": components, "score": sum(components.values()), "maximum": sum(l for _, _, l in scheme)}
+
+
+def upsert_mark(db: Session, student_id: int, assessment: Assessment, subject: str, cleaned: dict, account: Account):
+    """Write one subject's mark for one student; other subjects are never touched."""
+    mark = db.query(Mark).filter_by(student_id=student_id, assessment_id=assessment.id, subject=subject).first()
+    if not mark:
+        mark = Mark(student_id=student_id, assessment_id=assessment.id, subject=subject); db.add(mark)
+    mark.score, mark.maximum_score, mark.absent = cleaned["score"], cleaned["maximum"], cleaned["absent"]
+    mark.components, mark.entered_by = cleaned["components"], account.id
+
+
+def term_assessment(db: Session, cls: AcademicClass, term: str, create: bool = False) -> Assessment | None:
+    assessment = db.query(Assessment).filter_by(class_id=cls.id, term=term, academic_year=cls.academic_year).first()
+    if not assessment and create:
+        assessment = Assessment(class_id=cls.id, term=term, academic_year=cls.academic_year); db.add(assessment); db.flush()
+    return assessment
 
 
 @router.get("/students/{student_id}/results")

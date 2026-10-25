@@ -10,6 +10,7 @@ import FormField, { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api, ApiError } from "../../lib/apiClient";
 import { TableSkeleton } from "../../components/ui/Skeleton";
+import DownloadButton from "../../components/ui/DownloadButton";
 import { useToast } from "../../components/ui/Toast";
 import { mobileInputProps, toMobileDigits } from "../../utils/mobile";
 
@@ -81,6 +82,7 @@ export default function Teachers() {
         description="Add teachers, edit their details, or deactivate accounts."
         actions={
           <>
+            <DownloadButton path="/exports/teachers.csv" filename="teachers.csv" className="py-2.5! px-4! text-sm!" />
             <button
               type="button"
               onClick={() => setSubjectsOpen(true)}

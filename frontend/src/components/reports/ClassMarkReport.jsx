@@ -6,6 +6,7 @@ import { PASS_MARK } from "../../constants/academic";
 import { ContentSkeleton } from "../ui/Skeleton";
 import { printElement } from "../../lib/printElement";
 import { PrintButton } from "./MyClassReport";
+import DownloadButton from "../ui/DownloadButton";
 
 export default function ClassMarkReport({ classCode, term }) {
   const sheet = useRef(null);
@@ -24,7 +25,15 @@ export default function ClassMarkReport({ classCode, term }) {
 
   return (
     <div>
-      <PrintButton onClick={() => printElement(sheet.current, { title: `${data.class_code} ${term} - Class Mark Report` })} />
+      <div className="flex flex-wrap justify-end gap-2">
+        <DownloadButton
+          path="/exports/mark-report.csv"
+          query={{ class_code: data.class_code, term }}
+          filename={`${data.class_code}_${term}_mark_report.csv`.replace(/\s+/g, "-")}
+          className="mb-3"
+        />
+        <PrintButton onClick={() => printElement(sheet.current, { title: `${data.class_code} ${term} - Class Mark Report` })} />
+      </div>
       <Card className="p-0 overflow-hidden">
         {/* Only this element is printed (light, landscape), without the portal header, tabs or menus. */}
         <div ref={sheet} className="overflow-x-auto print:overflow-visible">

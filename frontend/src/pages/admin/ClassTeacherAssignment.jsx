@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import PortalPageHeader from "../../components/portal/PortalPageHeader";
+import DownloadButton from "../../components/ui/DownloadButton";
 import Icon from "../../components/ui/Icon";
 import Banner from "../../components/portal/Banner";
 import Drawer from "../../components/portal/Drawer";
@@ -18,7 +19,11 @@ export default function ClassTeacherAssignment() {
 
   return (
     <div>
-      <PortalPageHeader title="Class Teacher Assignment" description="One class teacher per class section; a teacher can be class teacher of more than one section." />
+      <PortalPageHeader
+        title="Class Teacher Assignment"
+        description="One class teacher per class section; a teacher can be class teacher of more than one section."
+        actions={<DownloadButton path="/exports/class-teachers.csv" filename="class_teachers.csv" />}
+      />
 
       {error && <Banner tone="error" className="mb-4">Could not load classes. {error.message}</Banner>}
       {loading && <CardGridSkeleton count={8} />}

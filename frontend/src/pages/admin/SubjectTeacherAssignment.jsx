@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import PortalPageHeader from "../../components/portal/PortalPageHeader";
+import DownloadButton from "../../components/ui/DownloadButton";
 import Card from "../../components/ui/Card";
 import Icon from "../../components/ui/Icon";
 import Banner from "../../components/portal/Banner";
@@ -94,6 +95,7 @@ export default function SubjectTeacherAssignment() {
       <PortalPageHeader
         title="Subject Teachers"
         description="Assign a teacher for each subject and period in a class. Any teacher can take any subject — e.g. a Maths teacher can also take Tamil in another class."
+        actions={<DownloadButton path="/exports/subject-teachers.csv" filename="subject_teachers.csv" label="Download all (CSV)" />}
       />
 
       <Card className="p-5 mb-5">

@@ -318,3 +318,20 @@ class OtherSubject(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(60), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class MarkSubmission(Base):
+    """A subject teacher's verified marks for one class + subject + exam, waiting for the class teacher to accept."""
+    __tablename__ = "mark_submissions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    class_id: Mapped[int] = mapped_column(ForeignKey("classes.id", ondelete="CASCADE"), index=True)
+    academic_year: Mapped[str] = mapped_column(String(9))
+    term: Mapped[str] = mapped_column(String(40))
+    subject: Mapped[str] = mapped_column(String(60))
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("teachers.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)  # pending / accepted / returned
+    entries: Mapped[dict] = mapped_column(JSON)  # {student_id: {"absent": bool, "components": {key: int}}}
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)  # class teacher's reason when returning
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)

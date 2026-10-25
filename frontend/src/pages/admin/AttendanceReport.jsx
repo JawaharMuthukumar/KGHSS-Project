@@ -6,6 +6,7 @@ import { inputClass } from "../../components/portal/FormField";
 import AttendanceReportPanel from "../../components/reports/AttendanceReportPanel";
 import { useApiResource } from "../../hooks/useApiResource";
 import { TableSkeleton } from "../../components/ui/Skeleton";
+import DownloadButton from "../../components/ui/DownloadButton";
 
 export default function AdminAttendanceReport() {
   const { data: classes } = useApiResource("/classes");
@@ -15,9 +16,22 @@ export default function AdminAttendanceReport() {
 
   return (
     <div>
-      <PortalPageHeader title="Attendance Report" description="Monthly attendance by class, with admin unlock." />
+      <PortalPageHeader
+        title="Attendance Report"
+        description="Monthly attendance by class, with admin unlock."
+        actions={<DownloadButton path="/exports/attendance.csv" filename="attendance_school.csv" label="School summary (CSV)" />}
+      />
 
-      <Card className="p-4 mb-5">
+      <Card className="p-4 mb-5 flex flex-wrap items-center gap-3">
+        {classCode && (
+          <DownloadButton
+            path="/exports/attendance.csv"
+            query={{ class_code: classCode }}
+            filename={`attendance_${classCode}.csv`}
+            label={`${classCode} per student (CSV)`}
+            className="order-last sm:ml-auto"
+          />
+        )}
         <select value={classCode} onChange={(e) => setClassCode(e.target.value)} className={inputClass + " max-w-[10rem]"}>
           <option value="">Select a class…</option>
           {(classes || []).map((c) => (

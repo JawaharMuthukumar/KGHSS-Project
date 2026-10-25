@@ -8,6 +8,7 @@ import StudentProfilePanel from "../../components/portal/StudentProfilePanel";
 import { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { TableSkeleton } from "../../components/ui/Skeleton";
+import DownloadButton from "../../components/ui/DownloadButton";
 
 export default function Students() {
   const { data: classes } = useApiResource("/classes");
@@ -28,7 +29,18 @@ export default function Students() {
 
   return (
     <div>
-      <PortalPageHeader title="Students" description="Browse students by class." />
+      <PortalPageHeader
+        title="Students"
+        description="Browse students by class."
+        actions={
+          <DownloadButton
+            path="/exports/students.csv"
+            query={{ class_code: classCode || undefined }}
+            filename={`students_${classCode || "all"}.csv`}
+            label={classCode ? `Download ${classCode} CSV` : "Download all (CSV)"}
+          />
+        }
+      />
 
       <Card className="p-4 mb-5 flex flex-wrap gap-3 items-center">
         <select value={classCode} onChange={(e) => setClassCode(e.target.value)} className={inputClass + " max-w-[10rem]"}>

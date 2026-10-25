@@ -8,6 +8,7 @@ import { selectTeacherClass, useMyTeacherProfile } from "../../hooks/useMyTeache
 import { useAutoCapitalize } from "../../hooks/useAutoCapitalize";
 import { enableAppInstall } from "../../lib/installApp";
 import InstallAppBanner from "./InstallAppBanner";
+import ChangePasswordDialog from "./ChangePasswordDialog";
 import { AlertsProvider, useAlerts } from "../../context/AlertsContext";
 import { formatDate } from "../../utils/formatDate";
 
@@ -207,7 +208,7 @@ function MobileTabBar({ role, counts, onMore, moreOpen }) {
 }
 
 /** Bottom sheet listing every page of the role's menu as an app-style icon grid, plus sign out. */
-function MoreSheet({ role, user, counts, onClose, onLogout }) {
+function MoreSheet({ role, user, counts, onClose, onLogout, onChangePassword }) {
   const items = flatNav(role);
   return (
     <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
@@ -251,7 +252,15 @@ function MoreSheet({ role, user, counts, onClose, onLogout }) {
             </NavLink>
           ))}
         </div>
-        <div className="px-5 pb-4 pt-1">
+        <div className="px-5 pb-4 pt-1 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={onChangePassword}
+            className="w-full flex items-center justify-center gap-2 rounded-full border border-navy/15 py-3 text-sm font-semibold text-navy hover:bg-navy/5"
+          >
+            <Icon name="KeyRound" size={17} />
+            Change Password
+          </button>
           <button
             type="button"
             onClick={onLogout}
@@ -305,6 +314,7 @@ function PortalShell({ role }) {
   const pageTitle = usePageTitle(role);
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(readDarkMode);
   const items = portalNav[role] || [];
   useAutoCapitalize(role === "admin" || role === "teacher");
@@ -439,6 +449,18 @@ function PortalShell({ role }) {
                   <button
                     type="button"
                     role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setPasswordOpen(true);
+                    }}
+                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-navy hover:bg-navy/5 transition-colors border-b border-navy/8"
+                  >
+                    <Icon name="KeyRound" size={17} />
+                    Change Password
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
                     onClick={handleLogout}
                     className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
                   >
@@ -458,13 +480,41 @@ function PortalShell({ role }) {
         )}
 
         <main className="flex-1 px-4 pt-4 pb-28 sm:px-5 sm:pt-5 lg:p-7 max-w-[1440px] w-full mx-auto">
+          {user?.password_is_default && (
+            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+              <Icon name="KeyRound" size={18} className="shrink-0" />
+              <p className="flex-1 min-w-[12rem] text-sm">
+                <strong className="font-semibold">You're using the default password.</strong> Change it to keep your account safe.
+              </p>
+              <button
+                type="button"
+                onClick={() => setPasswordOpen(true)}
+                className="bg-gold text-navy-dark font-semibold text-sm px-4 py-2 rounded-full hover:bg-gold-light transition-colors max-sm:w-full"
+              >
+                Change Password
+              </button>
+            </div>
+          )}
           <InstallAppBanner />
           <Outlet />
         </main>
       </div>
 
       <MobileTabBar role={role} counts={counts} moreOpen={moreOpen} onMore={() => setMoreOpen((v) => !v)} />
-      {moreOpen && <MoreSheet role={role} user={user} counts={counts} onClose={() => setMoreOpen(false)} onLogout={handleLogout} />}
+      {moreOpen && (
+        <MoreSheet
+          role={role}
+          user={user}
+          counts={counts}
+          onClose={() => setMoreOpen(false)}
+          onLogout={handleLogout}
+          onChangePassword={() => {
+            setMoreOpen(false);
+            setPasswordOpen(true);
+          }}
+        />
+      )}
+      <ChangePasswordDialog open={passwordOpen} onClose={() => setPasswordOpen(false)} />
 
       {role === "student" && <ComplaintFab />}
     </div>

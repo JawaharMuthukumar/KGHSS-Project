@@ -13,7 +13,9 @@ import { TableSkeleton } from "../../components/ui/Skeleton";
 import { useToast } from "../../components/ui/Toast";
 import { mobileInputProps, toMobileDigits } from "../../utils/mobile";
 
-const emptyForm = { full_name: "", subject: "", phone: "", password: "", is_active: true };
+// New teachers start with the school's default password; the portal reminds them to change it after signing in.
+const DEFAULT_TEACHER_PASSWORD = "12345678";
+const emptyForm = { full_name: "", subject: "", phone: "", password: DEFAULT_TEACHER_PASSWORD, is_active: true };
 
 /** Exam subjects (from the mark scheme and groups) followed by the HM's other subjects (Physical Education, …). */
 const subjectNames = (data) => [...(data?.exam_subjects || []), ...(data?.other_subjects || []).map((o) => o.name)];
@@ -486,7 +488,12 @@ function TeacherForm({ mode, teacher, onCancel, onSuccess }) {
         <input id="phone" name="phone" {...mobileInputProps} value={form.phone} onChange={handleChange} className={inputClass} />
       </FormField>
       {mode === "create" && (
-        <FormField label="Temporary Password" htmlFor="password" required hint="Minimum 8 characters. Share this with the teacher.">
+        <FormField
+          label="Temporary Password"
+          htmlFor="password"
+          required
+          hint={`Default is ${DEFAULT_TEACHER_PASSWORD}. The teacher is asked to change it after signing in.`}
+        >
           <input
             id="password"
             name="password"

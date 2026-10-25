@@ -85,7 +85,8 @@ def create_teacher(data: TeacherCreate, db: Session = Depends(get_db), _: Accoun
     employee_id=f"GHSS/T/{index}"
     while db.query(Account).filter_by(username=employee_id).first():
         index+=1; employee_id=f"GHSS/T/{index}"
-    account = Account(username=employee_id, role="teacher", full_name=data.full_name, password_hash=hash_password(data.password))
+    # The admin-chosen password is temporary: the teacher is reminded to change it after signing in.
+    account = Account(username=employee_id, role="teacher", full_name=data.full_name, password_hash=hash_password(data.password), password_is_default=True)
     db.add(account); db.flush()
     teacher = Teacher(account_id=account.id, employee_id=employee_id, subject=data.subject, phone=data.phone)
     db.add(teacher); db.commit(); db.refresh(teacher)

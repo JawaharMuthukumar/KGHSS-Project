@@ -61,6 +61,7 @@ def initialize_schema_and_reference_classes():
         ("students", "mother_phone", "VARCHAR(30)"),
         ("students", "status", "VARCHAR(20)"),
         ("classes", "intake_open", "BOOLEAN"),
+        ("accounts", "password_is_default", "BOOLEAN"),
     ]
     inspector = inspect(engine)
     for table, column, ddl_type in added_columns:
@@ -71,6 +72,7 @@ def initialize_schema_and_reference_classes():
     with engine.begin() as conn:
         conn.execute(text("UPDATE students SET status = 'active' WHERE status IS NULL"))
         conn.execute(text("UPDATE classes SET intake_open = TRUE WHERE intake_open IS NULL"))
+        conn.execute(text("UPDATE accounts SET password_is_default = FALSE WHERE password_is_default IS NULL"))
     # A teacher may now be class teacher of several classes; drop the old one-class-per-teacher constraint.
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE class_teacher_assignments DROP CONSTRAINT IF EXISTS class_teacher_assignments_teacher_id_academic_year_key"))

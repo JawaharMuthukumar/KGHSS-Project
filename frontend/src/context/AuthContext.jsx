@@ -73,7 +73,13 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const value = useMemo(() => ({ user, ready, login, logout }), [user, ready]);
+  // Refresh the signed-in user's details (e.g. after changing the default password).
+  const updateUser = (next) => {
+    authStorage.setItem(USER_KEY, JSON.stringify(next));
+    setUser(next);
+  };
+
+  const value = useMemo(() => ({ user, ready, login, logout, updateUser }), [user, ready]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

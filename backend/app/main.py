@@ -6,12 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
 from app.api.groups import router as groups_router
+from app.api.subjects import router as subjects_router
 from app.api.promotions import router as promotions_router
 from app.api.school import router as school_router
 from app.core.config import settings
 from app.core.database import Base, engine, get_db
 from app.models import entities  # noqa: F401 - registers models with SQLAlchemy metadata
-from app.models.entities import AcademicClass, SubjectGroup
+from app.models.entities import AcademicClass, OtherSubject, SubjectGroup
 from app.services.mark_scheme import GROUP_SUBJECTS, HSC_PRACTICAL_SUBJECTS
 
 app = FastAPI(
@@ -36,6 +37,7 @@ app.include_router(auth_router, prefix=settings.api_v1_prefix)
 app.include_router(school_router, prefix=settings.api_v1_prefix)
 app.include_router(promotions_router, prefix=settings.api_v1_prefix)
 app.include_router(groups_router, prefix=settings.api_v1_prefix)
+app.include_router(subjects_router, prefix=settings.api_v1_prefix)
 app.mount("/uploads", StaticFiles(directory="uploads", check_dir=False), name="uploads")
 
 
@@ -125,6 +127,9 @@ def initialize_schema_and_reference_classes():
         for letter, name in (("A", "P/C/M/CS"), ("B", "P/C/B/M"), ("C", "P/C/B/CS")):
             if not db.query(SubjectGroup).filter((SubjectGroup.name == name) | (SubjectGroup.letter == letter)).first():
                 db.add(SubjectGroup(name=name, letter=letter, subjects=[{"subject": s, "practical": s in HSC_PRACTICAL_SUBJECTS} for s in GROUP_SUBJECTS[name]]))
+        # Non-exam periods the timetable always offered; the HM adds more (e.g. Physical Education) from Teachers.
+        if not db.query(OtherSubject).first():
+            db.add_all(OtherSubject(name=n) for n in ("PET", "Library", "Value Education", "Lab", "Drawing", "Yoga"))
         db.commit()
 
 

@@ -15,8 +15,8 @@ import { mobileInputProps, toMobileDigits } from "../../utils/mobile";
 
 const emptyForm = { full_name: "", subject: "", phone: "", password: "", is_active: true };
 
-// Mirrors the subjects in backend app/services/mark_scheme.py.
-const SUBJECTS = ["Biology", "Chemistry", "Computer Science", "English", "Maths", "Physics", "Science", "Social Science", "Tamil"];
+/** Exam subjects (from the mark scheme and groups) followed by the HM's other subjects (Physical Education, …). */
+const subjectNames = (data) => [...(data?.exam_subjects || []), ...(data?.other_subjects || []).map((o) => o.name)];
 
 export default function Teachers() {
   const { data: teachers, loading, error, reload } = useApiResource("/teachers");
@@ -24,6 +24,7 @@ export default function Teachers() {
   const [drawer, setDrawer] = useState(null); // { mode: 'create' | 'view' | 'edit', teacher? }
   const [credentials, setCredentials] = useState(null);
   const [actionError, setActionError] = useState("");
+  const [subjectsOpen, setSubjectsOpen] = useState(false);
   const toast = useToast();
 
   const openTeacher = (teacher, mode = "view") => {
@@ -77,14 +78,24 @@ export default function Teachers() {
         title="Teachers"
         description="Add teachers, edit their details, or deactivate accounts."
         actions={
-          <button
-            type="button"
-            onClick={() => setDrawer({ mode: "create" })}
-            className="flex items-center gap-1.5 bg-gold text-navy-dark font-semibold text-sm px-4 py-2.5 rounded-full hover:bg-gold-light transition-colors"
-          >
-            <Icon name="UserPlus" size={16} />
-            Add Teacher
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setSubjectsOpen(true)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-navy border border-navy/15 px-4 py-2.5 rounded-full hover:bg-navy/5"
+            >
+              <Icon name="BookOpen" size={16} />
+              Subjects
+            </button>
+            <button
+              type="button"
+              onClick={() => setDrawer({ mode: "create" })}
+              className="flex items-center gap-1.5 bg-gold text-navy-dark font-semibold text-sm px-4 py-2.5 rounded-full hover:bg-gold-light transition-colors"
+            >
+              <Icon name="UserPlus" size={16} />
+              Add Teacher
+            </button>
+          </>
         }
       />
 
@@ -222,6 +233,104 @@ export default function Teachers() {
           </div>
         )}
       </Drawer>
+
+      <Drawer open={subjectsOpen} onClose={() => setSubjectsOpen(false)} title="Subjects">
+        {subjectsOpen && <SubjectsPanel />}
+      </Drawer>
+    </div>
+  );
+}
+
+/** HM adds or removes non-exam subjects (Physical Education, Library, …); exam subjects come from the mark scheme. */
+function SubjectsPanel() {
+  const { data, loading, error, reload } = useApiResource("/subjects");
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+
+  const add = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    try {
+      const res = await api.post("/subjects", { name: name.trim() });
+      toast.success(`${res.added} added`);
+      setName("");
+      await reload();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not add this subject.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (subject) => {
+    if (!window.confirm(`Remove ${subject.name} from the subject list?`)) return;
+    try {
+      await api.delete(`/subjects/${subject.id}`);
+      toast.success(`${subject.name} removed`);
+      await reload();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not remove this subject.");
+    }
+  };
+
+  if (error) return <Banner tone="error">{error.message}</Banner>;
+  return (
+    <div className="flex flex-col gap-5">
+      <form onSubmit={add} className="flex gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Physical Education"
+          aria-label="New subject"
+          className={inputClass}
+        />
+        <button
+          type="submit"
+          disabled={busy || name.trim().length < 2}
+          className="shrink-0 bg-gold text-navy-dark font-semibold text-sm px-5 rounded-full hover:bg-gold-light transition-colors disabled:opacity-50"
+        >
+          Add
+        </button>
+      </form>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-navy/45 mb-2">Other subjects &amp; periods</p>
+        {loading && <TableSkeleton rows={4} columns={2} />}
+        <ul className="flex flex-col divide-y divide-navy/6">
+          {(data?.other_subjects || []).map((o) => (
+            <li key={o.id} className="flex items-center justify-between gap-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium text-navy">{o.name}</p>
+                {o.teacher_count > 0 && <p className="text-[11px] text-navy/45">{o.teacher_count} teacher(s)</p>}
+              </div>
+              <button
+                type="button"
+                onClick={() => remove(o)}
+                disabled={o.teacher_count > 0}
+                title={o.teacher_count > 0 ? "A teacher has this subject" : "Remove"}
+                aria-label={`Remove ${o.name}`}
+                className="p-2 rounded-lg text-red-500/70 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <Icon name="Trash2" size={15} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-navy/45 mb-2">Exam subjects</p>
+        <div className="flex flex-wrap gap-1.5">
+          {(data?.exam_subjects || []).map((s) => (
+            <span key={s} className="text-xs px-2.5 py-1 rounded-full bg-navy/6 text-navy/70">
+              {s}
+            </span>
+          ))}
+        </div>
+        <p className="text-[11px] text-navy/40 mt-2">These come from the class subjects and the 11th/12th groups (Promotions → Groups).</p>
+      </div>
     </div>
   );
 }
@@ -290,12 +399,13 @@ function Field({ label, value }) {
 }
 
 function TeacherForm({ mode, teacher, onCancel, onSuccess }) {
+  const { data: subjectData, reload: reloadSubjects } = useApiResource("/subjects");
+  const subjects = subjectNames(subjectData);
   const [form, setForm] = useState(
     mode === "edit"
       ? {
           full_name: teacher.full_name,
-          // Normalise legacy free-text values like "tamil" onto the canonical list.
-          subject: SUBJECTS.find((s) => s.toLowerCase() === (teacher.subject || "").trim().toLowerCase()) || "",
+          subject: (teacher.subject || "").trim(),
           phone: toMobileDigits(teacher.phone),
           password: "",
           is_active: teacher.is_active,
@@ -310,8 +420,10 @@ function TeacherForm({ mode, teacher, onCancel, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!SUBJECTS.includes(form.subject)) {
-      setError("Please choose a subject from the list.");
+    // Match legacy free-text values like "tamil" onto the canonical list.
+    const subject = subjects.find((s) => s.toLowerCase() === form.subject.trim().toLowerCase());
+    if (!subject) {
+      setError("Please choose a subject from the list, or add it as a new subject.");
       return;
     }
     setSubmitting(true);
@@ -319,7 +431,7 @@ function TeacherForm({ mode, teacher, onCancel, onSuccess }) {
       if (mode === "create") {
         const created = await api.post("/teachers", {
           full_name: form.full_name,
-          subject: form.subject,
+          subject,
           phone: form.phone || undefined,
           password: form.password,
         });
@@ -327,7 +439,7 @@ function TeacherForm({ mode, teacher, onCancel, onSuccess }) {
       } else {
         const updated = await api.patch(`/teachers/${teacher.id}`, {
           full_name: form.full_name,
-          subject: form.subject,
+          subject,
           phone: form.phone || undefined,
           is_active: form.is_active,
         });
@@ -353,8 +465,22 @@ function TeacherForm({ mode, teacher, onCancel, onSuccess }) {
           className={inputClass}
         />
       </FormField>
-      <FormField label="Subject" htmlFor="subject" required>
-        <SubjectPicker value={form.subject} onChange={(subject) => setForm((f) => ({ ...f, subject }))} />
+      <FormField
+        label="Main Subject"
+        htmlFor="subject"
+        required
+        hint="Shown on their profile. The classes and subjects they actually take are set in Subject Teachers — they can take other subjects too."
+      >
+        <SubjectPicker
+          value={form.subject}
+          options={subjects}
+          onChange={(subject) => setForm((f) => ({ ...f, subject }))}
+          onAdd={async (name) => {
+            const res = await api.post("/subjects", { name });
+            await reloadSubjects();
+            return res.added;
+          }}
+        />
       </FormField>
       <FormField label="Phone" htmlFor="phone" hint="Optional">
         <input id="phone" name="phone" {...mobileInputProps} value={form.phone} onChange={handleChange} className={inputClass} />
@@ -421,14 +547,30 @@ function TeacherForm({ mode, teacher, onCancel, onSuccess }) {
   );
 }
 
-function SubjectPicker({ value, onChange }) {
+function SubjectPicker({ value, options: all, onChange, onAdd }) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState("");
 
   // Show the full list until the user types something different from the chosen subject.
   const q = query.trim().toLowerCase();
-  const options = !q || query === value ? SUBJECTS : SUBJECTS.filter((s) => s.toLowerCase().startsWith(q));
+  const options = !q || query === value ? all : all.filter((s) => s.toLowerCase().includes(q));
+  // Typed something that isn't a subject yet: offer to add it (e.g. Physical Education).
+  const canAdd = Boolean(onAdd) && q.length >= 2 && !all.some((s) => s.toLowerCase() === q);
+
+  const addNew = async () => {
+    setAdding(true);
+    setAddError("");
+    try {
+      choose(await onAdd(query.trim()));
+    } catch (err) {
+      setAddError(err instanceof ApiError ? err.message : "Could not add this subject.");
+    } finally {
+      setAdding(false);
+    }
+  };
 
   const choose = (subject) => {
     onChange(subject);
@@ -437,8 +579,9 @@ function SubjectPicker({ value, onChange }) {
   };
 
   const handleBlur = () => {
+    if (adding) return;
     setOpen(false);
-    const exact = SUBJECTS.find((s) => s.toLowerCase() === q);
+    const exact = all.find((s) => s.toLowerCase() === q);
     if (exact) choose(exact);
     else setQuery(value);
   };
@@ -492,7 +635,7 @@ function SubjectPicker({ value, onChange }) {
           role="listbox"
           className="absolute z-20 mt-1.5 w-full max-h-60 overflow-y-auto bg-white border border-navy/10 rounded-2xl shadow-lg py-1.5"
         >
-          {options.length === 0 && <li className="px-4 py-2.5 text-sm text-navy/40">No matching subject</li>}
+          {options.length === 0 && !canAdd && <li className="px-4 py-2.5 text-sm text-navy/40">No matching subject</li>}
           {options.map((s, i) => (
             <li
               key={s}
@@ -512,8 +655,23 @@ function SubjectPicker({ value, onChange }) {
               {s === value && <Icon name="Check" size={15} className="text-gold" />}
             </li>
           ))}
+          {canAdd && (
+            <li
+              role="option"
+              aria-selected={false}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                if (!adding) addNew();
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gold-dark cursor-pointer border-t border-navy/8 hover:bg-gold/10"
+            >
+              <Icon name="Plus" size={15} />
+              {adding ? "Adding…" : `Add “${query.trim()}” as a new subject`}
+            </li>
+          )}
         </ul>
       )}
+      {addError && <p className="text-xs text-red-600 mt-1">{addError}</p>}
     </div>
   );
 }

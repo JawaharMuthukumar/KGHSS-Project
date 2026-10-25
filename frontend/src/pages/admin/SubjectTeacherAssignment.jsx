@@ -10,6 +10,8 @@ import { api } from "../../lib/apiClient";
 export default function SubjectTeacherAssignment() {
   const { data: classes, loading: loadingClasses } = useApiResource("/classes");
   const { data: teachers } = useApiResource("/teachers");
+  // Non-exam subjects/periods (PET, Physical Education, Library, …) can have a teacher per class too.
+  const { data: schoolSubjects } = useApiResource("/subjects");
   const [classCode, setClassCode] = useState("");
   const [subjects, setSubjects] = useState(null);
   const [assignments, setAssignments] = useState(null);
@@ -35,6 +37,37 @@ export default function SubjectTeacherAssignment() {
     [teachers]
   );
 
+  // Any teacher can take any subject; their main subject is only shown as a hint.
+  // Other periods also keep any older assignment whose subject is no longer in the list.
+  const otherSubjects = useMemo(() => {
+    const exam = new Set((subjects || []).map((s) => s.toLowerCase()));
+    const names = [...(schoolSubjects?.other_subjects || []).map((o) => o.name), ...(assignments || []).map((a) => a.subject)];
+    return [...new Set(names)].filter((s) => !exam.has(s.toLowerCase()));
+  }, [subjects, schoolSubjects, assignments]);
+
+  const renderRow = (subject) => (
+    <tr key={subject} className="border-b border-navy/6 last:border-0">
+      <td className="tc-primary px-4 py-3 font-medium text-navy">{subject}</td>
+      <td className="tc-full px-4 py-3">
+        <select
+          value={teacherFor(subject)}
+          onChange={(e) => handleAssign(subject, e.target.value)}
+          aria-label={`Teacher for ${subject}`}
+          className={inputClass + " md:max-w-xs"}
+        >
+          <option value="">— Unassigned —</option>
+          {sortedTeachers.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.full_name}
+              {t.subject ? ` · ${t.subject}` : ""}
+            </option>
+          ))}
+        </select>
+      </td>
+      <td className="tc-aside px-4 py-3 text-emerald-600">{savedSubject === subject && <Icon name="Check" size={16} />}</td>
+    </tr>
+  );
+
   const handleAssign = async (subject, teacherId) => {
     setSavedSubject(null);
     setError("");
@@ -58,7 +91,10 @@ export default function SubjectTeacherAssignment() {
 
   return (
     <div>
-      <PortalPageHeader title="Subject Teachers" description="Assign a subject teacher for each subject in a class." />
+      <PortalPageHeader
+        title="Subject Teachers"
+        description="Assign a teacher for each subject and period in a class. Any teacher can take any subject — e.g. a Maths teacher can also take Tamil in another class."
+      />
 
       <Card className="p-5 mb-5">
         <label className="block text-xs font-semibold text-navy/70 mb-1.5" htmlFor="class-select">
@@ -107,28 +143,15 @@ export default function SubjectTeacherAssignment() {
               </tr>
             </thead>
             <tbody>
-              {subjects.map((subject) => (
-                <tr key={subject} className="border-b border-navy/6 last:border-0">
-                  <td className="tc-primary px-4 py-3 font-medium text-navy">{subject}</td>
-                  <td className="tc-full px-4 py-3">
-                    <select
-                      value={teacherFor(subject)}
-                      onChange={(e) => handleAssign(subject, e.target.value)}
-                      className={inputClass + " md:max-w-xs"}
-                    >
-                      <option value="">— Unassigned —</option>
-                      {sortedTeachers.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="tc-aside px-4 py-3 text-emerald-600">
-                    {savedSubject === subject && <Icon name="Check" size={16} />}
+              {subjects.map(renderRow)}
+              {otherSubjects.length > 0 && (
+                <tr className="border-b border-navy/8">
+                  <td colSpan={3} className="px-4 pt-5 pb-2 text-xs font-semibold uppercase tracking-wide text-navy/45">
+                    Other subjects &amp; periods
                   </td>
                 </tr>
-              ))}
+              )}
+              {otherSubjects.map(renderRow)}
             </tbody>
           </table>
         </Card>

@@ -50,7 +50,12 @@ export default function ClassTimetableEditor({ classCode }) {
     setDirty(false);
   }, [entries]);
 
-  const subjectOptions = useMemo(() => [...new Set([...(subjectData?.subjects || []), ...EXTRA_PERIODS])], [subjectData]);
+  // The class's exam subjects, then the HM's other subjects/periods (PET, Library, Physical Education, …).
+  const { data: schoolSubjects } = useApiResource("/subjects");
+  const subjectOptions = useMemo(() => {
+    const extra = schoolSubjects ? schoolSubjects.other_subjects.map((o) => o.name) : EXTRA_PERIODS;
+    return [...new Set([...(subjectData?.subjects || []), ...extra])];
+  }, [subjectData, schoolSubjects]);
   // Only the teachers the admin assigned to this class (Admin → Subject Teachers) can take its periods.
   // Names also come from saved entries, so an old slot still shows who it was given to.
   const names = useMemo(() => {

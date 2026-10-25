@@ -308,3 +308,11 @@ class SubjectGroup(Base):
     letter: Mapped[str] = mapped_column(String(2), unique=True)
     subjects: Mapped[list] = mapped_column(JSON)  # [{"subject": "Physics", "practical": true}, ...]
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class OtherSubject(Base):
+    """Non-exam subjects/periods the HM adds (Physical Education, Library, Yoga, …) for teachers and timetables."""
+    __tablename__ = "other_subjects"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(60), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

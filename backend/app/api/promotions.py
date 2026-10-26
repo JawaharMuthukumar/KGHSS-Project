@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.school import class_students, current_academic_year, get_class
+from app.api.school import (class_number_base, class_students, current_academic_year, get_class, next_ghss_registration_no,
+    renumber_class, renumber_students)
 from app.core.database import get_db
 from app.core.dependencies import require_roles
 from app.models.entities import (Account, AcademicClass, ClassTeacherAssignment, Notice, PromotionEntry, PromotionList,
@@ -232,6 +233,16 @@ def start_new_year(data: StartYearIn, db: Session = Depends(get_db), _: Account 
             elif e.decision in ("left", "passed_out"):
                 # Records stay for certificates and history; the login stops working.
                 student.status = e.decision; student.account.is_active = False
+    db.flush()
+    # 6th–9th register numbers follow the class (6101 in 6A becomes 71xx in 7A); students who left 9th for 10th get a GHSS number.
+    renumber: dict[Student, str] = {}
+    for cls in classes: renumber.update(renumber_class(db, cls))
+    serial = int(next_ghss_registration_no(db, new_year)[-4:])
+    for cls in sorted((c for c in classes if class_number_base(c) is None), key=lambda c: c.code):
+        for s in class_students(db, cls).order_by(Student.registration_no):
+            if s.registration_no.isdigit():
+                renumber[s] = f"GHSS/{new_year[:4]}/{serial:04d}"; serial += 1
+    renumber_students(db, renumber)
     for cls in classes:
         cls.academic_year = new_year
     # Last year's class notices were for last year's batch.

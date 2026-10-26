@@ -39,6 +39,53 @@ def class_students(db: Session, cls: AcademicClass):
     return db.query(Student).filter(Student.class_id == cls.id, Student.status == "active")
 
 
+def class_number_base(cls: AcademicClass) -> int | None:
+    """6th–9th use the school's class-wise register numbers: 6A → 6101, 6102…, 6B → 6201…, 9B → 9201….
+    Other classes (10th–12th) keep the GHSS/<year>/<serial> numbers."""
+    section = (cls.section or "").strip().upper()
+    if not 6 <= cls.grade <= 9 or len(section) != 1 or not "A" <= section <= "I": return None
+    return cls.grade * 1000 + (ord(section) - ord("A") + 1) * 100
+
+
+def next_ghss_registration_no(db: Session, academic_year: str) -> str:
+    prefix = f"GHSS/{academic_year[:4]}/"
+    used = [r for (r,) in db.query(Student.registration_no).filter(Student.registration_no.like(prefix + "%")) if r[len(prefix):].isdigit()]
+    return f"{prefix}{max((int(r[len(prefix):]) for r in used), default=0) + 1:04d}"
+
+
+def next_registration_no(db: Session, cls: AcademicClass) -> str:
+    base = class_number_base(cls)
+    if base is None: return next_ghss_registration_no(db, cls.academic_year)
+    used = {r for (r,) in db.query(Student.registration_no).filter(Student.registration_no.like(f"{base // 100}__"))}
+    serial = next((n for n in range(1, 100) if str(base + n) not in used), None)
+    if serial is None: raise HTTPException(409, f"Class {cls.code} has used all register numbers {base + 1}–{base + 99}")
+    return str(base + serial)
+
+
+def renumber_students(db: Session, assignments: dict[Student, str]):
+    """Give students new register numbers (their login username too) without ever holding a duplicate mid-way."""
+    for student in assignments:
+        student.registration_no = student.account.username = f"renumber-{student.id}"
+    db.flush()
+    for student, number in assignments.items():
+        student.registration_no = student.account.username = number
+    db.flush()
+
+
+def renumber_class(db: Session, cls: AcademicClass) -> dict[Student, str]:
+    """Number a 6th–9th class's current students from <base>01 in their present order. Former students
+    (TC / passed out) holding one of those numbers get the old year appended, e.g. 7105 → 7105-2026."""
+    base = class_number_base(cls)
+    if base is None: return {}
+    students = class_students(db, cls).order_by(Student.registration_no).all()
+    plan = {s: str(base + i) for i, s in enumerate(students, start=1)}
+    if len(plan) > 99: raise HTTPException(409, f"Class {cls.code} has more than 99 students; register numbers stop at {base + 99}")
+    wanted = set(plan.values())
+    for former in db.query(Student).filter(Student.registration_no.in_(wanted), Student.status != "active"):
+        plan[former] = f"{former.registration_no}-{cls.academic_year[:4]}"
+    return plan
+
+
 def year_months(academic_year: str) -> tuple[str, str]:
     """First and last attendance month (YYYY-MM) of an academic year: June to May."""
     start = int(academic_year[:4])
@@ -189,7 +236,7 @@ def create_student(data: StudentCreate, db: Session = Depends(get_db), account: 
     if account.role == "teacher":
         teacher_or_admin(account, db, cls)
         if not is_class_teacher_of(db, teacher_profile(db, account), cls): raise HTTPException(403, "Only the class teacher can enroll students")
-    registration = data.registration_no or f"GHSS/{cls.academic_year.split('-')[0]}/{(db.query(func.count(Student.id)).scalar() or 0) + 1:04d}"
+    registration = data.registration_no or next_registration_no(db, cls)
     username = registration
     if db.query(Account).filter_by(username=username).first() or db.query(Student).filter_by(registration_no=registration).first(): raise HTTPException(409, "Registration number already exists")
     if data.admission_no and db.query(Student).filter_by(admission_no=data.admission_no).first(): raise HTTPException(409, f"Admission number {data.admission_no} already exists")

@@ -208,8 +208,8 @@ function MobileTabBar({ role, counts, onMore, moreOpen }) {
   );
 }
 
-/** Bottom sheet listing every page of the role's menu as an app-style icon grid, plus sign out. */
-function MoreSheet({ role, user, counts, onClose, onLogout, onChangePassword, onChangeStaffId }) {
+/** Bottom sheet listing every page of the role's menu as an app-style icon grid (account actions live in the header avatar menu). */
+function MoreSheet({ role, user, counts, onClose }) {
   const items = flatNav(role);
   return (
     <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
@@ -252,34 +252,6 @@ function MoreSheet({ role, user, counts, onClose, onLogout, onChangePassword, on
               {item.label}
             </NavLink>
           ))}
-        </div>
-        <div className="px-5 pb-4 pt-1 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={onChangePassword}
-            className="w-full flex items-center justify-center gap-2 rounded-full border border-navy/15 py-3 text-sm font-semibold text-navy hover:bg-navy/5"
-          >
-            <Icon name="KeyRound" size={17} />
-            Change Password
-          </button>
-          {role === "admin" && (
-            <button
-              type="button"
-              onClick={onChangeStaffId}
-              className="w-full flex items-center justify-center gap-2 rounded-full border border-navy/15 py-3 text-sm font-semibold text-navy hover:bg-navy/5"
-            >
-              <Icon name="UserCog" size={17} />
-              Change Staff ID
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 rounded-full border border-red-200 py-3 text-sm font-semibold text-red-600 hover:bg-red-50"
-          >
-            <Icon name="LogOut" size={17} />
-            Sign out
-          </button>
         </div>
       </div>
     </div>
@@ -356,7 +328,6 @@ function PortalShell({ role }) {
   };
 
   const handleLogout = () => {
-    setMoreOpen(false);
     logout();
     navigate(`/login/${role === "student" ? "student" : role}`, { replace: true });
   };
@@ -528,21 +499,7 @@ function PortalShell({ role }) {
 
       <MobileTabBar role={role} counts={counts} moreOpen={moreOpen} onMore={() => setMoreOpen((v) => !v)} />
       {moreOpen && (
-        <MoreSheet
-          role={role}
-          user={user}
-          counts={counts}
-          onClose={() => setMoreOpen(false)}
-          onLogout={handleLogout}
-          onChangePassword={() => {
-            setMoreOpen(false);
-            setPasswordOpen(true);
-          }}
-          onChangeStaffId={() => {
-            setMoreOpen(false);
-            setStaffIdOpen(true);
-          }}
-        />
+        <MoreSheet role={role} user={user} counts={counts} onClose={() => setMoreOpen(false)} />
       )}
       <ChangePasswordDialog open={passwordOpen} onClose={() => setPasswordOpen(false)} />
       {role === "admin" && <ChangeStaffIdDialog open={staffIdOpen} onClose={() => setStaffIdOpen(false)} />}

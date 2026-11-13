@@ -9,6 +9,7 @@ const PHONE = "(max-width: 767px)";
 const isPhone = () => typeof window !== "undefined" && window.matchMedia?.(PHONE).matches;
 // Subjects + components for one exam; falls back to the older one-pattern-for-all-exams response.
 const termSubjects = (scheme, term) => scheme?.term_subjects?.[term] || scheme?.subjects || [];
+const monthLabel = (ym) => new Date(`${ym}-01T00:00:00`).toLocaleString("en-IN", { month: "short", year: "numeric" });
 
 // Grid for entering one class's marks for one exam. Columns come from the class's
 // mark scheme (SA/FA, Theory/Practical/Internal, …) so each grade gets its own pattern.
@@ -24,6 +25,34 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
   const [focus, setFocus] = useState(() => (isPhone() ? null : "all"));
   // The split can differ per exam (10th: mid terms are out of 100, other exams have Science Theory + Practical).
   const subjects = termSubjects(scheme, term);
+  // Report-card attendance for this exam runs from June up to this month (null = not set and no marks yet).
+  const [attendance, setAttendance] = useState(null); // { months, attendance_until, chosen }
+  const [attendanceSaving, setAttendanceSaving] = useState(false);
+
+  const loadAttendanceUntil = () =>
+    api
+      .get(`/classes/${classCode}/exams/${encodeURIComponent(term)}/attendance-until`)
+      .then(setAttendance)
+      .catch(() => setAttendance(null)); // older backend without this endpoint: just hide the picker
+
+  useEffect(() => {
+    if (!term) return;
+    setAttendance(null);
+    loadAttendanceUntil();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classCode, term]);
+
+  const changeAttendanceUntil = async (month) => {
+    setError("");
+    setAttendanceSaving(true);
+    try {
+      setAttendance(await api.put(`/classes/${classCode}/exams/${encodeURIComponent(term)}/attendance-until`, { month }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+    } finally {
+      setAttendanceSaving(false);
+    }
+  };
 
   useEffect(() => {
     setScheme(null);
@@ -119,6 +148,7 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
       };
       const res = await api.put(`/classes/${classCode}/marks/${encodeURIComponent(term)}`, payload);
       setSuccess(`Saved ${res.saved_marks} mark entries for ${term}.`);
+      loadAttendanceUntil(); // the first save fills in the default attendance month
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
     } finally {
@@ -139,6 +169,28 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
             Std {scheme.grade} pattern:{" "}
             {[...new Set(subjects.map((s) => s.components.map((c) => `${c.label} ${c.max}`).join(" + ")))].join(" · ")}
           </p>
+          {attendance && (
+            <label className="flex flex-wrap items-center gap-2 text-sm text-navy w-full sm:w-auto sm:ml-auto">
+              <span className="font-medium">Attendance for report card:</span>
+              <span className="text-navy/60">{monthLabel(attendance.months[0])} to</span>
+              <select
+                value={attendance.attendance_until || ""}
+                disabled={attendanceSaving}
+                onChange={(e) => changeAttendanceUntil(e.target.value)}
+                className={inputClass + " max-w-[9.5rem]"}
+              >
+                {!attendance.attendance_until && <option value="">Choose month</option>}
+                {attendance.months.map((m) => (
+                  <option key={m} value={m}>
+                    {monthLabel(m)}
+                  </option>
+                ))}
+              </select>
+              {attendance.attendance_until && !attendance.chosen && (
+                <span className="text-xs text-navy/45">(month marks were saved — change if the exam was in another month)</span>
+              )}
+            </label>
+          )}
         </Card>
       )}
 

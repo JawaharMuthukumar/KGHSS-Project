@@ -4,7 +4,7 @@ from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -90,6 +90,31 @@ def year_months(academic_year: str) -> tuple[str, str]:
     """First and last attendance month (YYYY-MM) of an academic year: June to May."""
     start = int(academic_year[:4])
     return f"{start}-06", f"{start + 1}-05"
+
+
+def academic_months(academic_year: str) -> list[str]:
+    """June to May of an academic year as YYYY-MM."""
+    start = int(academic_year[:4])
+    return [f"{start}-{m:02d}" for m in range(6, 13)] + [f"{start + 1}-{m:02d}" for m in range(1, 6)]
+
+
+def exam_attendance_until(assessment: Assessment | None, academic_year: str) -> str | None:
+    """The last attendance month an exam's report counts: the teacher's choice, else the month marks were first saved."""
+    if not assessment: return None
+    first, last = year_months(academic_year)
+    month = assessment.attendance_until or (assessment.created_at.strftime("%Y-%m") if assessment.created_at else None)
+    return min(max(month, first), last) if month else None
+
+
+def attendance_totals(db: Session, cls: AcademicClass, until: str | None) -> tuple[int, dict[int, int]] | None:
+    """Working days and each student's present days from June of the class's year up to `until`; None when nothing is recorded."""
+    if not until: return None
+    first, _ = year_months(cls.academic_year)
+    months = db.query(AttendanceMonth).filter(AttendanceMonth.class_id == cls.id, AttendanceMonth.month >= first, AttendanceMonth.month <= until).all()
+    if not months: return None
+    present = defaultdict(int)
+    for r in db.query(AttendanceRecord).filter(AttendanceRecord.attendance_month_id.in_([mo.id for mo in months])): present[r.student_id] += r.present_days
+    return sum(mo.total_days for mo in months), present
 
 
 def current_academic_year(db: Session) -> str:
@@ -407,12 +432,10 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
     if assessment:
         for m in db.query(Mark).filter_by(assessment_id=assessment.id).all(): marks[m.student_id][m.subject] = m
 
-    # Attendance: cumulative over every month recorded for this class
-    months = db.query(AttendanceMonth).filter_by(class_id=cls.id).all()
-    working_days = sum(mo.total_days for mo in months)
-    present = defaultdict(int)
-    if months:
-        for r in db.query(AttendanceRecord).filter(AttendanceRecord.attendance_month_id.in_([mo.id for mo in months])).all(): present[r.student_id] += r.present_days
+    # Attendance: from June up to the month chosen for this exam
+    totals = attendance_totals(db, cls, exam_attendance_until(assessment, cls.academic_year))
+    months = bool(totals)
+    working_days, present = totals or (0, {})
 
     def gender_key(s): return "M" if (s.gender or "").lower() == "male" else "F" if (s.gender or "").lower() == "female" else "O"
     def medium_key(s): return {"tamil": "TM", "english": "EM"}.get((s.medium or "").lower(), s.medium)
@@ -521,12 +544,8 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
 
     class_top = {t: max([v for v in (term_total(t, s.id) for s in students) if v is not None], default=None) for t in terms_for_grade(cls.grade)}
 
-    # Attendance is recorded per month, not per exam, so the card shows the cumulative figure on the latest exam row.
-    months = db.query(AttendanceMonth).filter_by(class_id=cls.id).all()
-    working_days = sum(mo.total_days for mo in months)
-    present = defaultdict(int)
-    if months:
-        for r in db.query(AttendanceRecord).filter(AttendanceRecord.attendance_month_id.in_([mo.id for mo in months])).all(): present[r.student_id] += r.present_days
+    # Attendance is recorded per month; each exam row shows June up to that exam's chosen month.
+    attendance = {t: attendance_totals(db, cls, exam_attendance_until(a, cls.academic_year)) for t, a in assessments.items()}
 
     full = 100 * len(subjects)
     # Per-exam subject maximum: 100, or 60 for 6th–7th Term 1/2/3; the pass mark is 35% of it.
@@ -542,10 +561,9 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
                 rows.append({"term": term, "scores": [None] * len(subjects), "total": None, "remark": None, "class_top": class_top[term], "attendance": None, **limits}); continue
             scores = [None if subj not in sm else "AB" if sm[subj].absent else sm[subj].score for subj in subjects]
             total = term_total(term, s.id)
+            att = attendance.get(term)
             rows.append({"term": term, "scores": scores, "total": total, "remark": report_remark(total * 100 / (term_max[term] * len(subjects))),
-                "class_top": class_top[term], "attendance": None, **limits})
-        last = max((i for i, r in enumerate(rows) if r["total"] is not None), default=None)
-        if last is not None and working_days: rows[last]["attendance"] = {"present": present.get(s.id, 0), "working": working_days}
+                "class_top": class_top[term], "attendance": {"present": att[1].get(s.id, 0), "working": att[0]} if att else None, **limits})
         cards.append({"student_id": s.id, "registration_no": s.registration_no, "name": s.account.full_name, "rows": rows})
     return {"class_code": cls.code, "grade": cls.grade, "academic_year": cls.academic_year, "subjects": subjects,
         "max_total": full, "cards": cards}
@@ -1375,6 +1393,32 @@ def class_mark_scheme(class_code: str, db: Session = Depends(get_db), account: A
     cls=get_class(db,class_code)
     if not can_access_class(db,account,cls): raise HTTPException(403,"Class access denied")
     return class_scheme(cls)
+
+
+def attendance_until_out(cls: AcademicClass, term: str, assessment: Assessment | None) -> dict:
+    return {"class_code": cls.code, "term": term, "months": academic_months(cls.academic_year),
+            "attendance_until": exam_attendance_until(assessment, cls.academic_year),
+            "chosen": bool(assessment and assessment.attendance_until)}
+
+
+@router.get("/classes/{class_code}/exams/{term}/attendance-until", summary="Last attendance month an exam's report counts (from June)")
+def get_exam_attendance_until(class_code: str, term: str, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    cls = get_class(db, class_code)
+    if not can_access_class(db, account, cls): raise HTTPException(403, "Class access denied")
+    if term not in terms_for_grade(cls.grade): raise HTTPException(422, f"'{term}' is not an exam for class {cls.code}")
+    return attendance_until_out(cls, term, term_assessment(db, cls, term))
+
+
+@router.put("/classes/{class_code}/exams/{term}/attendance-until", summary="Class teacher picks the exam's attendance month")
+def set_exam_attendance_until(class_code: str, term: str, month: str = Body(..., embed=True), db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    cls = get_class(db, class_code)
+    if account.role == "teacher" and not is_class_teacher_of(db, teacher_profile(db, account), cls): raise HTTPException(403, "Only the class teacher can set this")
+    if term not in terms_for_grade(cls.grade): raise HTTPException(422, f"'{term}' is not an exam for class {cls.code}")
+    if month not in academic_months(cls.academic_year): raise HTTPException(422, f"Pick a month of the {cls.academic_year} school year")
+    assessment = term_assessment(db, cls, term, create=True)
+    assessment.attendance_until = month
+    db.commit(); db.refresh(assessment)
+    return attendance_until_out(cls, term, assessment)
 
 
 @router.get("/reports/school")

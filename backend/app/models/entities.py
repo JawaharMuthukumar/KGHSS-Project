@@ -100,6 +100,8 @@ class Assessment(Base):
     class_id: Mapped[int] = mapped_column(ForeignKey("classes.id", ondelete="CASCADE"), index=True)
     term: Mapped[str] = mapped_column(String(60))
     academic_year: Mapped[str] = mapped_column(String(9))
+    # Last month (YYYY-MM) of attendance this exam's report shows, counted from June; blank = the month marks were first saved.
+    attendance_until: Mapped[str | None] = mapped_column(String(7), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 

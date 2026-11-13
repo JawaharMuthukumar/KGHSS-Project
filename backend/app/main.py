@@ -55,6 +55,7 @@ def initialize_schema_and_reference_classes():
     # create_all never alters existing tables, so add columns introduced after a table was first created.
     added_columns = [
         ("marks", "components", "JSON"),
+        ("assessments", "attendance_until", "VARCHAR(7)"),
         ("page_posts", "class_label", "VARCHAR(20)"),
         ("page_posts", "total_marks", "INTEGER"),
         ("page_post_images", "student_name", "VARCHAR(120)"),

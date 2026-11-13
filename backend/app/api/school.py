@@ -394,10 +394,13 @@ ROMAN = {6: "VI", 7: "VII", 8: "VIII", 9: "IX", 10: "X", 11: "XI", 12: "XII"}
 @router.get("/classes/{class_code}/term-report")
 def class_term_report(class_code: str, term: str, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
     """Class teacher's printable term register ("My Report") and the HM result summary ("HM Report") for one class."""
-    PASS = 35
+    PASS = 35  # percent of the subject's maximum
     cls = get_class(db, class_code)
     if not can_access_class(db, account, cls, allow_subject=False): raise HTTPException(403, "Only the class teacher can view this report")
     subjects = subjects_for_class(cls)
+    # Every subject in one exam has the same maximum: 100, or 60 for 6th–7th Term 1/2/3.
+    subject_max = sum(limit for _, _, limit in subject_components(cls, subjects[0], term)) if subjects else 100
+    pass_mark = round(subject_max * PASS / 100)
     students = class_students(db, cls).order_by(Student.registration_no).all()
     assessment = db.query(Assessment).filter_by(class_id=cls.id, term=term, academic_year=cls.academic_year).first()
     marks = defaultdict(dict)
@@ -459,7 +462,7 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
         top = max(sc) if sc else None
         subject_result.append({"subject": SUBJECT_ABBR.get(subj, subj), "max": top, "min": min(sc) if sc else None,
             "average": round(sum(sc) / len(sc), 2) if sc else None, "appeared": len(sc),
-            "passed": sum(1 for v in sc if v >= PASS), "pass_percent": round(sum(1 for v in sc if v >= PASS) * 100 / len(sc)) if sc else None})
+            "passed": sum(1 for v in sc if v >= pass_mark), "pass_percent": round(sum(1 for v in sc if v >= pass_mark) * 100 / len(sc)) if sc else None})
         toppers.append({"subject": SUBJECT_ABBR.get(subj, subj), "mark": top, "names": [n for v, n in vals if v == top] if sc else []})
     totals = [(r["total"], r["name"]) for r in rows if r["appeared"]]
     tt = [t for t, _ in totals]
@@ -474,8 +477,8 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
         n = len(r["failed_subjects"]) + len(r["absent_subjects"])
         if r["appeared"] and not r["passed"] and n in failed_counts: failed_counts[n] += 1
 
-    # Marks range on the class's grand total (500 for 6-10, 600 for 11-12)
-    full = 100 * len(subjects); k = full / 500
+    # Marks range on the class's grand total (500 for 6-10, 600 for 11-12, 300 for 6th–7th Term 1/2/3)
+    full = subject_max * len(subjects); k = full / 500
     edges = [round(e * k) for e in (475, 450, 400, 350, 300, 250, 200)]
     ranges = [{"label": f"{full} OUT OF {full}", "bin": full, "count": sum(1 for t in tt if t == full)}]
     hi = full  # exclusive upper bound of the current bin
@@ -486,7 +489,7 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
     ranges.append({"label": f"LESS THAN {edges[-1]}", "bin": edges[-1], "count": sum(1 for t in tt if t < edges[-1])})
 
     return {"class_code": cls.code, "title": f"{ROMAN.get(cls.grade, cls.grade)} - {cls.group_name + ' ' if cls.group_name else ''}{cls.section}", "academic_year": cls.academic_year,
-        "term": term, "subjects": [SUBJECT_ABBR.get(s, s) for s in subjects], "max_marks": 100, "pass_marks": PASS,
+        "term": term, "subjects": [SUBJECT_ABBR.get(s, s) for s in subjects], "max_marks": subject_max, "pass_marks": pass_mark,
         "working_days": working_days if months else None, "students": rows,
         "hm": {"medium": medium, "roll": roll, "appeared": appd, "passed": passd, "pass_percent": pass_pct,
             "subject_result": subject_result, "toppers": toppers, "failed_counts": failed_counts,
@@ -526,18 +529,21 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
         for r in db.query(AttendanceRecord).filter(AttendanceRecord.attendance_month_id.in_([mo.id for mo in months])).all(): present[r.student_id] += r.present_days
 
     full = 100 * len(subjects)
+    # Per-exam subject maximum: 100, or 60 for 6th–7th Term 1/2/3; the pass mark is 35% of it.
+    term_max = {t: sum(limit for _, _, limit in subject_components(cls, subjects[0], t)) if subjects else 100 for t in terms_for_grade(cls.grade)}
     cards = []
     for s in students:
         if only_student_id is not None and s.id != only_student_id: continue
         rows = []
         for term in terms_for_grade(cls.grade):
             sm = marks[term].get(s.id)
+            limits = {"subject_max": term_max[term], "pass_mark": round(term_max[term] * 35 / 100)}
             if not sm:
-                rows.append({"term": term, "scores": [None] * len(subjects), "total": None, "remark": None, "class_top": class_top[term], "attendance": None}); continue
+                rows.append({"term": term, "scores": [None] * len(subjects), "total": None, "remark": None, "class_top": class_top[term], "attendance": None, **limits}); continue
             scores = [None if subj not in sm else "AB" if sm[subj].absent else sm[subj].score for subj in subjects]
             total = term_total(term, s.id)
-            rows.append({"term": term, "scores": scores, "total": total, "remark": report_remark(total * 100 / full),
-                "class_top": class_top[term], "attendance": None})
+            rows.append({"term": term, "scores": scores, "total": total, "remark": report_remark(total * 100 / (term_max[term] * len(subjects))),
+                "class_top": class_top[term], "attendance": None, **limits})
         last = max((i for i, r in enumerate(rows) if r["total"] is not None), default=None)
         if last is not None and working_days: rows[last]["attendance"] = {"present": present.get(s.id, 0), "working": working_days}
         cards.append({"student_id": s.id, "registration_no": s.registration_no, "name": s.account.full_name, "rows": rows})

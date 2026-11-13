@@ -47,8 +47,8 @@ function Bi({ ta, en, extra, nowrap = false }) {
 }
 
 /** A failing mark is circled in red (and tinted) so it stands out on screen and on paper. */
-function Score({ value }) {
-  if (typeof value !== "number" || value >= PASS_MARK) return value ?? "";
+function Score({ value, passMark = PASS_MARK }) {
+  if (typeof value !== "number" || value >= passMark) return value ?? "";
   return (
     <span
       title="Below pass mark"
@@ -65,6 +65,8 @@ function Score({ value }) {
  * English alongside. Sized to fit half an A4 portrait page so two print per sheet.
  */
 const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
+  // 6th–7th Term 1/2/3 are out of 60 (pass 21); the note lists every pass mark the card uses.
+  const passMarks = [...new Set(card.rows.map((r) => r.pass_mark ?? PASS_MARK))].join(" / ");
   return (
     <div ref={ref} className="report-card bg-white text-black border-2 border-black p-3 text-[11px]" style={{ breakInside: "avoid", ...printExact }}>
       <div className="flex items-start justify-between gap-3 mb-2">
@@ -142,11 +144,14 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
             <tr key={r.term} className="h-8">
               <td className={`${cell} text-left leading-tight font-semibold ${noSplit}`}>
                 <span className="block text-[10px] whitespace-nowrap print:whitespace-normal">{TAMIL_TERM[r.term] || r.term}</span>
-                <span className="block text-[8.5px] font-normal text-black/70">{r.term}</span>
+                <span className="block text-[8.5px] font-normal text-black/70">
+                  {r.term}
+                  {r.subject_max && r.subject_max !== 100 ? ` (/${r.subject_max})` : ""}
+                </span>
               </td>
               {r.scores.map((sc, i) => (
                 <td key={i} className={cell}>
-                  <Score value={sc} />
+                  <Score value={sc} passMark={r.pass_mark} />
                 </td>
               ))}
               <td className={`${cell} font-bold`}>{r.total ?? ""}</td>
@@ -166,9 +171,9 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
           className="inline-flex items-center justify-center w-4 h-4 mt-px rounded-full border-2 border-red-600 bg-red-50 shrink-0"
         />
         <p>
-          குறிப்பு : வட்டமிட்ட மதிப்பெண்கள் தேர்ச்சி மதிப்பெண்ணுக்கு ({PASS_MARK}) குறைவு, அந்தப் பாடங்களில் கவனம் தேவை.
+          குறிப்பு : வட்டமிட்ட மதிப்பெண்கள் தேர்ச்சி மதிப்பெண்ணுக்கு ({passMarks}) குறைவு, அந்தப் பாடங்களில் கவனம் தேவை.
           <br />
-          Note: Circled marks are below the pass mark ({PASS_MARK}); those subjects need attention.
+          Note: Circled marks are below the pass mark ({passMarks}); those subjects need attention.
         </p>
       </div>
     </div>

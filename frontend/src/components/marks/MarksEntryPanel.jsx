@@ -176,7 +176,7 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
             <colgroup>
               <col className={allMode ? "w-36" : "w-[32%] sm:w-56"} />
               {shown.flatMap(({ subject, components }) => [
-                ...components.map((c) => <col key={`${subject}-${c.key}`} />),
+                ...components.map((c) => <col key={`${subject}-c-${c.key}`} />),
                 <col key={`${subject}-total`} className={allMode ? "" : "w-11 sm:w-16"} />,
                 <col key={`${subject}-ab`} className={allMode ? "" : "w-12 sm:w-16"} />,
               ])}
@@ -200,7 +200,7 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
               <tr className="text-[10px] font-semibold text-navy/40 border-b border-navy/8">
                 {shown.map(({ subject, components }) => [
                   ...components.map((c, i) => (
-                    <th key={`${subject}-${c.key}`} className={`px-0.5 pb-1.5 text-center leading-tight ${i === 0 ? "border-l border-navy/8" : ""}`}>
+                    <th key={`${subject}-c-${c.key}`} className={`px-0.5 pb-1.5 text-center leading-tight ${i === 0 ? "border-l border-navy/8" : ""}`}>
                       {COMPONENT_SHORT[c.key] || c.label}
                       <span className="block font-normal">/{c.max}</span>
                     </th>
@@ -227,8 +227,9 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
                       return [
                         ...components.map((c, i) => {
                           const value = cell.components[c.key] ?? "";
+                          // "c-" keeps a component keyed "total" (one-box subjects) apart from the Tot column's key.
                           return (
-                            <td key={`${subject}-${c.key}`} className={`px-0.5 py-2 ${i === 0 ? "border-l border-navy/8" : ""}`}>
+                            <td key={`${subject}-c-${c.key}`} className={`px-0.5 py-2 ${i === 0 ? "border-l border-navy/8" : ""}`}>
                               <input
                                 type="text"
                                 inputMode="numeric"

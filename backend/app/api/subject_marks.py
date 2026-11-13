@@ -61,9 +61,9 @@ def require_class_teacher(db: Session, account: Account, cls: AcademicClass) -> 
     return teacher
 
 
-def clean_entries(cls: AcademicClass, subject: str, raw: dict) -> dict[int, dict]:
+def clean_entries(cls: AcademicClass, term: str, subject: str, raw: dict) -> dict[int, dict]:
     """Validated marks keyed by student id; students left blank (not absent, nothing typed) are skipped."""
-    scheme = subject_components(cls, subject)
+    scheme = subject_components(cls, subject, term)
     cleaned = {}
     for sid, value in raw.items():
         comps = value.get("components") or {}
@@ -120,7 +120,7 @@ def get_subject_marks(class_code: str, term: str, subject: str, db: Session = De
                          "saved": None if not m else {"absent": m.absent, "components": m.components or {}, "score": m.score},
                          "sent": d})
     return {"class_code": cls.code, "term": term, "subject": subject, "terms": terms_for_grade(cls.grade),
-            "components": [{"key": k, "label": label, "max": mx} for k, label, mx in subject_components(cls, subject)],
+            "components": [{"key": k, "label": label, "max": mx} for k, label, mx in subject_components(cls, subject, term)],
             "students": students,
             "last_submission": None if not last else {"id": last.id, "status": last.status, "note": last.note,
                                                       "created_at": last.created_at, "decided_at": last.decided_at}}
@@ -131,7 +131,7 @@ def submit_subject_marks(class_code: str, data: SubjectMarksIn, db: Session = De
     cls = get_class(db, class_code); check_class_subject_term(cls, data.subject, data.term)
     teacher = teacher_profile(db, account)
     if not teaches(db, teacher, cls, data.subject): raise HTTPException(403, f"You don't teach {data.subject} in {cls.code}")
-    entries = clean_entries(cls, data.subject, data.students)
+    entries = clean_entries(cls, data.term, data.subject, data.students)
     if not entries: raise HTTPException(422, "Enter at least one student's mark before sending")
     outside = set(entries) - {s.id for s in class_students(db, cls).all()}
     if outside: raise HTTPException(422, "The list includes students who are not in this class")
@@ -156,8 +156,8 @@ def subject_marks_csv(class_code: str, data: SubjectMarksIn, db: Session = Depen
     cls = get_class(db, class_code); check_class_subject_term(cls, data.subject, data.term)
     teacher = teacher_profile(db, account)
     if not teaches(db, teacher, cls, data.subject): raise HTTPException(403, f"You don't teach {data.subject} in {cls.code}")
-    entries = clean_entries(cls, data.subject, data.students)
-    scheme = subject_components(cls, data.subject)
+    entries = clean_entries(cls, data.term, data.subject, data.students)
+    scheme = subject_components(cls, data.subject, data.term)
     out = io.StringIO(); w = csv.writer(out)
     w.writerow([FILE_TITLE]); w.writerow(["Class", cls.code]); w.writerow(["Exam", data.term]); w.writerow(["Subject", data.subject])
     w.writerow(["Academic Year", cls.academic_year]); w.writerow(["Teacher", account.full_name, account.username]); w.writerow([])
@@ -258,7 +258,7 @@ def parse_marks_csv(db: Session, cls: AcademicClass, raw: bytes) -> tuple[dict, 
 
     header_at = next((i for i, r in enumerate(rows) if r and r[0].strip() == "Reg No"), None)
     if header_at is None: raise HTTPException(422, "The marks table is missing from this file")
-    scheme = subject_components(cls, subject)
+    scheme = subject_components(cls, subject, term)
     students = {s.registration_no.lower(): s for s in class_students(db, cls).all()}
     entries, signed, unknown, code = {}, [], [], None
     for r in rows[header_at + 1:]:

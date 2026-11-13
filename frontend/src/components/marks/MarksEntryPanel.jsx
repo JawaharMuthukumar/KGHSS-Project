@@ -7,6 +7,8 @@ import { api, ApiError } from "../../lib/apiClient";
 const COMPONENT_SHORT = { sa: "SA", fa: "FA", theory: "Th", practical: "Pr", internal: "In", total: "Mark" };
 const PHONE = "(max-width: 767px)";
 const isPhone = () => typeof window !== "undefined" && window.matchMedia?.(PHONE).matches;
+// Subjects + components for one exam; falls back to the older one-pattern-for-all-exams response.
+const termSubjects = (scheme, term) => scheme?.term_subjects?.[term] || scheme?.subjects || [];
 
 // Grid for entering one class's marks for one exam. Columns come from the class's
 // mark scheme (SA/FA, Theory/Practical/Internal, …) so each grade gets its own pattern.
@@ -20,6 +22,8 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
   const [saving, setSaving] = useState(false);
   // Which subject's boxes to show: phones start with one subject (a full sheet is 18+ tiny boxes), computers with all.
   const [focus, setFocus] = useState(() => (isPhone() ? null : "all"));
+  // The split can differ per exam (10th: mid terms are out of 100, other exams have Science Theory + Practical).
+  const subjects = termSubjects(scheme, term);
 
   useEffect(() => {
     setScheme(null);
@@ -40,7 +44,7 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
     api
       .get(`/classes/${classCode}/mark-report`, { query: { term } })
       .then((reportRes) => {
-        const componentsBySubject = Object.fromEntries(scheme.subjects.map((s) => [s.subject, s.components]));
+        const componentsBySubject = Object.fromEntries(termSubjects(scheme, term).map((s) => [s.subject, s.components]));
         const prefill = {};
         reportRes.students.forEach((row) => {
           prefill[row.student_id] = {};
@@ -57,13 +61,13 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
       .catch((err) => setError(err.message));
   }, [classCode, scheme, term]);
 
-  const activeFocus = focus || scheme?.subjects[0]?.subject || "all";
-  const shown = !scheme ? [] : activeFocus === "all" ? scheme.subjects : scheme.subjects.filter((s) => s.subject === activeFocus);
+  const activeFocus = focus || subjects[0]?.subject || "all";
+  const shown = activeFocus === "all" ? subjects : subjects.filter((s) => s.subject === activeFocus);
   const allMode = activeFocus === "all";
   // One subject on a phone: drop the Grand/% columns so the mark boxes get the full width.
   const [phone] = useState(isPhone);
   const showGrand = allMode || !phone;
-  const grandMax = (scheme?.subjects || []).reduce((sum, s) => sum + s.components.reduce((t, c) => t + c.max, 0), 0);
+  const grandMax = subjects.reduce((sum, s) => sum + s.components.reduce((t, c) => t + c.max, 0), 0);
 
   const cellOf = (studentId, subject) => marks[studentId]?.[subject] || { absent: false, components: {} };
 
@@ -81,7 +85,7 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
     setError("");
     setSuccess("");
     for (const s of students) {
-      for (const { subject, components } of scheme.subjects) {
+      for (const { subject, components } of subjects) {
         const cell = cellOf(s.id, subject);
         if (cell.absent) continue;
         const bad = components.find((c) => isOverMax(cell.components[c.key], c.max));
@@ -99,7 +103,7 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
           students.map((s) => [
             String(s.id),
             Object.fromEntries(
-              scheme.subjects.map(({ subject, components }) => {
+              subjects.map(({ subject, components }) => {
                 const cell = cellOf(s.id, subject);
                 return [
                   subject,
@@ -133,7 +137,7 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
           </select>
           <p className="text-xs text-navy/50">
             Std {scheme.grade} pattern:{" "}
-            {[...new Set(scheme.subjects.map((s) => s.components.map((c) => `${c.label} ${c.max}`).join(" + ")))].join(" · ")}
+            {[...new Set(subjects.map((s) => s.components.map((c) => `${c.label} ${c.max}`).join(" + ")))].join(" · ")}
           </p>
         </Card>
       )}
@@ -143,7 +147,7 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
 
       {scheme && students && (
         <div className="flex gap-2 mb-3 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="Subject">
-          {[{ subject: "all" }, ...scheme.subjects].map(({ subject }) => (
+          {[{ subject: "all" }, ...subjects].map(({ subject }) => (
             <button
               key={subject}
               type="button"
@@ -208,7 +212,7 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
             </thead>
               <tbody>
                 {students.map((s) => {
-                  const grandTotal = scheme.subjects.reduce((sum, { subject, components }) => {
+                  const grandTotal = subjects.reduce((sum, { subject, components }) => {
                     const cell = cellOf(s.id, subject);
                     return cell.absent ? sum : sum + components.reduce((t, c) => t + (Number(cell.components[c.key]) || 0), 0);
                   }, 0);

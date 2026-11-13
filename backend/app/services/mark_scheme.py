@@ -1,7 +1,7 @@
 """Grade-wise exam terms, subjects and mark-entry components.
 
-Every subject totals 100; what differs per grade/subject is how that 100 is split
-(e.g. SA 60 + FA 40 for grades 6-7, Theory 70 + Practical 20 + Internal 10 for
+Every subject totals 100; what differs per grade/subject (and for 10th, per exam) is how that
+100 is split (e.g. SA 60 + FA 40 for grades 6-7, Theory 70 + Practical 20 + Internal 10 for
 higher-secondary science). Mark entry is validated against this scheme.
 """
 from sqlalchemy.orm import object_session
@@ -52,25 +52,34 @@ def subjects_for_class(cls: AcademicClass) -> list[str]:
     return ["Tamil", "English", "Maths", "Science", "Social Science"]
 
 
-def subject_components(cls: AcademicClass, subject: str) -> list[tuple[str, str, int]]:
+MID_TERMS = {"1st Mid Term", "2nd Mid Term"}
+
+
+def subject_components(cls: AcademicClass, subject: str, term: str) -> list[tuple[str, str, int]]:
     grade = cls.grade
     if grade <= 7:
         return SA_FA
     if grade <= 9:
         return SINGLE
     if grade == 10:
-        return THEORY_PRACTICAL if subject == "Science" else THEORY_INTERNAL
+        # 10th: mid terms are one mark out of 100; the other exams too, except Science (Theory 75 + Practical 25).
+        return THEORY_PRACTICAL if subject == "Science" and term not in MID_TERMS else SINGLE
     practical = any(s["subject"] == subject and s.get("practical") for s in group_core(cls))
     return THEORY_PRACTICAL_INTERNAL if practical else THEORY_INTERNAL
 
 
 def class_scheme(cls: AcademicClass) -> dict:
+    """Terms plus, per term, each subject's components (10th's split differs between mid terms and the other exams)."""
+    terms = terms_for_grade(cls.grade)
     return {
         "class_code": cls.code,
         "grade": cls.grade,
-        "terms": terms_for_grade(cls.grade),
-        "subjects": [
-            {"subject": s, "components": [{"key": k, "label": label, "max": m} for k, label, m in subject_components(cls, s)]}
-            for s in subjects_for_class(cls)
-        ],
+        "terms": terms,
+        "term_subjects": {
+            term: [
+                {"subject": s, "components": [{"key": k, "label": label, "max": m} for k, label, m in subject_components(cls, s, term)]}
+                for s in subjects_for_class(cls)
+            ]
+            for term in terms
+        },
     }

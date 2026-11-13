@@ -147,7 +147,7 @@ def export_subject_marks(class_code: str, term: str, subject: str, db: Session =
     cls = get_class(db, class_code); check_class_subject_term(cls, subject, term)
     if account.role == "teacher" and not teaches(db, teacher_profile(db, account), cls, subject):
         raise HTTPException(403, f"You don't teach {subject} in {cls.code}")
-    scheme = subject_components(cls, subject)
+    scheme = subject_components(cls, subject, term)
     assessment = term_assessment(db, cls, term)
     marks = {m.student_id: m for m in db.query(Mark).filter_by(assessment_id=assessment.id, subject=subject)} if assessment else {}
     rows = []

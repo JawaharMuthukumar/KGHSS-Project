@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import { SCHOOL_LOGO, SCHOOL_LOGO_ALT, TN_GOVT_LOGO, TN_GOVT_LOGO_ALT } from "../../constants/brand";
 
 const TAMIL_SUBJECT = {
   Tamil: "தமிழ்",
@@ -21,6 +22,7 @@ const TAMIL_TERM = {
   "Annual Exam": "முழு ஆண்டுத் தேர்வு",
   "1st Mid Term": "முதல் இடைப்பருவத் தேர்வு",
   "2nd Mid Term": "இரண்டாம் இடைப்பருவத் தேர்வு",
+  "3rd Mid Term": "மூன்றாம் இடைப்பருவத் தேர்வு",
   "Revision 1": "முதல் திருப்புதல் தேர்வு",
   "Revision 2": "இரண்டாம் திருப்புதல் தேர்வு",
   "Revision 3": "மூன்றாம் திருப்புதல் தேர்வு",
@@ -65,17 +67,14 @@ function Score({ value, passMark = PASS_MARK }) {
  * English alongside. Sized to fit half an A4 portrait page so two print per sheet.
  */
 const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
-  // 6th–7th Term 1/2/3 are out of 60 (pass 21); the note lists every pass mark the card uses.
+  // Each exam row carries its own pass mark; the note lists every pass mark the card uses.
   const passMarks = [...new Set(card.rows.map((r) => r.pass_mark ?? PASS_MARK))].join(" / ");
   return (
     <div ref={ref} className="report-card bg-white text-black border-2 border-black p-3 text-[11px]" style={{ breakInside: "avoid", ...printExact }}>
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="flex items-center justify-center w-11 h-11 rounded-full border-2 border-black font-bold text-[10px] leading-none text-center shrink-0">
-            GHSS
-            <br />
-            KGP
-          </span>
+          <img src={SCHOOL_LOGO} alt={SCHOOL_LOGO_ALT} className="w-12 h-12 object-contain shrink-0" />
+          <img src={TN_GOVT_LOGO} alt={TN_GOVT_LOGO_ALT} className="w-11 h-12 object-contain shrink-0" />
           <div className="min-w-0">
             <p className="font-bold text-base leading-tight">அரசு மேல்நிலைப்பள்ளி</p>
             <p className="font-semibold text-[11px] leading-tight">Government Higher Secondary School</p>

@@ -16,7 +16,9 @@ export function printElement(element, { orientation = "landscape", title = docum
     </head><body>${element.outerHTML}</body></html>`);
   doc.close();
 
-  const run = () => {
+  const run = async () => {
+    // Logos are <img>s: wait for them so they are never missing from the printout
+    await Promise.all([...doc.images].map((img) => (img.complete ? null : new Promise((done) => { img.onload = img.onerror = done; }))));
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
     setTimeout(() => iframe.remove(), 1000);

@@ -12,6 +12,7 @@ import ChangePasswordDialog from "./ChangePasswordDialog";
 import ChangeStaffIdDialog from "./ChangeStaffIdDialog";
 import { AlertsProvider, useAlerts } from "../../context/AlertsContext";
 import { formatDate } from "../../utils/formatDate";
+import { SCHOOL_LOGO, SCHOOL_LOGO_ALT } from "../../constants/brand";
 
 /** Lets a teacher who is Class Teacher of several sections pick which one the portal pages work on. */
 function TeacherClassSwitcher({ className = "" }) {
@@ -337,9 +338,7 @@ function PortalShell({ role }) {
       {/* Desktop sidebar; phones and tablets use the bottom tab bar + More sheet instead. */}
       <aside className="hidden lg:flex sticky top-0 z-50 h-svh w-72 shrink-0 bg-navy-dark text-white flex-col">
         <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-          <div className="w-10 h-10 rounded-xl bg-heritage-gradient flex items-center justify-center font-heading font-bold text-sm shrink-0">
-            GK
-          </div>
+          <img src={SCHOOL_LOGO} alt={SCHOOL_LOGO_ALT} className="w-10 h-10 rounded-full bg-white object-contain shrink-0" />
           <div className="min-w-0">
             <p className="font-heading font-bold text-sm leading-tight truncate">GHSS Kangayampalayam</p>
             <p className="text-[11px] text-white/50">{roleLabels[role]}</p>
@@ -361,9 +360,7 @@ function PortalShell({ role }) {
         <header className="sticky top-0 z-30 flex items-center gap-2 lg:gap-3 bg-white border-b border-navy/8 px-4 lg:px-5 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-2.5 lg:py-3.5">
           {/* Phone/tablet app bar: school mark + the current page's name */}
           <div className="lg:hidden flex items-center gap-2.5 min-w-0">
-            <span className="w-9 h-9 rounded-xl bg-heritage-gradient text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
-              GK
-            </span>
+            <img src={SCHOOL_LOGO} alt={SCHOOL_LOGO_ALT} className="w-9 h-9 rounded-full bg-white object-contain shrink-0" />
             <div className="min-w-0">
               <p className="font-heading font-bold text-navy text-[15px] leading-tight truncate">{pageTitle}</p>
               <p className="text-[11px] text-navy/45 leading-tight truncate">GHSS Kangayampalayam</p>

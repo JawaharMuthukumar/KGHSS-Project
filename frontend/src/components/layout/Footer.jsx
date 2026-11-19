@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import Icon from "../ui/Icon";
 import { schoolInfo } from "../../data/schoolData";
+import { SCHOOL_LOGO, SCHOOL_LOGO_ALT } from "../../constants/brand";
 
 const quickLinks = [
   { label: "About Our Story", to: "/about" },
@@ -32,9 +33,7 @@ export default function Footer() {
       <div className="container-page py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10">
         <div className="lg:col-span-1">
           <div className="flex items-center gap-3 mb-4">
-            <span className="flex items-center justify-center w-11 h-11 rounded-xl bg-heritage-gradient text-gold-light font-heading font-extrabold">
-              GK
-            </span>
+            <img src={SCHOOL_LOGO} alt={SCHOOL_LOGO_ALT} className="w-12 h-12 rounded-full bg-white object-contain shrink-0" />
             <span className="font-heading font-bold text-white text-sm leading-tight">
               {schoolInfo.shortName}
             </span>

@@ -6,6 +6,7 @@ import LoginDropdown from "./LoginDropdown";
 import MobileDrawer from "./MobileDrawer";
 import TopBar from "./TopBar";
 import { navigation, centenaryCta, schoolInfo } from "../../data/schoolData";
+import { SCHOOL_LOGO, SCHOOL_LOGO_ALT } from "../../constants/brand";
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -48,9 +49,7 @@ export default function Header() {
           {/* Fixed height regardless of scroll state: Hero relies on this being predictable so it can sit behind the header. */}
           <div className="flex items-center justify-between py-3.5">
             <Link to="/" className="flex items-center gap-3 min-w-0">
-              <span className="flex items-center justify-center w-11 h-11 rounded-xl font-heading font-extrabold text-base shrink-0 bg-heritage-gradient text-gold-light">
-                GK
-              </span>
+              <img src={SCHOOL_LOGO} alt={SCHOOL_LOGO_ALT} className="w-11 h-11 rounded-full bg-white object-contain shrink-0" />
               <span className="min-w-0 hidden sm:block">
                 <span className={`block font-heading font-bold leading-tight truncate transition-colors ${solid ? "text-navy text-sm" : "text-white text-base"}`}>
                   {schoolInfo.shortName}

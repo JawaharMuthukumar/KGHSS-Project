@@ -423,7 +423,7 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
     cls = get_class(db, class_code)
     if not can_access_class(db, account, cls, allow_subject=False): raise HTTPException(403, "Only the class teacher can view this report")
     subjects = subjects_for_class(cls)
-    # Every subject in one exam has the same maximum: 100, or 60 for 6th–7th Term 1/2/3.
+    # Every subject in one exam has the same maximum (taken from the mark scheme; currently 100 everywhere).
     subject_max = sum(limit for _, _, limit in subject_components(cls, subjects[0], term)) if subjects else 100
     pass_mark = round(subject_max * PASS / 100)
     students = class_students(db, cls).order_by(Student.registration_no).all()
@@ -500,7 +500,7 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
         n = len(r["failed_subjects"]) + len(r["absent_subjects"])
         if r["appeared"] and not r["passed"] and n in failed_counts: failed_counts[n] += 1
 
-    # Marks range on the class's grand total (500 for 6-10, 600 for 11-12, 300 for 6th–7th Term 1/2/3)
+    # Marks range on the class's grand total (500 for 6-10, 600 for 11-12)
     full = subject_max * len(subjects); k = full / 500
     edges = [round(e * k) for e in (475, 450, 400, 350, 300, 250, 200)]
     ranges = [{"label": f"{full} OUT OF {full}", "bin": full, "count": sum(1 for t in tt if t == full)}]
@@ -548,7 +548,7 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
     attendance = {t: attendance_totals(db, cls, exam_attendance_until(a, cls.academic_year)) for t, a in assessments.items()}
 
     full = 100 * len(subjects)
-    # Per-exam subject maximum: 100, or 60 for 6th–7th Term 1/2/3; the pass mark is 35% of it.
+    # Per-exam subject maximum from the mark scheme; the pass mark is 35% of it.
     term_max = {t: sum(limit for _, _, limit in subject_components(cls, subjects[0], t)) if subjects else 100 for t in terms_for_grade(cls.grade)}
     cards = []
     for s in students:
@@ -1011,22 +1011,11 @@ def download_certificate(request_id: int, db: Session = Depends(get_db), account
     if account.role not in {"student","teacher","admin"}: raise HTTPException(403,"Certificate access denied")
     if req.status!="approved": raise HTTPException(409,"Only approved requests can be downloaded")
     try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.pdfgen import canvas
+        from app.services.certificate_pdf import bonafide_pdf, general_certificate_pdf
     except ImportError as exc:
         raise HTTPException(503,"PDF generation dependency is unavailable") from exc
-    output=BytesIO(); pdf=canvas.Canvas(output,pagesize=A4); width,height=A4
-    pdf.setTitle(f"{req.certificate_type.title()} Certificate")
-    pdf.setFont("Helvetica-Bold",18); pdf.drawCentredString(width/2,height-110,"GOVERNMENT HIGHER SECONDARY SCHOOL")
-    pdf.setFont("Helvetica",12); pdf.drawCentredString(width/2,height-135,"Kangayampalayam, Tiruppur District, Tamil Nadu")
-    pdf.setFont("Helvetica-Bold",20); pdf.drawCentredString(width/2,height-205,f"{req.certificate_type.title()} Certificate")
-    pdf.setFont("Helvetica",12); pdf.drawString(75,height-275,"This is to certify that")
-    pdf.setFont("Helvetica-Bold",15); pdf.drawString(75,height-305,student.account.full_name)
-    pdf.setFont("Helvetica",12); pdf.drawString(75,height-335,f"Registration No: {student.registration_no}")
-    pdf.drawString(75,height-357,f"Class: {student.school_class.code}")
-    pdf.drawString(75,height-415,"This certificate is issued by the school upon approval.")
-    pdf.drawString(75,100,"Headmaster")
-    pdf.save(); output.seek(0)
+    if req.certificate_type=="bonafide": output=bonafide_pdf(student,req.decided_at)
+    else: output=general_certificate_pdf(student,req.certificate_type,req.decided_at)
     req.downloaded_at=datetime.utcnow(); db.commit()
     return StreamingResponse(output,media_type="application/pdf",headers={"Content-Disposition":f'attachment; filename="certificate-{request_id}.pdf"'})
 

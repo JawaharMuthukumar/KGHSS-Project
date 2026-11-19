@@ -814,7 +814,7 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
         for req in certs.filter(CertificateRequest.status == "ready", CertificateRequest.downloaded_at >= recent).order_by(CertificateRequest.id.desc()).limit(10).all():
             items.append({"key": f"certificate-ready-{req.id}", "kind": "certificate", "title": "Certificate ready",
                           "detail": f"{req.certificate_type.title()} certificate printed — collect it from the Head Master", "to": "/student/certificates",
-                          "created_at": req.downloaded_at})
+                          "created_at": req.downloaded_at, "clear_on_visit": True})
         for req in certs.filter(CertificateRequest.status == "rejected", CertificateRequest.decided_at >= recent).order_by(CertificateRequest.id.desc()).limit(5).all():
             items.append({"key": f"certificate-rejected-{req.id}", "kind": "certificate", "title": "Certificate request rejected",
                           "detail": req.decision_note or f"{req.certificate_type.title()} certificate", "to": "/student/certificates",
@@ -827,7 +827,13 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
     counts = {"certificates": sum(1 for i in items if i["kind"] == "certificate" and not i.get("silent_badge")), "leave": sum(1 for i in items if i["kind"] == "leave" and not i.get("silent_badge"))}
     cache: dict = {}
     recent_notices = [{"id": n.id, "title": n.title, "author_teacher_id": notice_author(db, n, cache)["author_teacher_id"]} for n in notices.order_by(Notice.id.desc()).limit(30).all()]
-    return {"counts": counts, "items": items, "notices": recent_notices,
+    # Students: the self-editable profile fields still blank (the portal nags until they are filled in).
+    profile_missing = []
+    if account.role == "student":
+        profile_missing = [label for label, filled in (("Date of birth", student.date_of_birth), ("Blood group", (student.blood_group or "").strip()),
+            ("Father's or mother's name", (student.father_name or "").strip() or (student.mother_name or "").strip()),
+            ("Address", (student.address or "").strip())) if not filled]
+    return {"counts": counts, "items": items, "notices": recent_notices, "profile_missing": profile_missing,
             "versions": {"certificates": version(certs, CertificateRequest, extra=[CertificateRequest.downloaded_at]), "leave": version(leaves, LeaveRequest), "notices": version(notices, Notice, decided=False)}}
 
 

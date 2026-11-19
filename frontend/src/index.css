@@ -66,6 +66,21 @@
   to { transform: translateY(0); }
 }
 
+/* Portal menu entry that needs the user's attention (e.g. student's incomplete profile): a soft gold blink. */
+@keyframes nav-attention {
+  0%, 100% { background-color: transparent; box-shadow: inset 0 0 0 0 transparent; }
+  50% { background-color: color-mix(in srgb, var(--color-gold) 30%, transparent); box-shadow: inset 0 0 0 2px var(--color-gold); }
+}
+.nav-attention {
+  animation: nav-attention 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-attention {
+    animation: none;
+    box-shadow: inset 0 0 0 2px var(--color-gold);
+  }
+}
+
 html {
   scroll-behavior: smooth;
 }

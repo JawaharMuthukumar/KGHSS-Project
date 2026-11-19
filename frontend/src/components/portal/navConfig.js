@@ -40,7 +40,8 @@ export const portalNav = {
   ],
   student: [
     { to: "/student", label: "Dashboard", icon: "LayoutDashboard", end: true },
-    { to: "/student/profile", label: "My Profile", icon: "UserRound" },
+    // `attention`: blinks while that alert count is non-zero (profile = self-editable fields still blank).
+    { to: "/student/profile", label: "My Profile", icon: "UserRound", attention: "profile" },
     { to: "/student/results", label: "Results / Marksheet", icon: "FileText" },
     { to: "/student/timetable", label: "Timetable", icon: "CalendarRange" },
     { to: "/student/notices", label: "Notices", icon: "Bell", badge: "notices" },

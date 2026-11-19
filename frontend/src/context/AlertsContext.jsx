@@ -9,7 +9,7 @@ export const LIVE_EVENT = "kghss:live";
 const POLL_MS = 10000;
 const NOTICE_PATHS = { teacher: "/teacher/notices", student: "/student/notices" };
 
-const AlertsContext = createContext({ counts: {}, items: [], unreadNotices: 0, refresh: () => {} });
+const AlertsContext = createContext({ counts: {}, items: [], profileMissing: [], unreadNotices: 0, refresh: () => {} });
 
 const seenKey = (username) => `kghss.noticeSeen.${username}`;
 function readSeen(username) {
@@ -28,6 +28,23 @@ function writeSeen(username, id) {
   }
 }
 
+// Info-only items (e.g. "certificate ready") stop counting once the user has opened the page they point to.
+const clearedKey = (username) => `kghss.alertsCleared.${username}`;
+function readCleared(username) {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(clearedKey(username)) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+function writeCleared(username, keys) {
+  try {
+    localStorage.setItem(clearedKey(username), JSON.stringify([...keys].slice(-100)));
+  } catch {
+    /* storage blocked: the badge clears again on the next visit to the page */
+  }
+}
+
 /**
  * Polls /portal/alerts while the tab is visible. New requests/notices pop a clickable toast,
  * badge counts feed the sidebar and bell, and changed topics are broadcast so open pages refresh.
@@ -35,8 +52,9 @@ function writeSeen(username, id) {
 export function AlertsProvider({ role, username, children }) {
   const toast = useToast();
   const { pathname } = useLocation();
-  const [state, setState] = useState({ counts: {}, items: [], notices: [] });
+  const [state, setState] = useState({ counts: {}, items: [], notices: [], profileMissing: [] });
   const [seenNoticeId, setSeenNoticeId] = useState(() => readSeen(username));
+  const [cleared, setCleared] = useState(() => readCleared(username));
   const previous = useRef(null); // last poll: { versions, keys, maxNotice }
   const noticePath = NOTICE_PATHS[role];
   const onNoticePage = Boolean(noticePath) && pathname.startsWith(noticePath);
@@ -76,7 +94,7 @@ export function AlertsProvider({ role, username, children }) {
     }
 
     previous.current = { versions: data.versions, keys, maxNotice };
-    setState({ counts: data.counts, items: data.items, notices: data.notices });
+    setState({ counts: data.counts, items: data.items, notices: data.notices, profileMissing: data.profile_missing || [] });
   }, [toast, noticePath, username]);
 
   useEffect(() => {
@@ -103,6 +121,19 @@ export function AlertsProvider({ role, username, children }) {
     }
   }, [onNoticePage, latestNotice, seenNoticeId, username]);
 
+  // Being on the page an info-only item points to marks it as seen.
+  useEffect(() => {
+    const fresh = state.items.filter((i) => i.clear_on_visit && !cleared.has(i.key) && pathname.startsWith(i.to));
+    if (!fresh.length) return;
+    const next = new Set(cleared);
+    fresh.forEach((i) => next.add(i.key));
+    writeCleared(username, next);
+    setCleared(next);
+  }, [state.items, pathname, cleared, username]);
+
+  const visibleItems = state.items.filter((i) => !(i.clear_on_visit && cleared.has(i.key)));
+  const certificateCount = visibleItems.filter((i) => i.kind === "certificate" && !i.silent_badge).length;
+
   const unread = noticePath ? state.notices.filter((n) => n.id > (seenNoticeId ?? Infinity)) : [];
   const unreadNotices = unread.length;
   // Unread notices per posting teacher (teacher id → count), for badges next to a teacher's name.
@@ -114,14 +145,16 @@ export function AlertsProvider({ role, username, children }) {
 
   const value = useMemo(
     () => ({
-      counts: { ...state.counts, notices: unreadNotices },
-      items: state.items,
+      counts: { ...state.counts, certificates: certificateCount, notices: unreadNotices },
+      items: visibleItems,
+      profileMissing: state.profileMissing,
       unreadNotices,
       unreadByTeacher: JSON.parse(unreadKey),
       noticePath,
       refresh: poll,
     }),
-    [state, unreadNotices, unreadKey, noticePath, poll]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- visibleItems/certificateCount derive from state + cleared
+    [state, cleared, unreadNotices, unreadKey, noticePath, poll]
   );
 
   return <AlertsContext.Provider value={value}>{children}</AlertsContext.Provider>;

@@ -9,6 +9,7 @@ import { ContentSkeleton } from "../../components/ui/Skeleton";
 import { formatDate } from "../../utils/formatDate";
 import { api, ApiError } from "../../lib/apiClient";
 import { useToast } from "../../components/ui/Toast";
+import { useAlerts } from "../../context/AlertsContext";
 import { BLOOD_GROUPS, normalizeBloodGroup } from "../../constants/academic";
 import { capitalizeFirst, capitalizeWords } from "../../hooks/useAutoCapitalize";
 
@@ -19,6 +20,7 @@ const mediumLabels = { TM: "Tamil", EM: "English" };
 export default function MyProfile() {
   const { data: profile, loading, error, setData } = useApiResource("/students/me/profile");
   const [editing, setEditing] = useState(false);
+  const { profileMissing, refresh: refreshAlerts } = useAlerts();
 
   return (
     <div>
@@ -31,7 +33,9 @@ export default function MyProfile() {
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="flex items-center gap-1.5 bg-gold text-navy-dark font-semibold text-sm px-5 py-2.5 rounded-full hover:bg-gold-light transition-colors"
+              className={`flex items-center gap-1.5 bg-gold text-navy-dark font-semibold text-sm px-5 py-2.5 rounded-full hover:bg-gold-light transition-colors ${
+                profileMissing.length ? "nav-attention" : ""
+              }`}
             >
               <Icon name="Pencil" size={15} />
               Edit Profile
@@ -41,6 +45,11 @@ export default function MyProfile() {
       />
 
       {error && <Banner tone="error" className="mb-4">{error.message}</Banner>}
+      {profile && !editing && profileMissing.length > 0 && (
+        <Banner tone="info" className="mb-4 max-w-2xl">
+          Your profile is incomplete. Tap <strong>Edit Profile</strong> and fill in: {profileMissing.join(", ")}.
+        </Banner>
+      )}
       {loading && <ContentSkeleton rows={3} />}
 
       {profile && !editing && (
@@ -71,6 +80,7 @@ export default function MyProfile() {
           onSaved={(updated) => {
             setData(updated);
             setEditing(false);
+            refreshAlerts(); // stops the "complete your profile" banner and blinking menu right away
           }}
         />
       )}

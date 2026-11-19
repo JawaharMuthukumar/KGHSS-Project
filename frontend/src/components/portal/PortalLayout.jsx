@@ -52,9 +52,14 @@ const navLinkClass = ({ isActive }) =>
     isActive ? "bg-gold text-navy-dark" : "text-white/70 hover:text-white hover:bg-white/8"
   }`;
 
-function NavItem({ item, count, onNavigate, nested = false }) {
+function NavItem({ item, count, attention = false, onNavigate, nested = false }) {
   return (
-    <NavLink to={item.to} end={item.end} onClick={onNavigate} className={(state) => `${navLinkClass(state)} ${nested ? "py-2" : ""}`}>
+    <NavLink
+      to={item.to}
+      end={item.end}
+      onClick={onNavigate}
+      className={(state) => `${navLinkClass(state)} ${nested ? "py-2" : ""} ${attention && !state.isActive ? "nav-attention text-white!" : ""}`}
+    >
       <Icon name={item.icon} size={nested ? 15 : 17} />
       <span className="truncate">{item.label}</span>
       <CountBadge count={count} className="ml-auto shrink-0" />
@@ -173,6 +178,9 @@ function NotificationBell() {
 /** Phone/tablet bottom navigation: four everyday pages plus "More" (the full menu sheet). */
 function MobileTabBar({ role, counts, onMore, moreOpen }) {
   const tabs = mobileTabs[role] || [];
+  // A page that needs attention but has no tab of its own makes the More tab blink.
+  const tabPaths = new Set(tabs.map((t) => t.to));
+  const moreAttention = flatNav(role).some((i) => i.attention && counts[i.attention] && !tabPaths.has(i.to));
   const itemClass = (active) =>
     `flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 text-[11px] font-semibold transition-colors ${
       active ? "text-navy" : "text-navy/45"
@@ -199,7 +207,7 @@ function MobileTabBar({ role, counts, onMore, moreOpen }) {
           </NavLink>
         ))}
         <button type="button" onClick={onMore} aria-expanded={moreOpen} className={itemClass(moreOpen)}>
-          <span className={pill(moreOpen)}>
+          <span className={`${pill(moreOpen)} ${moreAttention && !moreOpen ? "nav-attention" : ""}`}>
             <Icon name="LayoutGrid" size={20} />
           </span>
           More
@@ -246,7 +254,11 @@ function MoreSheet({ role, user, counts, onClose }) {
                 }`
               }
             >
-              <span className="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-navy/[0.06] text-navy">
+              <span
+                className={`relative flex items-center justify-center w-11 h-11 rounded-2xl bg-navy/[0.06] text-navy ${
+                  item.attention && counts[item.attention] ? "nav-attention" : ""
+                }`}
+              >
                 <Icon name={item.icon} size={20} />
                 <CountBadge count={item.badge && counts[item.badge]} className="absolute -top-1 -right-1 min-w-4! h-4! text-[10px]! px-1!" />
               </span>
@@ -292,7 +304,8 @@ export default function PortalLayout({ role }) {
 
 function PortalShell({ role }) {
   const { user, logout } = useAuth();
-  const { counts } = useAlerts();
+  const { counts: alertCounts, profileMissing } = useAlerts();
+  const counts = { ...alertCounts, profile: profileMissing.length };
   const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
   const pageTitle = usePageTitle(role);
@@ -350,7 +363,7 @@ function PortalShell({ role }) {
             item.children ? (
               <NavGroup key={item.label} item={item} counts={counts} />
             ) : (
-              <NavItem key={item.to} item={item} count={item.badge && counts[item.badge]} />
+              <NavItem key={item.to} item={item} count={item.badge && counts[item.badge]} attention={Boolean(item.attention && counts[item.attention])} />
             )
           )}
         </nav>
@@ -486,6 +499,21 @@ function PortalShell({ role }) {
                 className="bg-gold text-navy-dark font-semibold text-sm px-4 py-2 rounded-full hover:bg-gold-light transition-colors max-sm:w-full"
               >
                 Change Password
+              </button>
+            </div>
+          )}
+          {role === "student" && profileMissing.length > 0 && !pathname.startsWith("/student/profile") && (
+            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-gold/40 bg-gold/10 px-4 py-3 text-navy">
+              <Icon name="UserRound" size={18} className="shrink-0 text-gold-dark" />
+              <p className="flex-1 min-w-[12rem] text-sm">
+                <strong className="font-semibold">Complete your profile.</strong> Please fill in: {profileMissing.join(", ")}.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate("/student/profile")}
+                className="bg-gold text-navy-dark font-semibold text-sm px-4 py-2 rounded-full hover:bg-gold-light transition-colors max-sm:w-full"
+              >
+                Update Profile
               </button>
             </div>
           )}

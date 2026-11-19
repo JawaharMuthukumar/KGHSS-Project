@@ -56,7 +56,6 @@ export default function MyProfile() {
             <Field label="Community" value={profile.community} />
             <Field label="Medium" value={mediumLabels[profile.medium] || profile.medium} />
             <Field label="EMIS No" value={profile.emis_no} />
-            <Field label="UMIS No" value={profile.umis_no} />
             <Field label="Father's Name" value={profile.father_name} />
             <Field label="Mother's Name" value={profile.mother_name} />
             <Field label="Parent Phone" value={profile.father_phone || profile.mother_phone || profile.guardian_phone} />

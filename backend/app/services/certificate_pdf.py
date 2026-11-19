@@ -47,7 +47,7 @@ def _watermark() -> ImageReader:
 
 
 def _letterhead(pdf: canvas.Canvas) -> None:
-    """Logos, the HEAD MASTER address block with its dashed rule, the watermark and the bottom bar."""
+    """Logos, the HEAD MASTER address block, the watermark and the bottom bar."""
     top = PAGE_H - 40
     pdf.drawImage(_logo(SCHOOL_LOGO), 40, top - 92, 92, 92, mask="auto", preserveAspectRatio=True)
     pdf.drawImage(_logo(TN_LOGO), PAGE_W - 40 - 88, top - 92, 88, 92, mask="auto", preserveAspectRatio=True)
@@ -57,9 +57,6 @@ def _letterhead(pdf: canvas.Canvas) -> None:
     pdf.setFont("Helvetica-Bold", 13.5); pdf.drawString(x, top - 50, "GOVERNMENT HIGHER SECONDARY SCHOOL")
     pdf.setFont("Helvetica", 9.5); line = "KANGAYAMPALAYAM, COIMBATORE - 641401"
     pdf.drawString(x, top - 66, line)
-    pdf.setDash(3, 2); pdf.setLineWidth(0.7)
-    pdf.line(x + pdf.stringWidth(line, "Helvetica", 9.5) + 4, top - 63, PAGE_W - 135, top - 63)
-    pdf.setDash()
 
     size = 340
     pdf.drawImage(_watermark(), (PAGE_W - size) / 2, PAGE_H / 2 - size / 2 + 40, size, size, mask="auto", preserveAspectRatio=True)
@@ -87,7 +84,8 @@ def _signature(pdf: canvas.Canvas, issued: datetime | None, y: float = 250) -> N
 def _fill(value: str | None, blank: int = 22) -> str:
     """A filled-in blank: bold and underlined, or an empty line when the record has no value."""
     if value and value.strip():
-        return f"<u><b>&nbsp;{escape(value.strip())}&nbsp;</b></u>"
+        # Non-breaking inside too, so a name never splits across two lines.
+        return f"<u><b>&nbsp;{escape(' '.join(value.split())).replace(' ', '&nbsp;')}&nbsp;</b></u>"
     return "_" * blank
 
 
@@ -116,8 +114,10 @@ def bonafide_pdf(student: Student, issued: datetime | None) -> BytesIO:
     _title(pdf, "SCHOOL BONAFIDE CERTIFICATE", PAGE_H - 215)
 
     g = student.gender
-    parent = student.father_name or student.mother_name
-    text = (f"This is to certify that {_gendered(g, 'Selvan', 'Selvi', 'Selvi/Selvan')} {_fill(student.account.full_name)} "
+    # Father's name when the record has it, otherwise the mother's.
+    parent = (student.father_name or "").strip() or (student.mother_name or "").strip() or None
+    # S/O · D/O always starts the second line, together with the parent's name.
+    text = (f"This is to certify that {_gendered(g, 'Selvan', 'Selvi', 'Selvi/Selvan')} {_fill(student.account.full_name)}<br/>"
             f"{_gendered(g, 'S/O', 'D/O', 'D/o /S/O')} {_fill(parent)} studying in {_fill(ROMAN.get(cls.grade, str(cls.grade)), 5)} Standard "
             f"{_fill(cls.section, 4)} Sec in the academic year {escape(cls.academic_year)} in our institution.")
     y = _draw_para(pdf, text, PAGE_H - 255, _body_style(firstLineIndent=85))

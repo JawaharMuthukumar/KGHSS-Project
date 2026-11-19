@@ -45,9 +45,12 @@ export default function ComplaintFab() {
     <>
       {open && (
         <div className="fixed bottom-44 lg:bottom-24 right-4 lg:right-5 z-50 w-[22rem] max-w-[calc(100vw-2rem)] h-[28rem] max-h-[calc(100svh-14rem)] lg:max-h-none bg-white rounded-3xl shadow-2xl border border-navy/10 flex flex-col overflow-hidden">
-          <div className="bg-navy-dark text-white px-4 py-3.5 flex items-center justify-between shrink-0">
-            <p className="font-heading font-bold text-sm">Message Admin</p>
-            <button type="button" onClick={() => setOpen(false)} aria-label="Close">
+          <div className="bg-navy-dark text-white px-4 py-3 flex items-center justify-between gap-3 shrink-0">
+            <div className="min-w-0">
+              <p className="font-heading font-bold text-sm">Complaint Box</p>
+              <p className="text-[11px] text-white/60">Direct talk to the Head Master</p>
+            </div>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="shrink-0">
               <Icon name="X" size={18} />
             </button>
           </div>
@@ -91,14 +94,26 @@ export default function ComplaintFab() {
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-5 right-4 lg:right-5 z-40 flex items-center justify-center w-14 h-14 rounded-full bg-gold text-navy-dark shadow-xl hover:bg-gold-light transition-colors"
-        aria-label="Message admin"
-      >
-        <Icon name={open ? "X" : "MessageCircleHeart"} size={22} />
-      </button>
+      <div className="group fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-5 right-4 lg:right-5 z-40">
+        {/* Hover / keyboard-focus label so students know what the round button is */}
+        {!open && (
+          <span
+            role="tooltip"
+            className="pointer-events-none absolute right-full top-1/2 -translate-y-1/2 mr-3 whitespace-nowrap rounded-xl bg-navy-dark px-3.5 py-2 text-white shadow-lg opacity-0 translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:translate-x-0"
+          >
+            <span className="block text-sm font-semibold leading-tight">Complaint Box</span>
+            <span className="block text-[11px] text-white/65 leading-tight">Direct talk to the Head Master</span>
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center justify-center w-14 h-14 rounded-full bg-gold text-navy-dark shadow-xl hover:bg-gold-light transition-colors"
+          aria-label={open ? "Close complaint box" : "Complaint Box — direct talk to the Head Master"}
+        >
+          <Icon name={open ? "X" : "MessageCircleHeart"} size={22} />
+        </button>
+      </div>
     </>
   );
 }

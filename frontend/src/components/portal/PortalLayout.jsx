@@ -486,7 +486,8 @@ function PortalShell({ role }) {
           </div>
         )}
 
-        <main className="flex-1 px-4 pt-4 pb-28 sm:px-5 sm:pt-5 lg:p-7 max-w-[1440px] w-full mx-auto">
+        {/* Students: extra bottom room on desktop so the Complaint Box button never covers the last row */}
+        <main className={`flex-1 px-4 pt-4 pb-28 sm:px-5 sm:pt-5 lg:p-7 max-w-[1440px] w-full mx-auto ${role === "student" ? "lg:pb-24" : ""}`}>
           {user?.password_is_default && (
             <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
               <Icon name="KeyRound" size={18} className="shrink-0" />

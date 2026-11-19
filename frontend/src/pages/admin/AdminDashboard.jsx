@@ -37,7 +37,7 @@ export default function AdminDashboard() {
         <StatCard label="Teachers" value={loading ? undefined : data?.teacher_count} icon="Users" tone="teal" to="/admin/teachers" />
         <StatCard label="Students" value={loading ? undefined : data?.student_count} icon="GraduationCap" tone="gold" to="/admin/students" />
         <StatCard
-          label="Pending Certificates"
+          label="Certificates to Print"
           value={loading ? undefined : data?.pending_certificate_requests}
           icon="FileCheck2"
           tone="navy"

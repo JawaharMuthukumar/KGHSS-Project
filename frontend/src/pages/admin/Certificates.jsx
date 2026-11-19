@@ -4,7 +4,8 @@ export default function AdminCertificates() {
   return (
     <CertificateRequestsPanel
       showClassTeacher
-      description="All certificate requests across the school. The class teacher decides first; the HM can approve or reject any request that is still pending."
+      canPrint
+      description="Requests approved by class teachers come here to print. Printing tells the student to collect the certificate from your office."
     />
   );
 }

@@ -8,9 +8,9 @@ export default function Hero() {
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <section className="relative -mt-[72px] lg:-mt-[120px] min-h-[92svh] flex items-end overflow-hidden bg-navy-dark">
-      {/* Header is sticky (occupies flow height) but transparent here, so Hero
-          is pulled up by the header's own height to sit fully behind it. */}
+    <section className="relative -mt-[var(--site-header-h,76px)] min-h-[92svh] flex items-end overflow-hidden bg-navy-dark">
+      {/* Header is sticky (occupies flow height) but transparent here, so Hero is pulled up by
+          the header's own measured height (--site-header-h, set by Header) to sit fully behind it. */}
       <motion.div
         className="absolute inset-0"
         initial={{ scale: 1 }}
@@ -29,7 +29,7 @@ export default function Hero() {
       <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-navy-dark/75 to-transparent" />
 
       {/* Floating accent */}
-      <div className="absolute top-28 right-10 sm:right-20 hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-white/90 text-xs font-semibold animate-pulse">
+      <div className="absolute top-[calc(var(--site-header-h,76px)+14px)] right-10 sm:right-20 hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-white/90 text-xs font-semibold animate-pulse">
         <Icon name="Sparkle" size={14} className="text-gold-light" />
         Est. {schoolInfo.foundedYear}
       </div>

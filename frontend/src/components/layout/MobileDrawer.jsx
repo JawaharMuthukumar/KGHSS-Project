@@ -3,12 +3,10 @@ import { Link, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import Icon from "../ui/Icon";
 import { navigation, centenaryCta, schoolInfo, loginRoles } from "../../data/schoolData";
-import { useLanguage } from "../../context/LanguageContext";
 
 export default function MobileDrawer({ open, onClose }) {
   const [expanded, setExpanded] = useState(null);
   const location = useLocation();
-  const { lang, toggleLang } = useLanguage();
 
   const toggleExpand = (label) => setExpanded((prev) => (prev === label ? null : label));
 
@@ -133,14 +131,6 @@ export default function MobileDrawer({ open, onClose }) {
             </nav>
 
             <div className="px-5 py-4 border-t border-navy/10 flex flex-col gap-3">
-              <button
-                onClick={toggleLang}
-                className="self-start flex items-center gap-1 text-xs font-semibold text-navy/70 border border-navy/15 rounded-full px-3 py-1.5"
-              >
-                <span className={lang === "en" ? "text-navy" : ""}>English</span>
-                <span className="text-navy/30">|</span>
-                <span className={`font-tamil ${lang === "ta" ? "text-navy" : ""}`}>தமிழ்</span>
-              </button>
               <a href={`tel:${schoolInfo.contact.phonePrimary.replace(/\s/g, "")}`} className="flex items-center gap-2 text-sm text-navy/70">
                 <Icon name="Phone" size={15} />
                 {schoolInfo.contact.phonePrimary}

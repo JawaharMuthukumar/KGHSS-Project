@@ -1,17 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import Icon from "../ui/Icon";
 import NavDropdown from "./NavDropdown";
 import LoginDropdown from "./LoginDropdown";
 import MobileDrawer from "./MobileDrawer";
-import TopBar from "./TopBar";
-import { navigation, centenaryCta, schoolInfo } from "../../data/schoolData";
+import { navigation, centenaryCta } from "../../data/schoolData";
 import { SCHOOL_LOGO, SCHOOL_LOGO_ALT } from "../../constants/brand";
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
+  const headerRef = useRef(null);
+
+  // Publish the header's real height (it changes when nav items wrap) so Hero can sit exactly behind it.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const publish = () => document.documentElement.style.setProperty("--site-header-h", `${el.offsetHeight}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const isHome = location.pathname === "/";
 
@@ -36,8 +47,7 @@ export default function Header() {
   }, [drawerOpen]);
 
   return (
-    <header className="sticky top-0 z-50" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
-      <TopBar />
+    <header ref={headerRef} className="sticky top-0 z-50" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
       <div
         className={`transition-all duration-300 ${
           solid
@@ -49,15 +59,7 @@ export default function Header() {
           {/* Fixed height regardless of scroll state: Hero relies on this being predictable so it can sit behind the header. */}
           <div className="flex items-center justify-between py-3.5">
             <Link to="/" className="flex items-center gap-3 min-w-0">
-              <img src={SCHOOL_LOGO} alt={SCHOOL_LOGO_ALT} className="w-11 h-11 rounded-full bg-white object-contain shrink-0" />
-              <span className="min-w-0 hidden sm:block">
-                <span className={`block font-heading font-bold leading-tight truncate transition-colors ${solid ? "text-navy text-sm" : "text-white text-base"}`}>
-                  {schoolInfo.shortName}
-                </span>
-                <span className={`block text-[11px] leading-tight truncate transition-colors ${solid ? "text-navy/60" : "text-white/70"}`}>
-                  {schoolInfo.location.village}, {schoolInfo.location.district}
-                </span>
-              </span>
+              <img src={SCHOOL_LOGO} alt={SCHOOL_LOGO_ALT} className="w-12 h-12 rounded-full bg-white object-contain shrink-0" />
             </Link>
 
             <nav className="hidden lg:flex items-center gap-0.5" aria-label="Primary">

@@ -12,8 +12,8 @@ import { formatDate } from "../../utils/formatDate";
 import { DashboardSkeleton } from "../../components/ui/Skeleton";
 import NoticeAuthor from "../../components/portal/NoticeAuthor";
 import { useAlerts } from "../../context/AlertsContext";
+import { certStatus } from "../../constants/certificates";
 
-const statusTone = { pending: "navy", approved: "success", rejected: "danger" };
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -142,7 +142,7 @@ export default function StudentDashboard() {
                 <Icon name="FileCheck2" size={16} className="text-navy/40 shrink-0" />
                 <p className="text-sm font-medium text-navy capitalize truncate">{req.certificate_type}</p>
               </div>
-              <Badge tone={statusTone[req.status] || "navy"}>{req.status}</Badge>
+              <Badge tone={certStatus(req.status).tone}>{certStatus(req.status).label}</Badge>
             </div>
           ))}
         </div>

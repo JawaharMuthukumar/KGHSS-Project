@@ -768,14 +768,15 @@ def portal_notices(db: Session = Depends(get_db), account: Account = Depends(cur
 def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(current_account)):
     """`versions` change whenever anything in that topic changes, so the client knows what to refresh.
     `items` are things waiting on this user; `notices` lists recent visible notice ids for unread badges."""
-    def version(q, model, decided=True):
-        cols = [func.count(model.id), func.max(model.id)] + ([func.max(model.decided_at)] if decided else [])
+    def version(q, model, decided=True, extra=()):
+        cols = [func.count(model.id), func.max(model.id)] + ([func.max(model.decided_at)] if decided else []) + [func.max(c) for c in extra]
         return ":".join(str(v) for v in q.with_entities(*cols).one())
 
     certs = db.query(CertificateRequest); leaves = db.query(LeaveRequest); notices = db.query(Notice).filter(Notice.published.is_(True))
     cert_pending = leave_pending = None; cert_link = leave_link = None
     if account.role == "admin":
-        cert_pending = certs.filter(CertificateRequest.status == "pending"); cert_link = "/admin/certificates"
+        # The HM's queue is what the class teachers have approved and is waiting to be printed.
+        cert_pending = certs.filter(CertificateRequest.status == "approved"); cert_link = "/admin/certificates"
         leaves = leaves.filter(LeaveRequest.applicant_role == "teacher"); leave_pending = leaves.filter(LeaveRequest.status == "pending"); leave_link = "/admin/leave-requests"
         notices = notices.filter(Notice.id < 0)  # the HM writes notices; nothing to alert on
     elif account.role == "teacher":
@@ -795,27 +796,39 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
     if cert_pending is not None:
         for req in cert_pending.order_by(CertificateRequest.id.desc()).limit(10).all():
             s = db.get(Student, req.student_id)
-            items.append({"key": f"certificate-{req.id}", "kind": "certificate", "title": "New certificate request",
-                          "detail": f"{s.account.full_name if s else 'Student'} · {req.certificate_type.title()}", "to": cert_link, "created_at": req.created_at})
+            to_print = account.role == "admin"
+            items.append({"key": f"certificate-{req.id}", "kind": "certificate", "title": "Certificate to print" if to_print else "New certificate request",
+                          "detail": f"{s.account.full_name if s else 'Student'} · {req.certificate_type.title()}", "to": cert_link,
+                          "created_at": req.decided_at if to_print else req.created_at})
     if leave_pending is not None:
         for req in leave_pending.order_by(LeaveRequest.id.desc()).limit(10).all():
             items.append({"key": f"leave-{req.id}", "kind": "leave", "title": "New leave request",
                           "detail": f"{db.get(Account, req.applicant_id).full_name} · {req.days} day{'s' if req.days != 1 else ''}", "to": leave_link, "created_at": req.created_at})
     if account.role == "student":
-        # Approved certificates waiting to be downloaded count as "for you".
-        for req in certs.filter(CertificateRequest.status == "approved", CertificateRequest.downloaded_at.is_(None)).order_by(CertificateRequest.id.desc()).limit(10).all():
-            items.append({"key": f"certificate-ready-{req.id}", "kind": "certificate", "title": "Certificate approved",
-                          "detail": f"{req.certificate_type.title()} is ready to download", "to": "/student/certificates", "created_at": req.decided_at})
+        # Progress messages: approved = moved to the HM (no badge), printed = collect it from the HM (badge for a week), rejected.
+        recent = datetime.utcnow() - timedelta(days=7)
+        for req in certs.filter(CertificateRequest.status == "approved").order_by(CertificateRequest.id.desc()).limit(10).all():
+            items.append({"key": f"certificate-hm-{req.id}", "kind": "certificate", "title": "Class teacher approved",
+                          "detail": f"{req.certificate_type.title()} certificate moved to the Head Master", "to": "/student/certificates",
+                          "created_at": req.decided_at, "silent_badge": True})
+        for req in certs.filter(CertificateRequest.status == "ready", CertificateRequest.downloaded_at >= recent).order_by(CertificateRequest.id.desc()).limit(10).all():
+            items.append({"key": f"certificate-ready-{req.id}", "kind": "certificate", "title": "Certificate ready",
+                          "detail": f"{req.certificate_type.title()} certificate printed — collect it from the Head Master", "to": "/student/certificates",
+                          "created_at": req.downloaded_at})
+        for req in certs.filter(CertificateRequest.status == "rejected", CertificateRequest.decided_at >= recent).order_by(CertificateRequest.id.desc()).limit(5).all():
+            items.append({"key": f"certificate-rejected-{req.id}", "kind": "certificate", "title": "Certificate request rejected",
+                          "detail": req.decision_note or f"{req.certificate_type.title()} certificate", "to": "/student/certificates",
+                          "created_at": req.decided_at, "silent_badge": True})
         for req in leaves.filter(LeaveRequest.status != "pending", LeaveRequest.decided_at >= datetime.utcnow() - timedelta(days=3)).order_by(LeaveRequest.id.desc()).limit(5).all():
             items.append({"key": f"leave-{req.id}-{req.status}", "kind": "leave", "title": f"Leave {req.status}", "detail": f"{req.from_date:%d %b} – {req.to_date:%d %b}",
                           "to": "/student/leave", "created_at": req.decided_at, "silent_badge": True})
     items.sort(key=lambda i: i["created_at"] or datetime.min, reverse=True)
 
-    counts = {"certificates": sum(1 for i in items if i["kind"] == "certificate"), "leave": sum(1 for i in items if i["kind"] == "leave" and not i.get("silent_badge"))}
+    counts = {"certificates": sum(1 for i in items if i["kind"] == "certificate" and not i.get("silent_badge")), "leave": sum(1 for i in items if i["kind"] == "leave" and not i.get("silent_badge"))}
     cache: dict = {}
     recent_notices = [{"id": n.id, "title": n.title, "author_teacher_id": notice_author(db, n, cache)["author_teacher_id"]} for n in notices.order_by(Notice.id.desc()).limit(30).all()]
     return {"counts": counts, "items": items, "notices": recent_notices,
-            "versions": {"certificates": version(certs, CertificateRequest), "leave": version(leaves, LeaveRequest), "notices": version(notices, Notice, decided=False)}}
+            "versions": {"certificates": version(certs, CertificateRequest, extra=[CertificateRequest.downloaded_at]), "leave": version(leaves, LeaveRequest), "notices": version(notices, Notice, decided=False)}}
 
 
 @router.get("/classes/{class_code}/notices")
@@ -892,20 +905,24 @@ def certificate_out(db: Session, req: CertificateRequest) -> dict:
             "class_teacher_name": class_teacher.account.full_name if class_teacher else None,
             "decided_by_name": decider.full_name if decider else None, "decided_by_role": decider.role if decider else None,
             "certificate_type": req.certificate_type, "note": req.note, "status": req.status, "decision_by": req.decision_by,
-            "decision_note": req.decision_note, "created_at": req.created_at, "decided_at": req.decided_at, "downloaded_at": req.downloaded_at}
+            "decision_note": req.decision_note, "created_at": req.created_at, "decided_at": req.decided_at, "printed_at": req.downloaded_at}
 
 
 @router.patch("/certificates/requests/{request_id}")
 def decide_certificate(request_id: int, data: DecisionIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    """Flow: pending (class teacher) -> approved (moved to the HM, who prints it) -> ready (printed; collect from HM).
+    The class teacher decides pending requests; the HM may also approve a pending one, or reject anything not yet printed."""
     req=db.get(CertificateRequest,request_id)
     if not req: raise HTTPException(404,"Certificate request not found")
     if account.role=="teacher":
         student=db.get(Student,req.student_id); cls=student.school_class
         teacher=teacher_profile(db,account)
         if not is_class_teacher_of(db,teacher,cls): raise HTTPException(403,"Only the assigned class teacher may decide this request")
-    if req.status!="pending": raise HTTPException(409,"Request has already been decided")
+        if req.status!="pending": raise HTTPException(409,"Request has already been decided")
+    elif req.status not in ("pending","approved") or (req.status=="approved" and data.approve):
+        raise HTTPException(409,"Request has already been decided")
     req.status="approved" if data.approve else "rejected"; req.decision_by=account.id; req.decision_note=data.note; req.decided_at=datetime.utcnow()
-    db.commit(); return req
+    db.commit(); return certificate_out(db, req)
 
 
 # Leave requests: student -> class teacher, teacher -> admin (HM)
@@ -1002,22 +1019,21 @@ def class_leave_days(class_code: str, month: str = Query(..., pattern=r"^\d{4}-(
 
 
 @router.get("/certificates/requests/{request_id}/download")
-def download_certificate(request_id: int, db: Session = Depends(get_db), account: Account = Depends(current_account)):
+def download_certificate(request_id: int, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+    """Only the HM prints certificates; printing marks the request ready for the student to collect."""
     req=db.get(CertificateRequest,request_id)
     if not req: raise HTTPException(404,"Certificate request not found")
     student=db.get(Student,req.student_id)
-    if account.role=="student" and student.account_id!=account.id: raise HTTPException(403,"Certificate access denied")
-    if account.role=="teacher" and not can_access_class(db,account,student.school_class): raise HTTPException(403,"Class access denied")
-    if account.role not in {"student","teacher","admin"}: raise HTTPException(403,"Certificate access denied")
-    if req.status!="approved": raise HTTPException(409,"Only approved requests can be downloaded")
+    if req.status not in ("approved","ready"): raise HTTPException(409,"Only requests approved by the class teacher can be printed")
     try:
         from app.services.certificate_pdf import bonafide_pdf, general_certificate_pdf
     except ImportError as exc:
         raise HTTPException(503,"PDF generation dependency is unavailable") from exc
-    if req.certificate_type=="bonafide": output=bonafide_pdf(student,req.decided_at)
-    else: output=general_certificate_pdf(student,req.certificate_type,req.decided_at)
-    req.downloaded_at=datetime.utcnow(); db.commit()
-    return StreamingResponse(output,media_type="application/pdf",headers={"Content-Disposition":f'attachment; filename="certificate-{request_id}.pdf"'})
+    issued=datetime.utcnow()+timedelta(hours=5,minutes=30)  # dated the day the HM prints it (IST)
+    if req.certificate_type=="bonafide": output=bonafide_pdf(student,issued)
+    else: output=general_certificate_pdf(student,req.certificate_type,issued)
+    req.status="ready"; req.downloaded_at=datetime.utcnow(); db.commit()
+    return StreamingResponse(output,media_type="application/pdf",headers={"Content-Disposition":f'inline; filename="certificate-{request_id}.pdf"'})
 
 
 # Complaint messaging, private student <-> admin thread
@@ -1277,7 +1293,7 @@ def public_school_profile():
 
 @router.get("/dashboards/admin")
 def admin_dashboard(db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
-    return {"school":public_school_profile(),"class_count":db.query(func.count(AcademicClass.id)).filter_by(is_active=True).scalar(),"teacher_count":db.query(func.count(Teacher.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"student_count":db.query(func.count(Student.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"pending_certificate_requests":db.query(func.count(CertificateRequest.id)).filter_by(status="pending").scalar(),"open_complaint_threads":db.query(func.count(ComplaintThread.id)).scalar(),"recent_notices":db.query(Notice).filter(Notice.published.is_(True),Notice.audience!="class").order_by(Notice.created_at.desc()).limit(5).all()}
+    return {"school":public_school_profile(),"class_count":db.query(func.count(AcademicClass.id)).filter_by(is_active=True).scalar(),"teacher_count":db.query(func.count(Teacher.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"student_count":db.query(func.count(Student.id)).join(Account).filter(Account.is_active.is_(True)).scalar(),"pending_certificate_requests":db.query(func.count(CertificateRequest.id)).filter_by(status="approved").scalar(),"open_complaint_threads":db.query(func.count(ComplaintThread.id)).scalar(),"recent_notices":db.query(Notice).filter(Notice.published.is_(True),Notice.audience!="class").order_by(Notice.created_at.desc()).limit(5).all()}
 
 
 @router.get("/timetable/day", summary="Every class's timetable for one weekday (0 = Mon … 4 = Fri), for the HM dashboard")

@@ -104,11 +104,32 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="container-page py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/50 text-center sm:text-left">
+        <div className="container-page py-5 text-xs text-white/50 text-center">
           <p>
             © {year} {schoolInfo.name}. All rights reserved.
           </p>
-          <p>Managed by Department of School Education, Government of Tamil Nadu</p>
+        </div>
+      </div>
+
+      {/* Developer credit */}
+      <div className="border-t border-white/10">
+        <div className="container-page py-4 flex flex-col sm:flex-row items-center justify-center gap-x-2 gap-y-1 text-xs text-white/50 text-center">
+          <p>
+            Developed &amp; maintained by{" "}
+            <a
+              href="https://whiteblackbox.in"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-gold-light hover:text-gold transition-colors"
+            >
+              WBB · White Black Box
+            </a>
+          </p>
+          <span className="hidden sm:inline" aria-hidden="true">|</span>
+          <a href="mailto:connect@whiteblackbox.in" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+            <Icon name="Mail" size={13} />
+            connect@whiteblackbox.in
+          </a>
         </div>
       </div>
     </footer>

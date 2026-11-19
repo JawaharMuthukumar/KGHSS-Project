@@ -2,7 +2,6 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import PageLoader from "./components/utility/PageLoader";
-import { LanguageProvider } from "./context/LanguageContext";
 import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./components/ui/Toast";
 import { useMobileInputGuard } from "./hooks/useMobileInputGuard";
@@ -70,7 +69,7 @@ function GlobalInputGuards() {
 
 export default function App() {
   return (
-    <LanguageProvider>
+    <>
       <GlobalInputGuards />
       <BrowserRouter>
         <ToastProvider>
@@ -152,6 +151,6 @@ export default function App() {
         </AuthProvider>
         </ToastProvider>
       </BrowserRouter>
-    </LanguageProvider>
+    </>
   );
 }

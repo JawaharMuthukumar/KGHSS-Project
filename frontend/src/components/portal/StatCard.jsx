@@ -2,8 +2,12 @@ import { Link } from "react-router-dom";
 import Card from "../ui/Card";
 import Icon from "../ui/Icon";
 
-/** A headline number. Pass `to` to make the whole card a link to the page behind the number. */
-export default function StatCard({ label, value, icon, tone = "navy", to }) {
+/**
+ * A headline number. Pass `to` to make the whole card a link to the page behind the number.
+ * Hovering shows the full label (and `hint`), since narrow cards cut long labels short.
+ */
+export default function StatCard({ label, value, icon, tone = "navy", to, hint }) {
+  const tooltip = hint ? `${label} — ${hint}` : label;
   const tones = {
     navy: "bg-navy/8 text-navy",
     gold: "bg-gold/12 text-gold-dark",
@@ -29,9 +33,9 @@ export default function StatCard({ label, value, icon, tone = "navy", to }) {
     </Card>
   );
 
-  if (!to) return card;
+  if (!to) return <div title={tooltip}>{card}</div>;
   return (
-    <Link to={to} className="group block rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+    <Link to={to} title={tooltip} aria-label={tooltip} className="group block rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-gold">
       {card}
     </Link>
   );

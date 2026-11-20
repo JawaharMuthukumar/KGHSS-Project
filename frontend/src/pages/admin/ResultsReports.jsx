@@ -1,13 +1,13 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import PortalPageHeader from "../../components/portal/PortalPageHeader";
 import Card from "../../components/ui/Card";
 import Banner from "../../components/portal/Banner";
 import Icon from "../../components/ui/Icon";
 import { inputClass } from "../../components/portal/FormField";
 import ClassMarkReport from "../../components/reports/ClassMarkReport";
-import ClassScorecard from "../../components/reports/ClassScorecard";
 import ConsolidatedReport from "../../components/reports/ConsolidatedReport";
-import ClassReportCards from "../../components/reports/ClassReportCards";
+import AnalyticsReport from "../../components/reports/AnalyticsReport";
 import { useApiResource } from "../../hooks/useApiResource";
 import { termsForGrade } from "../../constants/academic";
 import { TableSkeleton } from "../../components/ui/Skeleton";
@@ -16,16 +16,18 @@ const ALL = "ALL"; // "All Classes": school-wide averages instead of a single cl
 
 const tabs = [
   { id: "mark-report", label: "Class Mark Report", needsClass: true },
-  { id: "scorecard", label: "Scorecard", needsClass: true },
-  { id: "report-cards", label: "Report Cards", needsClass: true },
+  { id: "analytics", label: "Analytics", needsClass: false },
   { id: "consolidated", label: "Consolidated Report", needsClass: false },
 ];
 
 export default function ResultsReports() {
   const { data: classes } = useApiResource("/classes");
+  const [params, setParams] = useSearchParams();
   const [classCode, setClassCode] = useState(ALL);
-  const [term, setTerm] = useState(termsForGrade(null)[0]);
-  const [tab, setTab] = useState("mark-report");
+  // `?tab=analytics&term=…` lets the dashboard's Report Analytics card open straight on the right view.
+  const [term, setTerm] = useState(params.get("term") || termsForGrade(null)[0]);
+  const tab = tabs.some((t) => t.id === params.get("tab")) ? params.get("tab") : "mark-report";
+  const setTab = (id) => setParams({ tab: id }, { replace: true });
   // With "All Classes" (school-wide / consolidated views) every exam name from both grade bands is offered.
   const terms = termsForGrade((classes || []).find((c) => c.code === classCode)?.grade);
 
@@ -46,7 +48,7 @@ export default function ResultsReports() {
 
   return (
     <div>
-      <PortalPageHeader title="Results & Reports" description="Class mark reports, scorecards, and school-wide analysis." />
+      <PortalPageHeader title="Results & Reports" description="Class mark reports, results analytics and the consolidated report." />
 
       <Card className="p-4 mb-5 flex flex-wrap gap-3 items-center">
         <select value={classCode} onChange={(e) => selectClass(e.target.value)} className={inputClass + " max-w-[10rem]"}>
@@ -118,8 +120,14 @@ export default function ResultsReports() {
         </div>
       )}
       {tab === "mark-report" && !showAll && <ClassMarkReport classCode={classCode} term={term} />}
-      {tab === "scorecard" && !showAll && <ClassScorecard classCode={classCode} term={term} />}
-      {tab === "report-cards" && !showAll && <ClassReportCards classCode={classCode} />}
+      {tab === "analytics" && <AnalyticsReport
+          term={term}
+          classCode={showAll ? "" : classCode}
+          onSelectClass={(code) => {
+            selectClass(code);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />}
       {tab === "consolidated" && <ConsolidatedReport term={term} />}
     </div>
   );

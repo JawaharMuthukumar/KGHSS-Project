@@ -27,6 +27,27 @@
   --animate-marquee: marquee 32s linear infinite;
 }
 
+/* ---- Chart colours (dataviz reference palette; dark steps live in the portal dark-mode block) ----
+ * series-1/2: two-series comparisons (e.g. boys / girls, pass % / average %).
+ * good/critical: pass / fail — status colours, always shown with a text label.
+ * band-1…5: ordinal marks-range ramp, low → high (one hue, light → dark). */
+:root {
+  --viz-surface: #ffffff;
+  --viz-series-1: #2a78d6;
+  --viz-series-2: #eb6834;
+  --viz-good: #0ca30c;
+  --viz-critical: #d03b3b;
+  --viz-grid: #e1e0d9;
+  --viz-axis: #c3c2b7;
+  --viz-muted: #898781;
+  --viz-empty: #c3c2b7;
+  --viz-band-1: #86b6ef;
+  --viz-band-2: #5598e7;
+  --viz-band-3: #2a78d6;
+  --viz-band-4: #1c5cab;
+  --viz-band-5: #104281;
+}
+
 @keyframes marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
@@ -312,6 +333,19 @@ h1, h2, h3, h4, h5, h6 {
     --color-amber-100: #44361a;
     --color-amber-200: #6b5320;
     color-scheme: dark;
+    /* Charts: the same hues stepped for the dark surface (validated with the dataviz palette checker) */
+    --viz-surface: #172730;
+    --viz-series-1: #3987e5;
+    --viz-series-2: #d95926;
+    --viz-grid: #2c3d45;
+    --viz-axis: #3d525c;
+    --viz-muted: #8fa3ab;
+    --viz-empty: #4a5c64;
+    --viz-band-1: #86b6ef;
+    --viz-band-2: #5598e7;
+    --viz-band-3: #2a78d6;
+    --viz-band-4: #1c5cab;
+    --viz-band-5: #184f95;
   }
 
   html.portal-dark :is(.bg-white.text-black, .report-card) {

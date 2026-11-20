@@ -20,6 +20,8 @@ const quickActions = [
 export default function AdminDashboard() {
   const { user } = useAuth();
   const { data, loading, error } = useApiResource("/dashboards/admin", { live: ["certificates", "leave"] });
+  // Loaded separately so the slower results summary never holds up the dashboard.
+  const { data: latest } = useApiResource("/reports/analytics/latest");
 
   return (
     <div>
@@ -33,9 +35,16 @@ export default function AdminDashboard() {
       {loading && <DashboardSkeleton />}
 
       {!loading && <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <StatCard label="Classes" value={loading ? undefined : data?.class_count} icon="School" tone="navy" to="/admin/class-teachers" />
-        <StatCard label="Teachers" value={loading ? undefined : data?.teacher_count} icon="Users" tone="teal" to="/admin/teachers" />
-        <StatCard label="Students" value={loading ? undefined : data?.student_count} icon="GraduationCap" tone="gold" to="/admin/students" />
+        <StatCard label="Students" value={data?.student_count} icon="GraduationCap" tone="gold" to="/admin/students" hint="class-wise boys, girls and class teacher" />
+        <StatCard label="Teachers" value={data?.teacher_count} icon="Users" tone="teal" to="/admin/teachers" />
+        <StatCard
+          label="Report Analytics"
+          value={latest ? (latest.pass_percent != null ? `${latest.pass_percent}%` : "—") : undefined}
+          icon="BarChart3"
+          tone="success"
+          to={`/admin/reports?tab=analytics${latest?.term ? `&term=${encodeURIComponent(latest.term)}` : ""}`}
+          hint={latest?.term ? `pass % in ${latest.term}` : "school results and charts"}
+        />
         <StatCard
           label="Certificates to Print"
           value={loading ? undefined : data?.pending_certificate_requests}

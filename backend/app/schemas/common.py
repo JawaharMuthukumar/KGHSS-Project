@@ -113,6 +113,9 @@ class SubjectTeacherIn(BaseModel):
 class MarksIn(BaseModel):
     academic_year: str = Field(min_length=4, max_length=9)
     students: dict[str, dict[str, dict[str, Any]]]
+    # Exam attendance (optional): working days of the exam period and present days per student id.
+    working_days: int | None = Field(default=None, ge=1, le=366)
+    present_days: dict[str, int | None] | None = None
 
 
 class AttendanceIn(BaseModel):

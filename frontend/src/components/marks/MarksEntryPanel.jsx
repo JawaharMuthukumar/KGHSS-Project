@@ -9,7 +9,7 @@ const PHONE = "(max-width: 767px)";
 const isPhone = () => typeof window !== "undefined" && window.matchMedia?.(PHONE).matches;
 // Subjects + components for one exam; falls back to the older one-pattern-for-all-exams response.
 const termSubjects = (scheme, term) => scheme?.term_subjects?.[term] || scheme?.subjects || [];
-const monthLabel = (ym) => new Date(`${ym}-01T00:00:00`).toLocaleString("en-IN", { month: "short", year: "numeric" });
+const digitsOnly = (raw, max) => raw === "" || (/^\d+$/.test(raw) && (max == null || Number(raw) <= max));
 
 // Grid for entering one class's marks for one exam. Columns come from the class's
 // mark scheme (SA/FA, Theory/Practical/Internal, …) so each grade gets its own pattern.
@@ -25,34 +25,25 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
   const [focus, setFocus] = useState(() => (isPhone() ? null : "all"));
   // The split can differ per exam (10th: mid terms are out of 100, other exams have Science Theory + Practical).
   const subjects = termSubjects(scheme, term);
-  // Report-card attendance for this exam runs from June up to this month (null = not set and no marks yet).
-  const [attendance, setAttendance] = useState(null); // { months, attendance_until, chosen }
-  const [attendanceSaving, setAttendanceSaving] = useState(false);
-
-  const loadAttendanceUntil = () =>
-    api
-      .get(`/classes/${classCode}/exams/${encodeURIComponent(term)}/attendance-until`)
-      .then(setAttendance)
-      .catch(() => setAttendance(null)); // older backend without this endpoint: just hide the picker
+  // Exam attendance for the report card: the exam period's working days (typed once) and each student's present days.
+  const [workingDays, setWorkingDays] = useState("");
+  const [present, setPresent] = useState({}); // { [studentId]: "days" }
+  const wd = Number(workingDays) || 0;
 
   useEffect(() => {
     if (!term) return;
-    setAttendance(null);
-    loadAttendanceUntil();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setWorkingDays("");
+    setPresent({});
+    api
+      .get(`/classes/${classCode}/exams/${encodeURIComponent(term)}/attendance`)
+      .then((res) => {
+        setWorkingDays(res.working_days ? String(res.working_days) : "");
+        setPresent(Object.fromEntries(Object.entries(res.present_days || {}).map(([id, d]) => [id, d == null ? "" : String(d)])));
+      })
+      .catch(() => {}); // older backend: start blank
   }, [classCode, term]);
 
-  const changeAttendanceUntil = async (month) => {
-    setError("");
-    setAttendanceSaving(true);
-    try {
-      setAttendance(await api.put(`/classes/${classCode}/exams/${encodeURIComponent(term)}/attendance-until`, { month }));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong.");
-    } finally {
-      setAttendanceSaving(false);
-    }
-  };
+  const presentOver = (value) => value !== "" && value != null && wd > 0 && Number(value) > wd;
 
   useEffect(() => {
     setScheme(null);
@@ -113,7 +104,16 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
   const handleSave = async () => {
     setError("");
     setSuccess("");
+    const anyPresent = Object.values(present).some((v) => v !== "" && v != null);
+    if (anyPresent && !wd) {
+      setError("Enter the working days for this exam before the present days.");
+      return;
+    }
     for (const s of students) {
+      if (presentOver(present[s.id])) {
+        setError(`${s.full_name}: present days can't be more than the ${wd} working days.`);
+        return;
+      }
       for (const { subject, components } of subjects) {
         const cell = cellOf(s.id, subject);
         if (cell.absent) continue;
@@ -145,10 +145,17 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
             ),
           ])
         ),
+        ...(wd
+          ? {
+              working_days: wd,
+              present_days: Object.fromEntries(
+                students.map((s) => [String(s.id), present[s.id] === "" || present[s.id] == null ? null : Number(present[s.id])])
+              ),
+            }
+          : {}),
       };
       const res = await api.put(`/classes/${classCode}/marks/${encodeURIComponent(term)}`, payload);
-      setSuccess(`Saved ${res.saved_marks} mark entries for ${term}.`);
-      loadAttendanceUntil(); // the first save fills in the default attendance month
+      setSuccess(`Saved ${res.saved_marks} mark entries${wd ? " and attendance" : ""} for ${term}.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
     } finally {
@@ -165,32 +172,24 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
               <option key={t}>{t}</option>
             ))}
           </select>
+          {/* The exam's working days sit right beside the exam picker: typed once, then the Present column fills per student. */}
+          <label className="flex items-center gap-2 text-sm font-medium text-navy">
+            Working days
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={3}
+              placeholder="0"
+              aria-label={`Working days for ${term}`}
+              value={workingDays}
+              onChange={(e) => digitsOnly(e.target.value, 366) && setWorkingDays(e.target.value === "" ? "" : String(Number(e.target.value)))}
+              className="w-16 px-2 py-2.5 rounded-xl border border-navy/15 bg-white text-center text-sm font-semibold text-navy placeholder:text-navy/30 focus:border-gold focus:ring-2 focus:ring-gold/15 outline-none"
+            />
+          </label>
           <p className="text-xs text-navy/50">
             Std {scheme.grade} pattern:{" "}
             {[...new Set(subjects.map((s) => s.components.map((c) => `${c.label} ${c.max}`).join(" + ")))].join(" · ")}
           </p>
-          {attendance && (
-            <label className="flex flex-wrap items-center gap-2 text-sm text-navy w-full sm:w-auto sm:ml-auto">
-              <span className="font-medium">Attendance for report card:</span>
-              <span className="text-navy/60">{monthLabel(attendance.months[0])} to</span>
-              <select
-                value={attendance.attendance_until || ""}
-                disabled={attendanceSaving}
-                onChange={(e) => changeAttendanceUntil(e.target.value)}
-                className={inputClass + " max-w-[9.5rem]"}
-              >
-                {!attendance.attendance_until && <option value="">Choose month</option>}
-                {attendance.months.map((m) => (
-                  <option key={m} value={m}>
-                    {monthLabel(m)}
-                  </option>
-                ))}
-              </select>
-              {attendance.attendance_until && !attendance.chosen && (
-                <span className="text-xs text-navy/45">(month marks were saved — change if the exam was in another month)</span>
-              )}
-            </label>
-          )}
         </Card>
       )}
 
@@ -223,10 +222,11 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
           <div className="overflow-x-auto">
           <table
             className="w-full text-sm table-fixed"
-            style={allMode ? { minWidth: `${9 + shown.reduce((n, s) => n + (s.components.length + 2) * 2.75, 0) + 7.5}rem` } : undefined}
+            style={allMode ? { minWidth: `${9 + 4 + shown.reduce((n, s) => n + (s.components.length + 2) * 2.75, 0) + 7.5}rem` } : undefined}
           >
             <colgroup>
-              <col className={allMode ? "w-36" : "w-[32%] sm:w-56"} />
+              <col className={allMode ? "w-36" : "w-[28%] sm:w-56"} />
+              <col className={allMode ? "w-16" : "w-14 sm:w-20"} />
               {shown.flatMap(({ subject, components }) => [
                 ...components.map((c) => <col key={`${subject}-c-${c.key}`} />),
                 <col key={`${subject}-total`} className={allMode ? "" : "w-11 sm:w-16"} />,
@@ -238,6 +238,10 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wide text-navy/50 border-b border-navy/8">
                 <th rowSpan={2} className="px-3 py-2 text-left sticky left-0 z-10 bg-white">Student</th>
+                <th rowSpan={2} className="px-1 py-2 text-center leading-tight border-l border-navy/8 bg-gold/[0.06]">
+                  Present
+                  <span className="block text-[10px] text-navy/40">{wd ? `/${wd}` : "days"}</span>
+                </th>
                 {shown.map(({ subject, components }) => (
                   <th key={subject} colSpan={components.length + 2} className="px-1 pt-2.5 pb-1 text-center leading-tight border-l border-navy/8">
                     {subject}
@@ -272,6 +276,29 @@ export default function MarksEntryPanel({ classCode, academicYear }) {
                   <tr key={s.id} className="border-b border-navy/6 last:border-0">
                     <td className="px-3 py-2 font-medium text-navy truncate sticky left-0 z-10 bg-white max-w-[9rem]" title={s.full_name}>
                       {s.full_name}
+                    </td>
+                    <td className="px-1 py-2 border-l border-navy/8 bg-gold/[0.06]">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={3}
+                        aria-label={`${s.full_name} present days`}
+                        title={wd ? `Present days (0–${wd})` : "Enter the working days first"}
+                        disabled={!wd}
+                        value={present[s.id] ?? ""}
+                        onKeyDown={(e) => {
+                          if (["-", "+", "e", "E", "."].includes(e.key)) e.preventDefault();
+                        }}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          // Never above the working days — the keystroke is simply ignored, like the mark boxes.
+                          if (!digitsOnly(raw, wd)) return;
+                          setPresent((prev) => ({ ...prev, [s.id]: raw === "" ? "" : String(Number(raw)) }));
+                        }}
+                        className={`w-full min-w-0 px-0 rounded-md border text-center bg-white disabled:bg-navy/5 ${allMode ? "py-1.5 text-sm" : "py-3 text-base font-semibold"} ${
+                          presentOver(present[s.id]) ? "border-red-500 bg-red-50" : "border-navy/15"
+                        }`}
+                      />
                     </td>
                     {shown.map(({ subject, components }) => {
                       const cell = cellOf(s.id, subject);

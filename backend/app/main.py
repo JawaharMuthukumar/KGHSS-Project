@@ -56,6 +56,8 @@ def initialize_schema_and_reference_classes():
     added_columns = [
         ("marks", "components", "JSON"),
         ("assessments", "attendance_until", "VARCHAR(7)"),
+        ("assessments", "working_days", "INTEGER"),
+        ("assessments", "present_days", "JSON"),
         ("page_posts", "class_label", "VARCHAR(20)"),
         ("page_posts", "total_marks", "INTEGER"),
         ("page_post_images", "student_name", "VARCHAR(120)"),

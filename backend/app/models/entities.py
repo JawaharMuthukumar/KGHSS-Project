@@ -102,6 +102,10 @@ class Assessment(Base):
     academic_year: Mapped[str] = mapped_column(String(9))
     # Last month (YYYY-MM) of attendance this exam's report shows, counted from June; blank = the month marks were first saved.
     attendance_until: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    # Per-exam attendance typed by the class teacher on Enter Marks: the exam period's working days and each
+    # student's present days ({student_id: days}, never above working_days). When set, reports use these instead.
+    working_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    present_days: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 

@@ -3,6 +3,7 @@ import Container from "../ui/Container";
 import Button from "../ui/Button";
 import Icon from "../ui/Icon";
 import { schoolInfo } from "../../data/schoolData";
+import HeroNoticeTicker from "./HeroNoticeTicker";
 
 export default function Hero() {
   const prefersReducedMotion = useReducedMotion();
@@ -29,12 +30,13 @@ export default function Hero() {
       <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-navy-dark/75 to-transparent" />
 
       {/* Floating accent */}
-      <div className="absolute top-[calc(var(--site-header-h,76px)+14px)] right-10 sm:right-20 hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-white/90 text-xs font-semibold animate-pulse">
+      <div className="absolute top-[calc(var(--site-header-h,76px)+72px)] right-10 sm:right-20 hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-white/90 text-xs font-semibold animate-pulse">
         <Icon name="Sparkle" size={14} className="text-gold-light" />
         Est. {schoolInfo.foundedYear}
       </div>
 
-      <Container className="relative pb-20 pt-40 sm:pb-28 sm:pt-48">
+      {/* Original spacing (hero size unchanged); translate only nudges the text block up without resizing the section */}
+      <Container className="relative pb-20 pt-40 sm:pb-28 sm:pt-48 -translate-y-5 sm:-translate-y-7">
         <motion.div
           initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
@@ -64,6 +66,8 @@ export default function Hero() {
           </div>
         </motion.div>
       </Container>
+
+      <HeroNoticeTicker />
 
       <motion.div
         className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/60"

@@ -1,22 +1,23 @@
 import Hero from "../components/sections/Hero";
 import QuickStats from "../components/sections/QuickStats";
 import Introduction from "../components/sections/Introduction";
-import WhyUs from "../components/sections/WhyUs";
 import AcademicsPreview from "../components/sections/AcademicsPreview";
-import ResultsSection from "../components/sections/ResultsSection";
 import AchievementsPreview from "../components/sections/AchievementsPreview";
-import FacilitiesPreview from "../components/sections/FacilitiesPreview";
-import SportsPreview from "../components/sections/SportsPreview";
-import ClubsSection from "../components/sections/ClubsSection";
 import NewsEvents from "../components/sections/NewsEvents";
-import NoticeBoardPreview from "../components/sections/NoticeBoardPreview";
 import HeadmasterMessage from "../components/sections/HeadmasterMessage";
 import GalleryPreview from "../components/sections/GalleryPreview";
-import AlumniPTA from "../components/sections/AlumniPTA";
-import SocialSection from "../components/sections/SocialSection";
-import YoutubeSection from "../components/sections/YoutubeSection";
 import LegacyTeaser from "../components/sections/LegacyTeaser";
 import SEO from "../components/utility/SEO";
+
+/*
+ * The home page tells a first-time visitor the essentials and stops: who we are, what we teach, how students
+ * do, what's happening, the HM's word, a look around, and the centenary. Everything else (facilities, sports,
+ * clubs, notices, alumni & PTA, social links) has its own page in the menu — the sections that used to repeat
+ * it here (WhyUs, ResultsSection, FacilitiesPreview, SportsPreview, ClubsSection, NoticeBoardPreview, AlumniPTA,
+ * SocialSection, YoutubeSection) are kept in components/sections in case one is wanted back.
+ * Alternate sections sit on the light sky band so neighbouring plain sections don't run together.
+ */
+const band = "bg-sky/60";
 
 export default function Home() {
   return (
@@ -28,20 +29,17 @@ export default function Home() {
       <Hero />
       <QuickStats />
       <Introduction />
-      <WhyUs />
-      <AcademicsPreview />
-      <ResultsSection />
+      <div className={band}>
+        <AcademicsPreview />
+      </div>
       <AchievementsPreview />
-      <FacilitiesPreview />
-      <SportsPreview />
-      <ClubsSection />
-      <NewsEvents />
-      <NoticeBoardPreview />
+      <div className={band}>
+        <NewsEvents />
+      </div>
       <HeadmasterMessage />
-      <GalleryPreview />
-      <AlumniPTA />
-      <SocialSection />
-      <YoutubeSection />
+      <div className={band}>
+        <GalleryPreview />
+      </div>
       <LegacyTeaser />
     </>
   );

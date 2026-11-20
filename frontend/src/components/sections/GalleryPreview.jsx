@@ -12,7 +12,7 @@ export default function GalleryPreview() {
   const featured = galleryImages.slice(0, 6);
 
   return (
-    <section className="py-20 sm:py-28">
+    <section className="py-16 sm:py-20">
       <Container>
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12">
           <SectionHeading eyebrow="Gallery" title="Moments from campus life." className="mb-0" />

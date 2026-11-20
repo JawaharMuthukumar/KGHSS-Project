@@ -58,10 +58,10 @@ export default function ClassReportCards({ classCode }) {
         <div ref={sheet} className="bg-white min-w-[720px]">
           {pairs.map((pair, i) => (
             // Each pair fills one A4 sheet; the dashed line marks where to cut.
-            <div key={i} className="flex flex-col gap-4 pb-4" style={{ breakAfter: i < pairs.length - 1 ? "page" : "auto" }}>
+            <div key={i} className="flex flex-col gap-4 pb-4 print:gap-2 print:pb-0" style={{ breakAfter: i < pairs.length - 1 ? "page" : "auto" }}>
               {pair.map((card, j) => (
                 <div key={card.student_id} data-student={card.student_id} className="relative group">
-                  {j === 1 && <div className="border-t border-dashed border-black/40 mb-4" />}
+                  {j === 1 && <div className="border-t border-dashed border-black/40 mb-4 print:mb-2" />}
                   <ReportCard meta={data} card={card} />
                   <button
                     type="button"

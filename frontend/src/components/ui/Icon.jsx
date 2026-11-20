@@ -15,7 +15,7 @@ import {
   Loader2, ShieldAlert, ClipboardX, CircleCheck, CircleX, CircleAlert,
   ChevronsUpDown, SlidersHorizontal, FolderOpen, Images, UsersRound, Send,
   ImagePlus,
-  Sun, Moon, LayoutGrid, Upload,
+  Sun, Moon, LayoutGrid, Upload, TrendingDown, Lightbulb,
 } from "lucide-react";
 
 const registry = {
@@ -35,7 +35,7 @@ const registry = {
   Loader2, ShieldAlert, ClipboardX, CircleCheck, CircleX, CircleAlert,
   ChevronsUpDown, SlidersHorizontal, FolderOpen, Images, UsersRound, Send,
   ImagePlus,
-  Sun, Moon, LayoutGrid, Upload,
+  Sun, Moon, LayoutGrid, Upload, TrendingDown, Lightbulb,
 };
 
 export default function Icon({ name, className = "", size = 20, strokeWidth = 1.8, ...rest }) {

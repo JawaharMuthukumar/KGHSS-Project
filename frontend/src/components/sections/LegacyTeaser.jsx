@@ -6,7 +6,7 @@ import { schoolInfo } from "../../data/schoolData";
 
 export default function LegacyTeaser() {
   return (
-    <section className="py-20 sm:py-28 overflow-hidden">
+    <section className="py-16 sm:py-20 overflow-hidden">
       <Container>
         <Reveal className="relative bg-navy-dark rounded-3xl overflow-hidden">
           <div className="absolute inset-0">

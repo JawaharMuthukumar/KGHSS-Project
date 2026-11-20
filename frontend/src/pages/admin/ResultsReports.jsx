@@ -123,6 +123,7 @@ export default function ResultsReports() {
       {tab === "analytics" && <AnalyticsReport
           term={term}
           classCode={showAll ? "" : classCode}
+          onPickTerm={setTerm}
           onSelectClass={(code) => {
             selectClass(code);
             window.scrollTo({ top: 0, behavior: "smooth" });

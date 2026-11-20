@@ -52,6 +52,7 @@ const ClassNotices = lazy(() => import("./pages/teacher/ClassNotices"));
 const CertificateRequests = lazy(() => import("./pages/teacher/CertificateRequests"));
 const TeacherAttendanceReport = lazy(() => import("./pages/teacher/AttendanceReport"));
 const TeacherReports = lazy(() => import("./pages/teacher/Reports"));
+const ClassAnalytics = lazy(() => import("./pages/teacher/ClassAnalytics"));
 const TeacherLeaveRequests = lazy(() => import("./pages/teacher/LeaveRequests"));
 const TeacherPromotion = lazy(() => import("./pages/teacher/Promotion"));
 const StudentDashboard = lazy(() => import("./pages/student/StudentDashboard"));
@@ -61,6 +62,7 @@ const StudentTimetable = lazy(() => import("./pages/student/StudentTimetable"));
 const MyNotices = lazy(() => import("./pages/student/MyNotices"));
 const MyCertificates = lazy(() => import("./pages/student/MyCertificates"));
 const MyLeave = lazy(() => import("./pages/student/MyLeave"));
+const MyProgress = lazy(() => import("./pages/student/MyProgress"));
 
 function GlobalInputGuards() {
   useMobileInputGuard();
@@ -131,6 +133,7 @@ export default function App() {
                   <Route path="leave-requests" element={<TeacherLeaveRequests />} />
                   <Route path="certificates" element={<CertificateRequests />} />
                   <Route path="reports" element={<TeacherReports />} />
+                  <Route path="analytics" element={<ClassAnalytics />} />
                   <Route path="promotion" element={<TeacherPromotion />} />
                 </Route>
               </Route>
@@ -143,6 +146,7 @@ export default function App() {
                   <Route path="timetable" element={<StudentTimetable />} />
                   <Route path="notices" element={<MyNotices />} />
                   <Route path="leave" element={<MyLeave />} />
+                  <Route path="progress" element={<MyProgress />} />
                   <Route path="certificates" element={<MyCertificates />} />
                 </Route>
               </Route>

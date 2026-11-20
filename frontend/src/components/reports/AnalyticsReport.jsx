@@ -28,7 +28,7 @@ function Panel({ title, subtitle, children, className = "" }) {
  * HM analytics for one exam: the whole school (classCode empty) or one class — result split, boys vs girls,
  * marks ranges, the year's exam-to-exam flow, subject-wise results, class-wise and section comparison.
  */
-export default function AnalyticsReport({ term, classCode, onSelectClass }) {
+export default function AnalyticsReport({ term, classCode, onSelectClass, onPickTerm }) {
   const { data, loading, error } = useApiResource("/reports/analytics", {
     query: { term, class_code: classCode || undefined },
     deps: [term, classCode],
@@ -43,9 +43,68 @@ export default function AnalyticsReport({ term, classCode, onSelectClass }) {
     return (
       <Card className="p-8 text-center text-sm text-navy/50">
         No marks entered for <strong className="text-navy">{term}</strong> in {classCode ? `class ${classCode}` : "any class"} yet.
+        {onPickTerm && data.trend.length > 0 && (
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <span className="w-full text-xs">Exams with marks:</span>
+            {data.trend.map((t) => (
+              <button
+                key={t.term}
+                type="button"
+                onClick={() => onPickTerm(t.term)}
+                className="px-4 py-1.5 rounded-full border border-navy/15 text-navy font-semibold hover:border-gold"
+              >
+                {t.term}
+              </button>
+            ))}
+          </div>
+        )}
       </Card>
     );
   }
+  const pickClass = onSelectClass ? (row) => onSelectClass(row.label) : undefined;
+  const nameList = (people, right) => (
+    <ul className="flex flex-col gap-2">
+      {people.map((p, i) => (
+        <li key={`${p.student_id}-${i}`} className="flex items-center gap-3 text-sm">
+          <span className="font-medium text-navy truncate">{p.name}</span>
+          {!classCode && <span className="text-xs text-navy/45">{p.class_code}</span>}
+          <span className="ml-auto shrink-0 tabular-nums">{right(p)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+
+  const attentionPanel = (
+    <Panel
+      title={classCode ? "Students who did not pass" : "Needs attention"}
+      subtitle={data.attention_total ? `${data.attention_total} student${data.attention_total === 1 ? "" : "s"} did not pass — most subjects missed first` : "Everyone who wrote passed"}
+      className={classCode && data.attention_total ? "border-red-200" : ""}
+    >
+      {data.attention.length > 0 && (
+        <ul className="flex flex-col gap-2 max-h-96 overflow-y-auto pr-1">
+          {data.attention.map((a, i) => (
+            <li key={`${a.student_id}-${i}`} className="flex items-start gap-3 text-sm">
+              <Icon name="CircleAlert" size={16} className="text-red-600 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="font-medium text-navy truncate">
+                  {a.name} {!classCode && <span className="text-xs font-normal text-navy/45">· {a.class_code}</span>}
+                </p>
+                <p className="text-xs text-navy/55">
+                  {[a.failed_subjects.length && `Failed: ${a.failed_subjects.join(", ")}`, a.absent_subjects.length && `Absent: ${a.absent_subjects.join(", ")}`]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+              <span className="ml-auto font-semibold text-navy tabular-nums">{a.percent}%</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {data.attention_total > data.attention.length && (
+        <p className="text-xs text-navy/45 mt-3">Showing {data.attention.length} of {data.attention_total}. Open a class for its full list.</p>
+      )}
+    </Panel>
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -64,6 +123,37 @@ export default function AnalyticsReport({ term, classCode, onSelectClass }) {
         <StatCard label="Pass %" value={s.pass_percent != null ? `${s.pass_percent}%` : null} icon="TrendingUp" tone="gold" />
         <StatCard label="Average %" value={s.average_percent != null ? `${s.average_percent}%` : null} icon="BarChart3" tone="teal" />
       </div>
+
+      {classCode && (
+        <div className="grid lg:grid-cols-2 gap-5">
+          {attentionPanel}
+          <Panel title="Subjects students are failing" subtitle={data.subject_struggle.length ? "Where the class needs extra classes — tap a subject to see who" : "No subject has a failure"}>
+            <div className="flex flex-col gap-2">
+              {data.subject_struggle.map((x) => (
+                <details key={x.subject} className="group rounded-xl border border-navy/10 px-3 py-2">
+                  <summary className="flex items-center gap-3 cursor-pointer list-none text-sm">
+                    <span className="font-semibold text-navy">{x.subject}</span>
+                    <span className="text-xs text-navy/50">
+                      {x.failed} failed{x.absent ? ` · ${x.absent} absent` : ""} of {x.written + x.absent}
+                    </span>
+                    <Icon name="ChevronDown" size={15} className="ml-auto text-navy/40 transition-transform group-open:rotate-180" />
+                  </summary>
+                  <ul className="mt-2 flex flex-col gap-1 text-sm">
+                    {x.students.map((p) => (
+                      <li key={`${x.subject}-${p.student_id}`} className="flex items-center gap-2">
+                        <span className="text-navy/80 truncate">{p.name}</span>
+                        <span className={`ml-auto text-xs font-semibold ${p.status === "absent" ? "text-navy/50" : "text-red-600"}`}>
+                          {p.status === "absent" ? "Absent" : "Failed"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ))}
+            </div>
+          </Panel>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-5">
         <Panel title="Result" subtitle={`${s.appeared} of ${s.roll} students wrote ${term}`}>
@@ -126,7 +216,7 @@ export default function AnalyticsReport({ term, classCode, onSelectClass }) {
         <Panel title="Class-wise" subtitle="Click a class to see its own analytics">
           <HBars
             series={PASS_AVG}
-            onRowClick={(row) => onSelectClass?.(row.label)}
+            onRowClick={pickClass}
             rows={data.classes
               .filter((c) => c.appeared)
               .map((c) => ({
@@ -144,8 +234,8 @@ export default function AnalyticsReport({ term, classCode, onSelectClass }) {
         </Panel>
       )}
 
-      {!classCode && data.sections.length > 0 && (
-        <Panel title="Section comparison" subtitle="Sections of the same standard side by side">
+      {data.sections.length > 0 && (
+        <Panel title="Section comparison" subtitle={classCode ? `${classCode} beside the other sections of Std ${data.sections[0].grade}` : "Sections of the same standard side by side"}>
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-6">
             {data.sections.map((g) => (
               <div key={g.grade}>
@@ -153,7 +243,7 @@ export default function AnalyticsReport({ term, classCode, onSelectClass }) {
                 <HBars
                   series={PASS_AVG}
                   labelWidth="3.5rem"
-                  onRowClick={(row) => onSelectClass?.(row.label)}
+                  onRowClick={pickClass}
                   rows={g.classes.map((c) => ({
                     label: c.class_code,
                     values: { pass: c.pass_percent, avg: c.average_percent },
@@ -170,7 +260,7 @@ export default function AnalyticsReport({ term, classCode, onSelectClass }) {
         <Panel title="Top 5" subtitle="Highest overall percentage">
           <ol className="flex flex-col gap-2">
             {data.top_students.map((t, i) => (
-              <li key={`${t.name}-${i}`} className="flex items-center gap-3 text-sm">
+              <li key={`${t.student_id}-${i}`} className="flex items-center gap-3 text-sm">
                 <span className="w-6 h-6 rounded-full bg-gold/15 text-gold-dark text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
                 <span className="font-medium text-navy truncate">{t.name}</span>
                 {!classCode && <span className="text-xs text-navy/45">{t.class_code}</span>}
@@ -180,34 +270,31 @@ export default function AnalyticsReport({ term, classCode, onSelectClass }) {
           </ol>
         </Panel>
 
-        <Panel
-          title="Needs attention"
-          subtitle={data.attention_total ? `${data.attention_total} student${data.attention_total === 1 ? "" : "s"} did not pass — most subjects missed first` : "Everyone who wrote passed"}
-        >
-          {data.attention.length > 0 && (
-            <ul className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">
-              {data.attention.map((a, i) => (
-                <li key={`${a.name}-${i}`} className="flex items-start gap-3 text-sm">
-                  <Icon name="CircleAlert" size={16} className="text-red-600 shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="font-medium text-navy truncate">
-                      {a.name} {!classCode && <span className="text-xs font-normal text-navy/45">· {a.class_code}</span>}
-                    </p>
-                    <p className="text-xs text-navy/55">
-                      {[a.failed_subjects.length && `Failed: ${a.failed_subjects.join(", ")}`, a.absent_subjects.length && `Absent: ${a.absent_subjects.join(", ")}`]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                  </div>
-                  <span className="ml-auto font-semibold text-navy tabular-nums">{a.percent}%</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {data.attention_total > data.attention.length && (
-            <p className="text-xs text-navy/45 mt-3">Showing {data.attention.length} of {data.attention_total}. Open a class for its full list.</p>
-          )}
-        </Panel>
+        {classCode ? (
+          <Panel
+            title="Improvement"
+            subtitle={data.previous_term ? `Overall % change from ${data.previous_term} to ${term}` : "Shows once an earlier exam has marks"}
+          >
+            {data.previous_term && (
+              <div className="grid sm:grid-cols-2 gap-5">
+                <div>
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 mb-2">
+                    <Icon name="TrendingUp" size={14} /> Most improved
+                  </p>
+                  {data.improved.length ? nameList(data.improved, (p) => <span className="font-semibold text-emerald-700">+{p.change}%</span>) : <p className="text-sm text-navy/45">No one improved.</p>}
+                </div>
+                <div>
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-red-600 mb-2">
+                    <Icon name="TrendingDown" size={14} /> Dropped most
+                  </p>
+                  {data.dropped.length ? nameList(data.dropped, (p) => <span className="font-semibold text-red-600">{p.change}%</span>) : <p className="text-sm text-navy/45">No one dropped.</p>}
+                </div>
+              </div>
+            )}
+          </Panel>
+        ) : (
+          attentionPanel
+        )}
       </div>
     </div>
   );

@@ -334,7 +334,7 @@ export const events = [
     category: "Celebration",
     title: "Independence Day Celebration",
     description: "Flag hoisting, cultural programmes and patriotic performances by students.",
-    image: "/images/student-assembly.webp",
+    image: "/images/morning-assembly.webp",
     status: "past",
   },
   {
@@ -441,8 +441,9 @@ export const galleryImages = [
   { id: "g5", src: "/images/campus-courtyard-2.webp", category: "Campus", caption: "Classroom block" },
   { id: "g6", src: "/images/campus-courtyard-3.webp", category: "Sports", caption: "Sports ground and courtyard" },
   { id: "g7", src: "/images/campus-old-block.webp", category: "Historic", caption: "Older classroom block" },
-  { id: "g8", src: "/images/student-assembly.webp", category: "Events", caption: "Morning assembly" },
+  { id: "g8", src: "/images/morning-assembly.webp", category: "Events", caption: "Morning assembly" },
   { id: "g9", src: "/images/campus-green-block.webp", category: "Academics", caption: "Higher secondary block" },
+  { id: "g10", src: "/images/student-assembly.webp", category: "Events", caption: "Students gathered in the courtyard" },
 ];
 
 // ---------------------------------------------------------------------------

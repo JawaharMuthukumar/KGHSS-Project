@@ -37,8 +37,8 @@ export default function SchoolLife() {
         <Container className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <Reveal>
             <SmartImage
-              src="/images/student-assembly.webp"
-              alt="Students at morning assembly"
+              src="/images/morning-assembly.webp"
+              alt="Students standing class-wise at the morning assembly in the school ground"
               className="rounded-3xl aspect-[4/3] shadow-card"
             />
           </Reveal>

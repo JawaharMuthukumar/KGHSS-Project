@@ -15,7 +15,7 @@ const focusPoints = [
 
 export default function Introduction() {
   return (
-    <section className="py-20 sm:py-28">
+    <section className="py-16 sm:py-20">
       <Container className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
         <Reveal className="order-2 lg:order-1">
           <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-[0.18em] uppercase px-3 py-1.5 rounded-full bg-gold/10 text-gold-dark mb-5">

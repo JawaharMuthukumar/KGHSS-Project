@@ -8,7 +8,7 @@ import { academicStages, higherSecondaryStreams } from "../../data/schoolData";
 
 export default function AcademicsPreview() {
   return (
-    <section className="py-20 sm:py-28">
+    <section className="py-16 sm:py-20">
       <Container>
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12">
           <SectionHeading

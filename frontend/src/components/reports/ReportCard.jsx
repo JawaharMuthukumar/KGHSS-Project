@@ -29,7 +29,8 @@ const TAMIL_TERM = {
 };
 
 const PASS_MARK = 35;
-const cell = "border border-black px-1 py-1 text-center align-middle";
+// Printed two per A4 portrait sheet: rows are a little tighter on paper so both cards always fit one page.
+const cell = "border border-black px-1 py-1 print:py-0.5 text-center align-middle";
 // Tamil words must never split mid-word: wrap only at spaces, and balance multi-word labels so no
 // single word dangles on its own line.
 const noSplit = "[word-break:keep-all] [overflow-wrap:normal] [text-wrap:balance]";
@@ -70,11 +71,11 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
   // Each exam row carries its own pass mark; the note lists every pass mark the card uses.
   const passMarks = [...new Set(card.rows.map((r) => r.pass_mark ?? PASS_MARK))].join(" / ");
   return (
-    <div ref={ref} className="report-card bg-white text-black border-2 border-black p-3 text-[11px]" style={{ breakInside: "avoid", ...printExact }}>
+    <div ref={ref} className="report-card bg-white text-black border-2 border-black p-3 print:p-2 text-[11px]" style={{ breakInside: "avoid", ...printExact }}>
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <img src={SCHOOL_LOGO} alt={SCHOOL_LOGO_ALT} className="w-12 h-12 object-contain shrink-0" />
-          <img src={TN_GOVT_LOGO} alt={TN_GOVT_LOGO_ALT} className="w-11 h-12 object-contain shrink-0" />
+          <img src={SCHOOL_LOGO} alt={SCHOOL_LOGO_ALT} className="w-12 h-12 print:w-10 print:h-10 object-contain shrink-0" />
+          <img src={TN_GOVT_LOGO} alt={TN_GOVT_LOGO_ALT} className="w-11 h-12 print:w-9 print:h-10 object-contain shrink-0" />
           <div className="min-w-0">
             <p className="font-bold text-base leading-tight">அரசு மேல்நிலைப்பள்ளி</p>
             <p className="font-semibold text-[11px] leading-tight">Government Higher Secondary School</p>

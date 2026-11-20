@@ -36,6 +36,7 @@ export const portalNav = {
     { to: "/teacher/leave-requests", label: "Leave Requests", icon: "CalendarDays", badge: "leave" },
     { to: "/teacher/certificates", label: "Certificate Requests", icon: "FileCheck2", badge: "certificates" },
     { to: "/teacher/reports", label: "Reports", icon: "FileText" },
+    { to: "/teacher/analytics", label: "Class Analytics", icon: "BarChart3" },
     { to: "/teacher/promotion", label: "Promotion", icon: "TrendingUp" },
   ],
   student: [
@@ -43,6 +44,7 @@ export const portalNav = {
     // `attention`: blinks while that alert count is non-zero (profile = self-editable fields still blank).
     { to: "/student/profile", label: "My Profile", icon: "UserRound", attention: "profile" },
     { to: "/student/results", label: "Results / Marksheet", icon: "FileText" },
+    { to: "/student/progress", label: "My Progress", icon: "TrendingUp" },
     { to: "/student/timetable", label: "Timetable", icon: "CalendarRange" },
     { to: "/student/notices", label: "Notices", icon: "Bell", badge: "notices" },
     { to: "/student/leave", label: "Leave Request", icon: "CalendarDays" },

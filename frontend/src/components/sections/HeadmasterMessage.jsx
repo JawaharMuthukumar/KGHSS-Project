@@ -7,7 +7,7 @@ import { headmaster } from "../../data/schoolData";
 
 export default function HeadmasterMessage() {
   return (
-    <section className="py-20 sm:py-28">
+    <section className="py-16 sm:py-20">
       <Container>
         <Reveal className="relative bg-heritage-noise rounded-3xl p-8 sm:p-12 lg:p-16 overflow-hidden">
           <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-gold/10 blur-3xl" aria-hidden="true" />

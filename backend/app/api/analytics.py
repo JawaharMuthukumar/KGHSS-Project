@@ -118,7 +118,7 @@ def results_analytics(term: str = Query(...), class_code: str | None = None, db:
         # Load the other sections of the same standard too, for the section comparison
         loaded = (db.query(AcademicClass).filter_by(is_active=True, academic_year=year, grade=cls.grade)
                   .order_by(AcademicClass.code).all()) or [cls]
-        exam_order = TERMS_SENIOR if cls.grade >= 10 else TERMS_MIDDLE
+        exam_order = terms_for_grade(cls.grade)
     else:
         classes = loaded = db.query(AcademicClass).filter_by(is_active=True, academic_year=year).order_by(AcademicClass.grade, AcademicClass.code).all()
         exam_order = list(dict.fromkeys(TERMS_MIDDLE + TERMS_SENIOR))

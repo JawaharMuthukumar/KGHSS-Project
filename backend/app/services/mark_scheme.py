@@ -9,7 +9,8 @@ from sqlalchemy.orm import object_session
 from app.models.entities import AcademicClass, SubjectGroup
 
 TERMS_MIDDLE = ["Term 1", "Quarterly", "Term 2", "Half Yearly", "Term 3", "Annual Exam"]
-TERMS_SENIOR = ["1st Mid Term", "Quarterly", "2nd Mid Term", "Half Yearly", "3rd Mid Term", "Revision 1", "Revision 2", "Revision 3"]
+TERMS_SENIOR = ["1st Mid Term", "Quarterly", "2nd Mid Term", "Half Yearly", "3rd Mid Term", "Revision 1", "Revision 2", "Revision 3"]  # 10th
+TERMS_HSC = [t for t in TERMS_SENIOR if t != "3rd Mid Term"]  # 11th–12th: no 3rd Mid Term
 
 SINGLE = [("total", "Mark", 100)]
 THEORY_INTERNAL = [("theory", "Theory", 90), ("internal", "Internal", 10)]
@@ -20,7 +21,7 @@ HSC_PRACTICAL_SUBJECTS = {"Physics", "Chemistry", "Biology", "Computer Science"}
 
 
 def terms_for_grade(grade: int) -> list[str]:
-    return TERMS_SENIOR if grade >= 10 else TERMS_MIDDLE
+    return TERMS_HSC if grade >= 11 else TERMS_SENIOR if grade == 10 else TERMS_MIDDLE
 
 
 # The school's original higher-secondary groups (P/C/B/M = Physics, Chemistry, Biology, Maths, …) and their

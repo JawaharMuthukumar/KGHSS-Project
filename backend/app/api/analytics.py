@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.school import current_academic_year, get_class
 from app.core.database import get_db
 from app.core.dependencies import require_roles
-from app.models.entities import Account, AcademicClass, Assessment, Mark, Student
+from app.models.entities import Account, AcademicClass, Assessment, Mark, Student, SubjectTeacherAssignment, Teacher
 from app.services.mark_scheme import TERMS_MIDDLE, TERMS_SENIOR, subjects_for_class, terms_for_grade
 from app.services.permissions import is_class_teacher_of, student_profile, teacher_profile
 
@@ -93,6 +93,45 @@ def _subjects(rows: list[dict]) -> list[dict]:
                     "average_percent": round(sum(s * 100 / mx for s, mx in vals) / len(vals), 1),
                     "pass_percent": _pct(sum(1 for s, mx in vals if s >= mx * PASS / 100), len(vals))})
     return sorted(out, key=lambda x: (order.index(x["subject"]) if x["subject"] in order else len(order), x["subject"]))
+
+
+def _subject_teacher_lines(db: Session, classes: list[AcademicClass], rows: list[dict], year: str) -> list[dict]:
+    """Per class + subject: its subject teacher and how that subject went (written, failed, absent, pass %, average %)."""
+    code_of = {c.id: c.code for c in classes}
+    assigned = {(code_of[a.class_id], a.subject): a.teacher_id for a in db.query(SubjectTeacherAssignment)
+                .filter(SubjectTeacherAssignment.class_id.in_(code_of.keys()), SubjectTeacherAssignment.academic_year == year).all()}
+    ids = {t for t in assigned.values() if t}
+    names = dict(db.query(Teacher.id, Account.full_name).join(Account, Account.id == Teacher.account_id).filter(Teacher.id.in_(ids)).all()) if ids else {}
+    stats = defaultdict(lambda: {"written": 0, "failed": 0, "absent": 0, "sum": 0.0})
+    for r in rows:
+        for m in r["marks"]:
+            s = stats[(r["class_code"], m.subject)]
+            if m.absent: s["absent"] += 1; continue
+            pct = m.score * 100 / m.maximum_score if m.maximum_score else 0
+            s["written"] += 1; s["sum"] += pct
+            if pct < PASS: s["failed"] += 1
+    lines = []
+    for (code, subject), s in stats.items():
+        tid = assigned.get((code, subject))
+        lines.append({"class_code": code, "subject": subject, "teacher_id": tid, "teacher_name": names.get(tid),
+                      "written": s["written"], "failed": s["failed"], "absent": s["absent"],
+                      "pass_percent": _pct(s["written"] - s["failed"], s["written"]),
+                      "average_percent": round(s["sum"] / s["written"], 1) if s["written"] else None, "_sum": s["sum"]})
+    return lines
+
+
+def _by_teacher(lines: list[dict]) -> list[dict]:
+    """School view: one row per subject teacher across every class they teach (unassigned subjects grouped per subject)."""
+    groups = defaultdict(list)
+    for l in lines: groups[l["teacher_id"] or f"none:{l['subject']}"].append(l)
+    out = []
+    for key, ls in groups.items():
+        written = sum(l["written"] for l in ls); failed = sum(l["failed"] for l in ls)
+        out.append({"teacher_id": ls[0]["teacher_id"], "teacher_name": ls[0]["teacher_name"],
+                    "subjects": sorted({l["subject"] for l in ls}), "written": written, "failed": failed, "absent": sum(l["absent"] for l in ls),
+                    "pass_percent": _pct(written - failed, written), "average_percent": round(sum(l["_sum"] for l in ls) / written, 1) if written else None,
+                    "classes": sorted(({k: v for k, v in l.items() if k != "_sum"} for l in ls), key=lambda l: l["class_code"])})
+    return sorted(out, key=lambda t: (-t["failed"], t["pass_percent"] if t["pass_percent"] is not None else 101))
 
 
 def _class_line(code: str, rows: list[dict], roll: int, cls: AcademicClass) -> dict:
@@ -177,6 +216,7 @@ def results_analytics(term: str = Query(...), class_code: str | None = None, db:
                  .filter(Student.id.in_(ids)).all()) if ids else {}
     who = lambda r: {"student_id": r["student_id"], "name": names.get(r["student_id"]), "class_code": r["class_code"], "percent": r["percent"]}
     written = {s["subject"]: s["written"] for s in _subjects(rows)}
+    teacher_lines = _subject_teacher_lines(db, classes, rows, year)
 
     return {"term": term, "academic_year": year, "scope": class_code or "school",
             "summary": _summary(rows, roll), "bands": _bands(rows), "subjects": _subjects(rows),
@@ -185,6 +225,9 @@ def results_analytics(term: str = Query(...), class_code: str | None = None, db:
             "trend": trend, "top_students": [who(r) for r in top_rows],
             "attention": [{**who(r), "failed_subjects": r["failed_subjects"], "absent_subjects": r["absent_subjects"]} for r in needs_help],
             "attention_total": attention_total,
+            # School view: subject teachers ranked by students failed; class view: each subject with its teacher
+            "teachers": _by_teacher(teacher_lines) if not class_code else [],
+            "subject_teachers": sorted(({k: v for k, v in l.items() if k != "_sum"} for l in teacher_lines), key=lambda l: (-l["failed"], l["subject"])) if class_code else [],
             "previous_term": previous_term,
             "improved": [{**who(r), "change": ch} for r, ch in improved],
             "dropped": [{**who(r), "change": ch} for r, ch in dropped],

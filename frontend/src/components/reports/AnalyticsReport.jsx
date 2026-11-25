@@ -62,6 +62,9 @@ export default function AnalyticsReport({ term, classCode, onSelectClass, onPick
     );
   }
   const pickClass = onSelectClass ? (row) => onSelectClass(row.label) : undefined;
+  const pct = (v) => (v == null ? "—" : `${v}%`);
+  const th = "px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-navy/45";
+  const failedCell = (n) => <span className={`font-semibold tabular-nums ${n ? "text-red-600" : "text-navy/40"}`}>{n}</span>;
   const nameList = (people, right) => (
     <ul className="flex flex-col gap-2">
       {people.map((p, i) => (
@@ -211,6 +214,91 @@ export default function AnalyticsReport({ term, classCode, onSelectClass, onPick
           }))}
         />
       </Panel>
+
+      {!classCode && (data.teachers || []).length > 0 && (
+        <Panel title="Subject teachers" subtitle="Students failed in each teacher's subject, most first — tap a teacher for the class-wise split">
+          <div className="hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,2fr)_repeat(4,minmax(0,1fr))] gap-3 px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-navy/45 border-b border-navy/8">
+            <span>Teacher</span>
+            <span>Subject</span>
+            <span className="text-right">Wrote</span>
+            <span className="text-right">Failed</span>
+            <span className="text-right">Pass %</span>
+            <span className="text-right">Average %</span>
+          </div>
+          <div className="flex flex-col">
+            {data.teachers.map((t) => (
+              <details key={t.teacher_id ?? t.subjects.join()} className="group border-b border-navy/6 last:border-0">
+                <summary className="grid grid-cols-2 md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_repeat(4,minmax(0,1fr))] gap-x-3 gap-y-1 px-3 py-2.5 cursor-pointer list-none text-sm hover:bg-navy/[0.03] rounded-lg">
+                  <span className="flex items-center gap-1.5 font-medium text-navy min-w-0">
+                    <Icon name="ChevronDown" size={14} className="shrink-0 text-navy/40 transition-transform group-open:rotate-180" />
+                    <span className="truncate">{t.teacher_name || <span className="text-navy/45">Not assigned</span>}</span>
+                  </span>
+                  <span className="text-navy/70 truncate">{t.subjects.join(", ")}</span>
+                  <span className="md:text-right text-navy/70 tabular-nums"><span className="md:hidden text-navy/45">Wrote </span>{t.written}</span>
+                  <span className="md:text-right"><span className="md:hidden text-navy/45">Failed </span>{failedCell(t.failed)}</span>
+                  <span className="md:text-right text-navy/70 tabular-nums"><span className="md:hidden text-navy/45">Pass </span>{pct(t.pass_percent)}</span>
+                  <span className="md:text-right text-navy/70 tabular-nums"><span className="md:hidden text-navy/45">Avg </span>{pct(t.average_percent)}</span>
+                </summary>
+                <table className="w-full text-sm mb-2 ml-0 md:ml-6 md:w-[calc(100%-1.5rem)]">
+                  <thead>
+                    <tr className="border-b border-navy/8">
+                      <th className={th}>Class</th>
+                      <th className={th}>Subject</th>
+                      <th className={`${th} text-right`}>Wrote</th>
+                      <th className={`${th} text-right`}>Failed</th>
+                      <th className={`${th} text-right`}>Pass %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {t.classes.map((c) => (
+                      <tr key={`${c.class_code}-${c.subject}`} className="border-b border-navy/6 last:border-0">
+                        <td className="px-3 py-1.5 font-medium text-navy">{c.class_code}</td>
+                        <td className="px-3 py-1.5 text-navy/70">{c.subject}</td>
+                        <td className="px-3 py-1.5 text-right text-navy/70 tabular-nums">{c.written}</td>
+                        <td className="px-3 py-1.5 text-right">{failedCell(c.failed)}</td>
+                        <td className="px-3 py-1.5 text-right text-navy/70 tabular-nums">{pct(c.pass_percent)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+            ))}
+          </div>
+        </Panel>
+      )}
+
+      {classCode && (data.subject_teachers || []).length > 0 && (
+        <Panel title="Subject teachers" subtitle={`Each subject in ${classCode} with its teacher and how many students failed`}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-navy/8">
+                  <th className={th}>Subject</th>
+                  <th className={th}>Teacher</th>
+                  <th className={`${th} text-right`}>Wrote</th>
+                  <th className={`${th} text-right`}>Failed</th>
+                  <th className={`${th} text-right`}>Absent</th>
+                  <th className={`${th} text-right`}>Pass %</th>
+                  <th className={`${th} text-right`}>Average %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.subject_teachers.map((x) => (
+                  <tr key={x.subject} className="border-b border-navy/6 last:border-0">
+                    <td className="px-3 py-2.5 font-medium text-navy">{x.subject}</td>
+                    <td className="px-3 py-2.5 text-navy/80">{x.teacher_name || <span className="text-navy/45">Not assigned</span>}</td>
+                    <td className="px-3 py-2.5 text-right text-navy/70 tabular-nums">{x.written}</td>
+                    <td className="px-3 py-2.5 text-right">{failedCell(x.failed)}</td>
+                    <td className="px-3 py-2.5 text-right text-navy/60 tabular-nums">{x.absent}</td>
+                    <td className="px-3 py-2.5 text-right text-navy/70 tabular-nums">{pct(x.pass_percent)}</td>
+                    <td className="px-3 py-2.5 text-right text-navy/70 tabular-nums">{pct(x.average_percent)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      )}
 
       {!classCode && data.classes.length > 0 && (
         <Panel title="Class-wise" subtitle="Click a class to see its own analytics">

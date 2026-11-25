@@ -344,14 +344,43 @@ export default function AnalyticsReport({ term, classCode, onSelectClass, onPick
         </Panel>
       )}
 
+      {/* Whole school: the top 2 of every class. A single class: its top 5 (below, beside Improvement). */}
+      {!classCode && (data.class_toppers || []).length > 0 && (
+        <Panel title="Class toppers" subtitle="Top 2 students of every class — tap a class to see its full analytics">
+          <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            {data.class_toppers.map((c) => (
+              <button
+                key={c.class_code}
+                type="button"
+                onClick={onSelectClass ? () => onSelectClass(c.class_code) : undefined}
+                className="text-left rounded-2xl border border-navy/10 px-4 py-3 hover:border-gold/60 transition-colors"
+              >
+                <p className="text-xs font-bold uppercase tracking-wide text-navy/50 mb-2">{c.class_code}</p>
+                <ol className="flex flex-col gap-1.5">
+                  {c.students.map((t, i) => (
+                    <li key={t.student_id} className="flex items-center gap-2 text-sm">
+                      <span className="w-5 h-5 rounded-full bg-gold/15 text-gold-dark text-[11px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                      <span className="font-medium text-navy truncate">{t.name}</span>
+                      <span className="ml-auto pl-2 font-semibold text-navy tabular-nums">{t.percent}%</span>
+                    </li>
+                  ))}
+                </ol>
+              </button>
+            ))}
+          </div>
+        </Panel>
+      )}
+
+      {!classCode && attentionPanel}
+
+      {classCode && (
       <div className="grid lg:grid-cols-2 gap-5">
-        <Panel title="Top 5" subtitle="Highest overall percentage">
+        <Panel title="Top 5" subtitle={`Highest overall percentage in ${classCode}`}>
           <ol className="flex flex-col gap-2">
             {data.top_students.map((t, i) => (
               <li key={`${t.student_id}-${i}`} className="flex items-center gap-3 text-sm">
                 <span className="w-6 h-6 rounded-full bg-gold/15 text-gold-dark text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
                 <span className="font-medium text-navy truncate">{t.name}</span>
-                {!classCode && <span className="text-xs text-navy/45">{t.class_code}</span>}
                 <span className="ml-auto font-semibold text-navy tabular-nums">{t.percent}%</span>
               </li>
             ))}
@@ -380,10 +409,9 @@ export default function AnalyticsReport({ term, classCode, onSelectClass, onPick
               </div>
             )}
           </Panel>
-        ) : (
-          attentionPanel
-        )}
+        ) : null}
       </div>
+      )}
     </div>
   );
 }

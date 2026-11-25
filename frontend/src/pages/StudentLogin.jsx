@@ -128,6 +128,7 @@ function SignInCard({ classInfo, onBack }) {
         username: form.register.trim(),
         password: form.password,
         classCode: classInfo.code,
+        role: "student",
       });
       const from = location.state?.from?.pathname;
       navigate(from && from.startsWith("/student") ? from : "/student", { replace: true });

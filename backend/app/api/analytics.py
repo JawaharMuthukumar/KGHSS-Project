@@ -190,6 +190,9 @@ def results_analytics(term: str = Query(...), class_code: str | None = None, db:
             trend.append({"term": t, "appeared": s["appeared"], "pass_percent": s["pass_percent"], "average_percent": s["average_percent"]})
 
     top_rows = sorted((r for r in rows if r["appeared"]), key=lambda r: r["percent"], reverse=True)[:5]
+    # School view: the top 2 of every class (class order), instead of one school-wide top 5
+    toppers = [] if class_code else [
+        (c.code, sorted((r for r in by_class.get(c.code, []) if r["appeared"]), key=lambda r: r["percent"], reverse=True)[:2]) for c in classes]
     needs_help = sorted((r for r in rows if r["appeared"] and not r["passed"]), key=lambda r: (-(len(r["failed_subjects"]) + len(r["absent_subjects"])), r["percent"]))
     needs_help = needs_help[:100 if class_code else 20] if needs_help else []
     attention_total = sum(1 for r in rows if r["appeared"] and not r["passed"])
@@ -210,7 +213,7 @@ def results_analytics(term: str = Query(...), class_code: str | None = None, db:
             for subj in r["absent_subjects"]: failing[subj]["absent"].append(r)
         struggle = sorted(failing.items(), key=lambda kv: -(len(kv[1]["failed"]) + len(kv[1]["absent"])))
 
-    listed = top_rows + needs_help + [c[0] for c in improved + dropped] + [r for _, v in struggle for r in v["failed"] + v["absent"]]
+    listed = top_rows + [r for _, rs in toppers for r in rs] + needs_help + [c[0] for c in improved + dropped] + [r for _, v in struggle for r in v["failed"] + v["absent"]]
     ids = {r["student_id"] for r in listed}
     names = dict(db.query(Student.id, Account.full_name).join(Account, Account.id == Student.account_id)
                  .filter(Student.id.in_(ids)).all()) if ids else {}
@@ -223,6 +226,7 @@ def results_analytics(term: str = Query(...), class_code: str | None = None, db:
             "classes": class_lines if not class_code else [],
             "sections": sections if not class_code else [s for s in sections if s["grade"] == classes[0].grade],
             "trend": trend, "top_students": [who(r) for r in top_rows],
+            "class_toppers": [{"class_code": code, "students": [who(r) for r in rs]} for code, rs in toppers if rs],
             "attention": [{**who(r), "failed_subjects": r["failed_subjects"], "absent_subjects": r["absent_subjects"]} for r in needs_help],
             "attention_total": attention_total,
             # School view: subject teachers ranked by students failed; class view: each subject with its teacher

@@ -40,6 +40,10 @@ def login(data: LoginIn, db: Session = Depends(get_db)):
         account = student.account if student else None
     if not account or not account.is_active or not verify_password(data.password, account.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
+    # Each login page is for its own role only (admin page: HM, teacher page: teachers, student page: students).
+    if data.role and account.role != data.role:
+        page = {"admin": "Admin", "teacher": "Teacher", "student": "Student"}
+        raise HTTPException(status_code=403, detail=f"This is the {page[data.role]} login. Please sign in from the {page.get(account.role, account.role)} login page.")
     if account.role == "student" and data.class_code:
         student = db.query(Student).filter_by(account_id=account.id).first()
         if not student or student.school_class.code != data.class_code:

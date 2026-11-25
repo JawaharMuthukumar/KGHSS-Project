@@ -43,14 +43,14 @@ export default function Login() {
 
       <section className="bg-navy-dark h-full overflow-y-auto flex items-center py-6">
         <Container>
-          <PortalCard copy={copy} />
+          <PortalCard copy={copy} role={role} />
         </Container>
       </section>
     </>
   );
 }
 
-function PortalCard({ copy }) {
+function PortalCard({ copy, role }) {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,7 +66,7 @@ function PortalCard({ copy }) {
     setError("");
     setSubmitting(true);
     try {
-      const user = await login({ username: form.id.trim(), password: form.password });
+      const user = await login({ username: form.id.trim(), password: form.password, role });
       const from = location.state?.from?.pathname;
       navigate(from && from.startsWith(`/${user.role}`) ? from : `/${user.role}`, { replace: true });
     } catch (err) {

@@ -25,6 +25,8 @@ class LoginIn(BaseModel):
     username: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=1, max_length=128)
     class_code: str | None = None
+    # The login page used; when given, only accounts of that role may sign in there.
+    role: str | None = Field(default=None, pattern=r"^(admin|teacher|student)$")
 
 
 class TokenOut(BaseModel):

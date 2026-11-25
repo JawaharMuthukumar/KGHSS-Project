@@ -55,11 +55,13 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const login = async ({ username, password, classCode }) => {
+  // `role` is the login page being used (admin / teacher / student): the server refuses an account of another role.
+  const login = async ({ username, password, classCode, role }) => {
     const data = await api.post("/auth/login", {
       username,
       password,
       class_code: classCode || undefined,
+      role: role || undefined,
     });
     authStorage.setItem(TOKEN_KEY, data.access_token);
     authStorage.setItem(USER_KEY, JSON.stringify(data.user));

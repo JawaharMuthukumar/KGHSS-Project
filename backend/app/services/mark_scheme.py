@@ -1,7 +1,7 @@
 """Grade-wise exam terms, subjects and mark-entry components.
 
 Every subject totals 100; what differs per grade/subject (and for 10th–12th, per exam) is how that 100 is split
-(e.g. one mark for grades 6-9 and for 10th–12th mid terms, Theory 70 + Practical 30 for higher-secondary science).
+(e.g. one mark for grades 6-9 and for 10th–12th mid terms, Theory 70 + Practical 20 + Internal 10 for higher-secondary science).
 Mark entry is validated against this scheme.
 """
 from sqlalchemy.orm import object_session
@@ -15,7 +15,7 @@ TERMS_HSC = [t for t in TERMS_SENIOR if t != "3rd Mid Term"]  # 11th–12th: no 
 SINGLE = [("total", "Mark", 100)]
 THEORY_INTERNAL = [("theory", "Theory", 90), ("internal", "Internal", 10)]
 THEORY_PRACTICAL = [("theory", "Theory", 75), ("practical", "Practical", 25)]
-THEORY_PRACTICAL_70_30 = [("theory", "Theory", 70), ("practical", "Practical", 30)]
+THEORY_PRACTICAL_INTERNAL = [("theory", "Theory", 70), ("practical", "Practical", 20), ("internal", "Internal", 10)]
 
 HSC_PRACTICAL_SUBJECTS = {"Physics", "Chemistry", "Biology", "Computer Science"}
 
@@ -64,11 +64,11 @@ def subject_components(cls: AcademicClass, subject: str, term: str) -> list[tupl
         # 10th: mid terms are one mark out of 100; the other exams too, except Science (Theory 75 + Practical 25).
         return THEORY_PRACTICAL if subject == "Science" and term not in MID_TERMS else SINGLE
     # 11th–12th: mid terms are one mark out of 100. Quarterly, Half Yearly and Revisions: practical subjects
-    # (Physics, Chemistry, Biology, Computer Science, …) Theory 70 + Practical 30; the rest Theory 90 + Internal 10.
+    # (Physics, Chemistry, Biology, Computer Science, …) Theory 70 + Practical 20 + Internal 10; the rest Theory 90 + Internal 10.
     if term in MID_TERMS:
         return SINGLE
     practical = any(s["subject"] == subject and s.get("practical") for s in group_core(cls))
-    return THEORY_PRACTICAL_70_30 if practical else THEORY_INTERNAL
+    return THEORY_PRACTICAL_INTERNAL if practical else THEORY_INTERNAL
 
 
 def class_scheme(cls: AcademicClass) -> dict:

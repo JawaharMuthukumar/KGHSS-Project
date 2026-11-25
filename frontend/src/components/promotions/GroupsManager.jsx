@@ -361,7 +361,7 @@ function GroupForm({ group, onSaved }) {
           </button>
         )}
         <p className="text-xs text-navy/40 mt-2">
-          Mid terms are one mark out of 100. Other exams: practical subjects Theory 70 + Practical 30; others Theory 90 + Internal 10.
+          Mid terms are one mark out of 100. Other exams: practical subjects Theory 70 + Practical 20 + Internal 10; others Theory 90 + Internal 10.
         </p>
       </div>
       {formError && <Banner tone="error">{formError}</Banner>}

@@ -3,6 +3,7 @@
 The bonafide certificate copies the school's printed form (SCHOOL BONAFIDE CERTIFICATE) with the
 blanks filled in from the student's record; other certificate types reuse the same letterhead.
 """
+import base64
 from datetime import datetime
 from functools import lru_cache
 from html import escape
@@ -74,11 +75,20 @@ def _title(pdf: canvas.Canvas, text: str, y: float) -> None:
     pdf.setLineWidth(1.1); pdf.line((PAGE_W - w) / 2, y - 4, (PAGE_W + w) / 2, y - 4)
 
 
-def _signature(pdf: canvas.Canvas, issued: datetime | None, y: float = 250) -> None:
+def _signature(pdf: canvas.Canvas, issued: datetime | None, y: float = 250, hm_signature: str | None = None) -> None:
+    """PLACE / DATE on the left; HEAD MASTER on the right — with the HM's digital signature above it and the
+    signing date under it when the HM has added a signature (no stamp box, just like a pen signature)."""
+    when = (issued or datetime.utcnow()).strftime("%d-%m-%Y")
     pdf.setFont("Times-Roman", 13.5)
     pdf.drawString(MARGIN, y, "PLACE  : KANGAYAMPALAYAM")
-    pdf.drawString(MARGIN, y - 26, "DATE    :  " + (issued or datetime.utcnow()).strftime("%d-%m-%Y"))
-    pdf.setFont("Times-Bold", 13.5); pdf.drawRightString(PAGE_W - MARGIN, y, "HEAD MASTER")
+    pdf.drawString(MARGIN, y - 26, "DATE    :  " + when)
+    right = PAGE_W - MARGIN
+    if hm_signature:
+        sig = ImageReader(BytesIO(base64.b64decode(hm_signature.split(",", 1)[1])))
+        pdf.drawImage(sig, right - 150, y + 14, 150, 48, mask="auto", preserveAspectRatio=True, anchor="c")
+    pdf.setFont("Times-Bold", 13.5); pdf.drawCentredString(right - 75, y, "HEAD MASTER")
+    if hm_signature:
+        pdf.setFont("Times-Roman", 11); pdf.drawCentredString(right - 75, y - 18, when)
 
 
 def _fill(value: str | None, blank: int = 22) -> str:
@@ -106,7 +116,7 @@ def _draw_para(pdf: canvas.Canvas, text: str, y_top: float, style: ParagraphStyl
     return y_top - h
 
 
-def bonafide_pdf(student: Student, issued: datetime | None) -> BytesIO:
+def bonafide_pdf(student: Student, issued: datetime | None, hm_signature: str | None = None) -> BytesIO:
     cls = student.school_class
     output = BytesIO(); pdf = canvas.Canvas(output, pagesize=A4)
     pdf.setTitle("School Bonafide Certificate")
@@ -131,12 +141,12 @@ def bonafide_pdf(student: Student, issued: datetime | None) -> BytesIO:
         address = "<br/>".join(escape(line.strip()) for line in student.address.splitlines() if line.strip())
         _draw_para(pdf, address, y - 64, _body_style(leading=22, alignment=0, rightIndent=180))
 
-    _signature(pdf, issued)
+    _signature(pdf, issued, hm_signature=hm_signature)
     pdf.save(); output.seek(0)
     return output
 
 
-def general_certificate_pdf(student: Student, certificate_type: str, issued: datetime | None) -> BytesIO:
+def general_certificate_pdf(student: Student, certificate_type: str, issued: datetime | None, hm_signature: str | None = None) -> BytesIO:
     """Attendance / conduct certificates: same letterhead, short statement."""
     cls = student.school_class
     output = BytesIO(); pdf = canvas.Canvas(output, pagesize=A4)
@@ -147,6 +157,6 @@ def general_certificate_pdf(student: Student, certificate_type: str, issued: dat
             f"is studying in {_fill(ROMAN.get(cls.grade, str(cls.grade)), 5)} Standard {_fill(cls.section, 4)} Sec "
             f"in the academic year {escape(cls.academic_year)} in our institution. This certificate is issued on request.")
     _draw_para(pdf, text, PAGE_H - 255, _body_style(firstLineIndent=85))
-    _signature(pdf, issued)
+    _signature(pdf, issued, hm_signature=hm_signature)
     pdf.save(); output.seek(0)
     return output

@@ -56,7 +56,7 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
           <button
             type="button"
             disabled={!selected.length || busy}
-            onClick={() => run(() => openPdf("/lesson-plans/merged", merged))}
+            onClick={() => run(() => openPdf("/lesson-plans/merged", merged, "Notes of Lessons.pdf"))}
             className="flex items-center gap-1.5 text-xs font-semibold bg-gold text-navy-dark px-3.5 py-2 rounded-full hover:bg-gold-light disabled:opacity-50"
           >
             <Icon name="Printer" size={14} />
@@ -127,7 +127,7 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => run(() => openPdf(`/lesson-plans/${p.id}/file`))}
+                    onClick={() => run(() => openPdf(`/lesson-plans/${p.id}/file`, undefined, `${p.class_code} ${p.subject} ${p.week_label}.pdf`))}
                     className="flex items-center gap-1 text-xs font-semibold text-navy hover:bg-navy/6 px-2.5 py-1.5 rounded-lg"
                   >
                     <Icon name="Eye" size={14} />

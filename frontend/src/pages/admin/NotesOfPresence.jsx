@@ -13,6 +13,7 @@ import { openPdf } from "../../lib/pdf";
 
 const TABS = [
   { id: "pending", label: "To approve" },
+  { id: "missing", label: "Not sent yet" },
   { id: "weeks", label: "Week by week" },
   { id: "all", label: "All notes" },
 ];
@@ -80,7 +81,7 @@ function WeekByWeek() {
     try {
       const plans = await api.get("/lesson-plans", { query: { week_from: w.week_start, week_to: w.week_start, status } });
       if (!plans.length) return setPrintError(`No ${status || ""} notes for ${w.label}.`);
-      await openPdf("/lesson-plans/merged", { ids: plans.map((p) => p.id).join(",") });
+      await openPdf("/lesson-plans/merged", { ids: plans.map((p) => p.id).join(",") }, `Notes of Lessons ${w.label}.pdf`);
     } catch (err) {
       setPrintError(err instanceof ApiError ? err.message : "Could not open the PDF.");
     }
@@ -149,6 +150,71 @@ function WeekByWeek() {
   );
 }
 
+/** Who hasn't sent a week's plan yet, teacher by teacher (default: this week). */
+function NotSent() {
+  const { data, loading, error } = useApiResource("/lesson-plans/overview");
+  const [week, setWeek] = useState("");
+  if (error) return <Banner tone="error">{error.message}</Banner>;
+  if (loading || !data) return <ContentSkeleton rows={6} />;
+  if (!data.weeks.length) return <Card className="p-8 text-center text-sm text-navy/50">No weeks yet this academic year.</Card>;
+  const w = data.weeks.find((x) => x.week_start === week) || data.weeks[0];
+  const byTeacher = {};
+  w.missing.forEach((m) => {
+    const key = m.teacher_name || "Not assigned";
+    (byTeacher[key] = byTeacher[key] || []).push(`${m.class_code} · ${m.subject}`);
+  });
+  const teachers = Object.entries(byTeacher).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+
+  return (
+    <div>
+      <Card className="p-4 mb-4 flex flex-wrap items-center gap-3">
+        <select value={w.week_start} onChange={(e) => setWeek(e.target.value)} className={`${inputClass} !w-auto`} aria-label="Week">
+          {data.weeks.map((x, i) => (
+            <option key={x.week_start} value={x.week_start}>
+              {x.label}
+              {i === 0 ? " (this week)" : ""}
+            </option>
+          ))}
+        </select>
+        <p className="text-sm text-navy/70">
+          <strong className="text-navy">{teachers.length}</strong> teacher{teachers.length === 1 ? "" : "s"} have not sent{" "}
+          <strong className="text-navy">{w.missing.length}</strong> of {w.expected} plans · {w.uploaded} sent
+        </p>
+      </Card>
+      {teachers.length ? (
+        <Card className="p-0 overflow-hidden">
+          <table className="table-cards w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs font-semibold uppercase tracking-wide text-navy/45 border-b border-navy/8">
+                <th className="px-4 py-3">Teacher</th>
+                <th className="px-4 py-3">Not sent (class · subject)</th>
+                <th className="px-4 py-3 text-right">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teachers.map(([name, slots]) => (
+                <tr key={name} className="border-b border-navy/6 last:border-0">
+                  <td className="tc-primary px-4 py-3 font-medium text-navy whitespace-nowrap">{name}</td>
+                  <td data-label="Not sent" className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      {slots.map((x) => (
+                        <span key={x} className="text-xs bg-red-50 text-red-700 rounded-full px-2.5 py-1">{x}</span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="tc-aside px-4 py-3 text-right font-bold text-navy">{slots.length}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      ) : (
+        <Card className="p-8 text-center text-sm text-emerald-700">Every teacher has sent this week's plans.</Card>
+      )}
+    </div>
+  );
+}
+
 /** HM: approve each week's lesson plans, follow the year week by week, and print any selection as one PDF. */
 export default function AdminNotesOfPresence() {
   const [tab, setTab] = useState("pending");
@@ -212,6 +278,8 @@ export default function AdminNotesOfPresence() {
         ) : (
           <PlanTable plans={pending.data || []} showTeacher emptyText="Nothing waiting for approval." actions={(p) => <Decide plan={p} onDone={refresh} />} />
         ))}
+
+      {tab === "missing" && <NotSent />}
 
       {tab === "weeks" && <WeekByWeek />}
 

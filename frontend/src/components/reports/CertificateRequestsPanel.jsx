@@ -9,6 +9,7 @@ import { api, ApiError } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
 import { TableSkeleton } from "../ui/Skeleton";
 import { certStatus } from "../../constants/certificates";
+import { openPdf } from "../../lib/pdf";
 
 const decidedByLabel = (r) => {
   if (r.decided_by_role === "admin") return "HM";
@@ -58,19 +59,14 @@ export default function CertificateRequestsPanel({ description, showClassTeacher
     }
   };
 
-  const print = async (id) => {
-    // Open the tab now (inside the click) so the browser doesn't block it as a pop-up, then load the PDF into it.
-    const tab = window.open("", "_blank");
-    setBusyId(id);
+  const print = async (r) => {
+    // Computer: opens in a new tab to print; phone: downloads so the phone's PDF app (with Print/Share) opens it
+    setBusyId(r.id);
     setActionError("");
     try {
-      const blob = await api.get(`/certificates/requests/${id}/download`);
-      const url = URL.createObjectURL(blob);
-      if (tab) tab.location.href = url;
-      else window.location.href = url;
+      await openPdf(`/certificates/requests/${r.id}/download`, undefined, `${r.certificate_type} certificate - ${r.student_name || r.id}.pdf`);
       reload();
     } catch (err) {
-      tab?.close();
       setActionError(err instanceof ApiError ? err.message : "Could not open the certificate. Please try again.");
     } finally {
       setBusyId(null);
@@ -92,7 +88,7 @@ export default function CertificateRequestsPanel({ description, showClassTeacher
       </button>
     );
     const printBtn = (
-      <button type="button" disabled={busy} onClick={() => print(r.id)} className={`${actionBtn} text-navy hover:bg-navy/6`}>
+      <button type="button" disabled={busy} onClick={() => print(r)} className={`${actionBtn} text-navy hover:bg-navy/6`}>
         <Icon name="Printer" size={14} />
         {r.status === "ready" ? "Print again" : "Print"}
       </button>

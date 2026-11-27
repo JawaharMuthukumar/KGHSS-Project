@@ -1,10 +1,31 @@
 import { api } from "./apiClient";
 
+/** Phones / tablets: their browsers show a PDF opened in a tab as a flat image with no Print option. */
+const isMobile = () =>
+  typeof window !== "undefined" &&
+  (window.matchMedia?.("(pointer: coarse)").matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || ""));
+
+function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
 /**
- * Open an API PDF in a new tab (the browser's viewer has Print and Save). The tab is opened before the
- * download starts, inside the click, so pop-up blockers allow it.
+ * Open an API PDF to view / print. Computers: a new tab (the browser's viewer has Print and Save); the tab is
+ * opened inside the click so pop-up blockers allow it. Phones: the PDF is downloaded instead, so it opens in the
+ * phone's PDF app, which has Print and Share.
  */
-export async function openPdf(path, query) {
+export async function openPdf(path, query, filename = "document.pdf") {
+  if (isMobile()) {
+    saveBlob(await api.get(path, query ? { query } : undefined), filename);
+    return;
+  }
   const tab = window.open("", "_blank");
   try {
     const blob = await api.get(path, query ? { query } : undefined);
@@ -19,11 +40,5 @@ export async function openPdf(path, query) {
 
 /** Download an API PDF as a file. */
 export async function downloadPdf(path, query, filename) {
-  const blob = await api.get(path, query ? { query } : undefined);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  saveBlob(await api.get(path, query ? { query } : undefined), filename);
 }

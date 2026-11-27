@@ -20,7 +20,7 @@ from app.services.mark_scheme import class_scheme, subject_components, subjects_
 from app.models.entities import (Account, AcademicClass, Teacher, Student, ClassTeacherAssignment,
     SubjectTeacherAssignment, Assessment, Mark, AttendanceMonth, AttendanceRecord, TimetableEntry,
     Notice, CertificateRequest, LeaveRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage,
-    PagePost, PagePostImage, LessonPlan)
+    PagePost, PagePostImage, LessonPlan, AccountSignature)
 from app.schemas.common import (ClassIn, ClassTeacherIn, SubjectTeacherIn, TeacherCreate, TeacherUpdate,
     StudentCreate, StudentUpdate, StudentSelfUpdate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, NoticeUpdate, CertificateIn, DecisionIn,
     LeaveRequestIn, ComplaintMessageIn, EventIn, EventUpdate, GalleryIn, PublicContactIn)
@@ -1098,7 +1098,7 @@ def class_leave_days(class_code: str, month: str = Query(..., pattern=r"^\d{4}-(
 
 
 @router.get("/certificates/requests/{request_id}/download")
-def download_certificate(request_id: int, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+def download_certificate(request_id: int, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin"))):
     """Only the HM prints certificates; printing marks the request ready for the student to collect."""
     req=db.get(CertificateRequest,request_id)
     if not req: raise HTTPException(404,"Certificate request not found")
@@ -1109,8 +1109,10 @@ def download_certificate(request_id: int, db: Session = Depends(get_db), _: Acco
     except ImportError as exc:
         raise HTTPException(503,"PDF generation dependency is unavailable") from exc
     issued=datetime.utcnow()+timedelta(hours=5,minutes=30)  # dated the day the HM prints it (IST)
-    if req.certificate_type=="bonafide": output=bonafide_pdf(student,issued)
-    else: output=general_certificate_pdf(student,req.certificate_type,issued)
+    # The printing HM's digital signature (My Signature) goes above "HEAD MASTER", with the date under it
+    sig=db.get(AccountSignature,account.id); hm_sig=sig.image if sig else None
+    if req.certificate_type=="bonafide": output=bonafide_pdf(student,issued,hm_sig)
+    else: output=general_certificate_pdf(student,req.certificate_type,issued,hm_sig)
     req.status="ready"; req.downloaded_at=datetime.utcnow(); db.commit()
     return StreamingResponse(output,media_type="application/pdf",headers={"Content-Disposition":f'inline; filename="certificate-{request_id}.pdf"'})
 

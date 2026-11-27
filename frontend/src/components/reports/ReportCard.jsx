@@ -140,7 +140,7 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
               <Bi ta="மொத்தம்" en="Total" extra={`(${meta.max_total})`} nowrap />
             </th>
             <th className={head}>
-              <Bi ta="தகுதி" en="Result" nowrap />
+              <Bi ta="தரம்" en="Rank" nowrap />
             </th>
             <th className={head}>
               <Bi ta="வருகை நாட்கள்" en="Attendance" />
@@ -207,7 +207,8 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
                 ));
               })}
               <td className={`${cell} font-bold`}>{r.total ?? ""}</td>
-              <td className={`${cell} text-[10px] font-semibold leading-tight ${noSplit}`}>{r.remark ?? ""}</td>
+              {/* Class rank in this exam (only students who passed every subject are ranked) */}
+              <td className={`${cell} font-bold`}>{r.rank ?? ""}</td>
               <td className={cell}>{r.attendance ? `${r.attendance.present}/${r.attendance.working}` : ""}</td>
               {/* Class teacher's digital signature, once they have signed this exam's report cards */}
               <td className={`${cell} !p-0.5`}>

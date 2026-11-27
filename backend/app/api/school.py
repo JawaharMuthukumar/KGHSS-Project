@@ -575,6 +575,17 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
 
     class_top = {t: max([v for v in (term_total(t, s.id) for s in students) if v is not None], default=None) for t in report_card_terms(cls)}
 
+    # Class rank per exam, the same rule as the term report: only students who wrote and passed every subject
+    # (35% of each subject's maximum) are ranked; equal totals share a rank.
+    def passed_all(term, sid):
+        sm = marks[term].get(sid)
+        return bool(sm) and len(sm) == len(subjects) and all(not m.absent and m.score >= m.maximum_score * 35 / 100 for m in sm.values())
+    ranks = {}
+    for t in report_card_terms(cls):
+        totals = sorted(((term_total(t, s.id), s.id) for s in students if passed_all(t, s.id)), reverse=True)
+        for i, (tot, sid) in enumerate(totals):
+            ranks[(t, sid)] = ranks[(t, totals[i - 1][1])] if i and totals[i - 1][0] == tot else i + 1
+
     # Attendance is recorded per month; each exam row shows June up to that exam's chosen month.
     attendance = {t: exam_attendance(db, cls, a) for t, a in assessments.items()}
 
@@ -590,7 +601,7 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
             sm = marks[term].get(s.id)
             limits = {"subject_max": term_max[term], "pass_mark": round(term_max[term] * 35 / 100)}
             if not sm:
-                rows.append({"term": term, "scores": [None] * len(subjects), "total": None, "remark": None, "class_top": class_top[term], "attendance": None, **limits}); continue
+                rows.append({"term": term, "scores": [None] * len(subjects), "total": None, "remark": None, "rank": None, "class_top": class_top[term], "attendance": None, **limits}); continue
             scores = [None if subj not in sm else "AB" if sm[subj].absent else sm[subj].score for subj in subjects]
             # Split marks (Theory / Practical / Internal …) for subjects whose pattern in this exam has more than one part
             splits = []
@@ -602,6 +613,7 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
             total = term_total(term, s.id)
             att = attendance.get(term)
             rows.append({"term": term, "scores": scores, "splits": splits, "total": total, "remark": report_remark(total * 100 / (term_max[term] * len(subjects))),
+                "rank": ranks.get((term, s.id)),
                 "class_top": class_top[term], "attendance": {"present": att[1][s.id], "working": att[0]} if att and att[1].get(s.id) is not None else None, **limits})
         cards.append({"student_id": s.id, "registration_no": s.registration_no, "name": s.account.full_name, "rows": rows})
     # Class teacher's signature per exam they signed (printed cards only — never sent to the student portal)

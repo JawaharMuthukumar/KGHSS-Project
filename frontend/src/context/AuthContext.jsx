@@ -1,4 +1,5 @@
 import { authStorage } from "../lib/authStorage";
+import { disablePush } from "../lib/push";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { api, setUnauthorizedHandler } from "../lib/apiClient";
 import { LAST_USER_KEY } from "../lib/loginRedirect";
@@ -78,6 +79,8 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    // Stop phone notifications on this device so the next person signing in here doesn't get them.
+    disablePush();
     clearSession();
     setUser(null);
   };

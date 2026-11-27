@@ -7,6 +7,7 @@ import { portalNav, roleLabels, mobileTabs, flatNav } from "./navConfig";
 import { selectTeacherClass, useMyTeacherProfile } from "../../hooks/useMyTeacherProfile";
 import { useAutoCapitalize } from "../../hooks/useAutoCapitalize";
 import { enableAppInstall } from "../../lib/installApp";
+import { enablePush, needsIosInstall, pushState, refreshPush } from "../../lib/push";
 import InstallAppBanner from "./InstallAppBanner";
 import ChangePasswordDialog from "./ChangePasswordDialog";
 import ChangeStaffIdDialog from "./ChangeStaffIdDialog";
@@ -113,7 +114,7 @@ function NotificationBell() {
   const { items, unreadNotices, noticePath, counts } = useAlerts();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const total = (counts.certificates || 0) + (counts.leave || 0) + (counts.notes || 0) + (unreadNotices || 0);
+  const total = (counts.certificates || 0) + (counts.leave || 0) + (counts.notes || 0) + (counts.homework || 0) + (unreadNotices || 0);
 
   const go = (to) => {
     setOpen(false);
@@ -170,9 +171,58 @@ function NotificationBell() {
               ))}
               {!items.length && !unreadNotices && <p className="px-4 py-6 text-sm text-center text-navy/45">You're all caught up.</p>}
             </div>
+            <PushToggle />
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/** Bell footer: turn on phone notifications for this device (they arrive even when the portal is closed). */
+function PushToggle() {
+  const [state, setState] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    pushState().then(setState).catch(() => setState("unsupported"));
+  }, []);
+  if (!state || state === "unsupported") return null;
+
+  const turnOn = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      setState(await enablePush());
+    } catch (err) {
+      setError(err.message || "Could not turn on notifications.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-navy/8 px-4 pt-2.5 pb-1 text-xs">
+      {state === "on" && (
+        <p className="flex items-center gap-1.5 text-emerald-600 font-semibold">
+          <Icon name="CircleCheck" size={14} /> Phone notifications are on for this device
+        </p>
+      )}
+      {state === "off" && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={turnOn}
+          className="w-full flex items-center justify-center gap-1.5 bg-gold text-navy-dark font-semibold py-2 rounded-full hover:bg-gold-light disabled:opacity-60"
+        >
+          <Icon name="Bell" size={14} /> {busy ? "Turning on…" : "Turn on phone notifications"}
+        </button>
+      )}
+      {state === "blocked" && <p className="text-navy/55">Notifications are blocked for this site. Allow them in the browser / phone settings, then reopen the portal.</p>}
+      {state === "install" && needsIosInstall() && (
+        <p className="text-navy/55">iPhone: tap Share → Add to Home Screen, open the portal from that icon, then turn on notifications here.</p>
+      )}
+      {error && <p className="text-red-600 mt-1">{error}</p>}
     </div>
   );
 }
@@ -333,6 +383,10 @@ function PortalShell({ role }) {
 
   // The phone-app install is offered only inside the portal (after sign-in), never on the public site.
   useEffect(() => enableAppInstall(role), [role]);
+  // A device that already allowed phone notifications is (re-)linked to whoever is signed in.
+  useEffect(() => {
+    refreshPush();
+  }, [role]);
 
   // Opening another page closes the More sheet.
   useEffect(() => setMoreOpen(false), [pathname]);

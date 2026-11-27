@@ -16,6 +16,7 @@ from app.core.database import get_db
 from app.core.dependencies import require_roles
 from app.models.entities import Account, AcademicClass, Homework, SubjectTeacherAssignment, Teacher, TimetableEntry
 from app.services.permissions import student_profile, teacher_profile
+from app.services.push import notify, students_of
 
 router = APIRouter(prefix="/homework", tags=["Homework"])
 
@@ -49,12 +50,14 @@ def teacher_slots(db: Session, teacher: Teacher, year: str) -> list[dict]:
     return [{"class_code": code, "class_id": cid, "subject": subj} for code, cid, subj in rows if subj not in NO_HOMEWORK]
 
 
-def expected_slots(db: Session, year: str, teacher_id: int | None = None) -> dict:
+def expected_slots(db: Session, year: str, teacher_id: int | None = None, weekday: int | None = None) -> dict:
     """weekday -> {(class_id, subject): {"periods": [..], "teacher_id": ..}} from the timetable. The subject teacher
     assigned to that class + subject is the one expected to give the homework (else the timetable's teacher)."""
     assigned = {(a.class_id, a.subject): a.teacher_id for a in db.query(SubjectTeacherAssignment).filter_by(academic_year=year).all()}
     out = defaultdict(dict)
-    for e in db.query(TimetableEntry).filter_by(academic_year=year).all():
+    entries = db.query(TimetableEntry).filter_by(academic_year=year)
+    if weekday is not None: entries = entries.filter(TimetableEntry.weekday == weekday)
+    for e in entries.all():
         if not e.subject or e.subject in NO_HOMEWORK: continue
         tid = assigned.get((e.class_id, e.subject)) or e.teacher_id
         if teacher_id is not None and tid != teacher_id: continue
@@ -80,7 +83,7 @@ class HomeworkPatch(BaseModel):
 def setup(db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
     teacher = teacher_profile(db, account); year = current_academic_year(db); today = today_ist()
     slots = teacher_slots(db, teacher, year)
-    today_slots = expected_slots(db, year, teacher.id).get(today.weekday(), {})
+    today_slots = expected_slots(db, year, teacher.id, today.weekday()).get(today.weekday(), {})
     given = {(h.class_id, h.subject) for h in db.query(Homework).filter_by(teacher_id=teacher.id, given_on=today).all()}
     for s in slots:
         key = (s["class_id"], s["subject"])
@@ -130,6 +133,7 @@ def give_homework(data: HomeworkIn, db: Session = Depends(get_db), account: Acco
     if data.due_on < given: raise HTTPException(422, "The due date can't be before the day it is given")
     h = Homework(teacher_id=teacher.id, class_id=cls.id, subject=data.subject, academic_year=year, given_on=given, due_on=data.due_on, details=data.details.strip())
     db.add(h); db.commit(); db.refresh(h)
+    notify(db, students_of(db, cls.id), f"New homework · {h.subject}", h.details, "/student/homework", f"homework-{h.id}")
     return out_many(db, [h])[0]
 
 
@@ -152,7 +156,7 @@ def delete_homework(homework_id: int, db: Session = Depends(get_db), account: Ac
 @router.get("/check", summary="HM: one day's timetable periods (class + subject) and whether homework was given")
 def day_check(day: date | None = None, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
     day = day or today_ist(); year = current_academic_year(db)
-    expected = expected_slots(db, year).get(day.weekday(), {})
+    expected = expected_slots(db, year, weekday=day.weekday()).get(day.weekday(), {})
     given = defaultdict(list)
     for h in out_many(db, db.query(Homework).filter_by(academic_year=year, given_on=day).all()):
         given[(h["class_code"], h["subject"])].append(h)
@@ -174,6 +178,30 @@ def day_check(day: date | None = None, db: Session = Depends(get_db), _: Account
     expected_n = sum(1 for r in rows if r["status"] != "extra"); given_n = sum(1 for r in rows if r["status"] == "given")
     return {"day": day, "weekday": WEEKDAYS[day.weekday()], "today": today_ist(), "expected": expected_n, "given": given_n,
             "missing": expected_n - given_n, "rows": rows}
+
+
+def now_ist() -> datetime:
+    return datetime.utcnow() + timedelta(hours=5, minutes=30)
+
+
+TEACHER_REMIND_HOUR = 13  # teachers are reminded from 1 PM (after most periods are over)
+HM_REMIND_HOUR = 15  # the HM is told how many were missed from 3 PM
+
+
+def missing_today(db: Session, teacher_id: int | None = None) -> list[dict]:
+    """Today's class + subject periods (Mon–Fri) still without homework: [{class_code, subject, teacher_id}]."""
+    today = today_ist()
+    if today.weekday() > 4: return []
+    year = current_academic_year(db)
+    expected = expected_slots(db, year, teacher_id, today.weekday()).get(today.weekday(), {})
+    if not expected: return []
+    q = db.query(Homework.class_id, Homework.subject).filter_by(academic_year=year, given_on=today)
+    if teacher_id is not None: q = q.filter(Homework.teacher_id == teacher_id)
+    given = set(q.all())
+    active = dict(db.query(AcademicClass.id, AcademicClass.code).filter(AcademicClass.id.in_({c for c, _ in expected}), AcademicClass.is_active.is_(True)).all())
+    return [{"class_code": active[cid], "subject": subj, "teacher_id": s["teacher_id"]}
+            for (cid, subj), s in sorted(expected.items(), key=lambda kv: (active.get(kv[0][0], ""), kv[0][1]))
+            if cid in active and (cid, subj) not in given]
 
 
 @router.get("/teachers", summary="HM: per teacher, homework given vs. the periods they had (a date range, default this week)")

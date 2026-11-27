@@ -13,6 +13,7 @@ from app.api.analytics import router as analytics_router
 from app.api.signatures import router as signatures_router
 from app.api.lesson_plans import router as lesson_plans_router
 from app.api.homework import router as homework_router
+from app.api.push import router as push_router
 from app.api.academic_year import router as academic_year_router
 from app.api.promotions import router as promotions_router
 from app.api.school import router as school_router
@@ -52,6 +53,7 @@ app.include_router(analytics_router, prefix=settings.api_v1_prefix)
 app.include_router(signatures_router, prefix=settings.api_v1_prefix)
 app.include_router(lesson_plans_router, prefix=settings.api_v1_prefix)
 app.include_router(homework_router, prefix=settings.api_v1_prefix)
+app.include_router(push_router, prefix=settings.api_v1_prefix)
 app.include_router(academic_year_router, prefix=settings.api_v1_prefix)
 app.mount("/uploads", StaticFiles(directory="uploads", check_dir=False), name="uploads")
 

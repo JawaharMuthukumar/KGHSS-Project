@@ -17,6 +17,7 @@ from app.services.permissions import teacher_profile, student_profile, assigned_
 from app.services.permissions import require_teacher_class_scope
 from app.services.signoff import exam_signatures
 from app.services.mark_scheme import class_scheme, mark_passed, subject_components, subjects_for_class, terms_for_grade, theory_pass_mark
+from app.services.push import admins, all_students, all_teachers, class_teachers_of, notify, students_of
 from app.models.entities import (Account, AcademicClass, Teacher, Student, ClassTeacherAssignment,
     SubjectTeacherAssignment, Assessment, Mark, AttendanceMonth, AttendanceRecord, TimetableEntry,
     Notice, CertificateRequest, LeaveRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage,
@@ -917,7 +918,21 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
             items.append({"key": f"homework-{h.id}", "kind": "homework", "title": f"New homework · {h.subject}",
                           "detail": h.details[:80], "to": "/student/homework", "created_at": h.created_at, "clear_on_visit": True})
     elif account.role == "teacher":
-        homework = homework.filter(Homework.teacher_id == teacher_profile(db, account).id)
+        me = teacher_profile(db, account)
+        homework = homework.filter(Homework.teacher_id == me.id)
+    # Reminders: a teacher from 1 PM for today's periods still without homework; the HM from 3 PM with the day's total.
+    from app.api.homework import HM_REMIND_HOUR, TEACHER_REMIND_HOUR, missing_today, now_ist
+    now = now_ist()
+    if account.role == "teacher" and now.hour >= TEACHER_REMIND_HOUR:
+        for m in missing_today(db, me.id):
+            items.append({"key": f"homework-missing-{now:%Y%m%d}-{m['class_code']}-{m['subject']}", "kind": "homework", "title": "Homework not given yet",
+                          "detail": f"{m['class_code']} · {m['subject']}", "to": "/teacher/homework", "created_at": now.replace(hour=TEACHER_REMIND_HOUR, minute=0, second=0, microsecond=0) - timedelta(hours=5, minutes=30)})
+    elif account.role == "admin" and now.hour >= HM_REMIND_HOUR:
+        missing = missing_today(db)
+        if missing:
+            items.append({"key": f"homework-missing-{now:%Y%m%d}", "kind": "homework", "title": f"Homework not given for {len(missing)} period{'s' if len(missing) != 1 else ''} today",
+                          "detail": f"{len({m['teacher_id'] for m in missing})} teacher(s) · tap to see the list", "to": "/admin/homework", "count": len(missing),
+                          "created_at": now.replace(hour=HM_REMIND_HOUR, minute=0, second=0, microsecond=0) - timedelta(hours=5, minutes=30)})
     items.sort(key=lambda i: i["created_at"] or datetime.min, reverse=True)
 
     counts = {"certificates": sum(1 for i in items if i["kind"] == "certificate" and not i.get("silent_badge")), "leave": sum(1 for i in items if i["kind"] == "leave" and not i.get("silent_badge")),
@@ -952,7 +967,13 @@ def create_notice(data: NoticeIn, db: Session = Depends(get_db), account: Accoun
         teacher_or_admin(account,db,cls)
         data.audience="class"
     notice=Notice(title=data.title,body=data.body,audience=data.audience,class_id=cls.id if cls else None,author_id=account.id)
-    db.add(notice); db.commit(); db.refresh(notice); return notice
+    db.add(notice); db.commit(); db.refresh(notice)
+    # Phone notifications: a class notice to that class's students; the HM's notices to their audience
+    if cls and data.audience in {"class","students","all"}: notify(db, students_of(db, cls.id), f"Notice · {notice.title}", notice.body, "/student/notices", f"notice-{notice.id}")
+    elif not cls:
+        if data.audience in {"all","students"}: notify(db, all_students(db), f"Notice · {notice.title}", notice.body, "/student/notices", f"notice-{notice.id}")
+        if data.audience in {"all","teachers"}: notify(db, all_teachers(db), f"Notice from the HM · {notice.title}", notice.body, "/teacher/notices", f"notice-{notice.id}")
+    return notice
 
 
 @router.patch("/notices/{notice_id}")
@@ -986,7 +1007,9 @@ def delete_notice(notice_id: int, db: Session = Depends(get_db), _: Account = De
 @router.post("/certificates/requests", status_code=201)
 def request_certificate(data: CertificateIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("student"))):
     student=student_profile(db,account); req=CertificateRequest(student_id=student.id,certificate_type=data.certificate_type,note=data.note)
-    db.add(req); db.commit(); db.refresh(req); return req
+    db.add(req); db.commit(); db.refresh(req)
+    notify(db, class_teachers_of(db, student.class_id), "New certificate request", f"{account.full_name} · {req.certificate_type.title()}", "/teacher/certificates", f"certificate-{req.id}")
+    return req
 
 
 @router.get("/certificates/requests")
@@ -1027,7 +1050,14 @@ def decide_certificate(request_id: int, data: DecisionIn, db: Session = Depends(
     elif req.status not in ("pending","approved") or (req.status=="approved" and data.approve):
         raise HTTPException(409,"Request has already been decided")
     req.status="approved" if data.approve else "rejected"; req.decision_by=account.id; req.decision_note=data.note; req.decided_at=datetime.utcnow()
-    db.commit(); return certificate_out(db, req)
+    db.commit()
+    out=certificate_out(db, req); student=db.get(Student,req.student_id); kind=req.certificate_type.title()
+    if req.status=="approved":
+        notify(db, admins(db), "Certificate to print", f"{out['student_name']} · {kind}", "/admin/certificates", f"certificate-{req.id}")
+        notify(db, [student.account_id], "Certificate request approved", f"{kind} certificate moved to the Head Master", "/student/certificates", f"certificate-{req.id}")
+    else:
+        notify(db, [student.account_id], "Certificate request rejected", req.decision_note or f"{kind} certificate", "/student/certificates", f"certificate-{req.id}")
+    return out
 
 
 # Leave requests: student -> class teacher, teacher -> admin (HM)
@@ -1073,7 +1103,11 @@ def apply_leave(data: LeaveRequestIn, db: Session = Depends(get_db), account: Ac
     if account.role == "student":
         student = student_profile(db, account); req.student_id, req.class_id = student.id, student.class_id
     else: req.teacher_id = teacher_profile(db, account).id
-    db.add(req); db.commit(); db.refresh(req); return leave_out(db, req)
+    db.add(req); db.commit(); db.refresh(req)
+    who = f"{account.full_name} · {days} day{'s' if days != 1 else ''}"
+    if account.role == "student": notify(db, class_teachers_of(db, req.class_id), "New leave request", who, "/teacher/leave-requests", f"leave-{req.id}")
+    else: notify(db, admins(db), "New leave request", who, "/admin/leave-requests", f"leave-{req.id}")
+    return leave_out(db, req)
 
 
 @router.get("/leave-requests", summary="scope=mine for own requests, scope=review for requests awaiting your decision")
@@ -1100,7 +1134,10 @@ def decide_leave(request_id: int, data: DecisionIn, db: Session = Depends(get_db
     if req.status != "pending": raise HTTPException(409, "Request has already been decided")
     req.status = "approved" if data.approve else "rejected"; req.decision_by = account.id; req.decision_note = data.note; req.decided_at = datetime.utcnow()
     if req.status == "approved" and req.applicant_role == "student" and req.leave_type == "normal": mark_leave_absent(db, req)
-    db.commit(); return leave_out(db, req)
+    db.commit()
+    notify(db, [req.applicant_id], f"Leave {req.status}", f"{req.from_date:%d %b} – {req.to_date:%d %b}" + (f" · {req.decision_note}" if req.decision_note else ""),
+           "/student/leave" if req.applicant_role == "student" else "/teacher/leave-requests", f"leave-{req.id}")
+    return leave_out(db, req)
 
 
 @router.delete("/leave-requests/{request_id}", status_code=204, response_class=Response)
@@ -1139,7 +1176,9 @@ def download_certificate(request_id: int, db: Session = Depends(get_db), account
     sig=db.get(AccountSignature,account.id); hm_sig=sig.image if sig else None
     if req.certificate_type=="bonafide": output=bonafide_pdf(student,issued,hm_sig)
     else: output=general_certificate_pdf(student,req.certificate_type,issued,hm_sig)
+    first_print=req.status!="ready"
     req.status="ready"; req.downloaded_at=datetime.utcnow(); db.commit()
+    if first_print: notify(db, [student.account_id], "Certificate ready", f"{req.certificate_type.title()} certificate printed — collect it from the Head Master", "/student/certificates", f"certificate-{req.id}")
     return StreamingResponse(output,media_type="application/pdf",headers={"Content-Disposition":f'inline; filename="certificate-{request_id}.pdf"'})
 
 

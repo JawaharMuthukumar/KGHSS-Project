@@ -23,6 +23,7 @@ from app.services.permissions import teacher_profile
 from app.services.pdf_stamp import stamp_approval
 from app.api.signatures import hm_signature
 from app.services.academic_year import current_year, monday, year_weeks
+from app.services.push import admins, notify
 
 router = APIRouter(prefix="/lesson-plans", tags=["Notes of Lessons"])
 
@@ -126,6 +127,7 @@ async def upload_plan(class_code: str = Form(...), subject: str = Form(...), wee
     plan.topic = topic.strip(); plan.file_name = (file.filename or "lesson-plan.pdf")[:200]; plan.file_size = len(data); plan.pdf = data
     plan.status = "pending"; plan.note = None; plan.decided_by = None; plan.decided_at = None; plan.uploaded_at = datetime.utcnow()
     db.commit(); db.refresh(plan)
+    notify(db, admins(db), "Lesson plan to approve", f"{account.full_name} · {cls.code} {subject}", "/admin/notes-of-lessons", f"notes-{plan.id}")
     return out_many(db, [plan])[0]
 
 
@@ -170,6 +172,9 @@ def decide_plan(plan_id: int, data: DecisionIn, db: Session = Depends(get_db), a
     plan.status = "approved" if data.approve else "returned"; plan.note = None if data.approve else data.note.strip()
     plan.decided_by = account.id; plan.decided_at = now
     db.commit()
+    teacher = db.get(Teacher, plan.teacher_id); code = db.get(AcademicClass, plan.class_id).code
+    if plan.status == "approved": notify(db, [teacher.account_id], "Lesson plan approved", f"{code} {plan.subject} · {week_label(plan.week_start)}", "/teacher/notes-of-lessons", f"notes-{plan.id}")
+    else: notify(db, [teacher.account_id], "Lesson plan returned by HM", f"{code} {plan.subject} · {plan.note}", "/teacher/notes-of-lessons", f"notes-{plan.id}")
     return out_many(db, [plan])[0]
 
 

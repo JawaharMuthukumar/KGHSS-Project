@@ -9,6 +9,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     cors_origins: str = "http://localhost:5173"
+    # Web push (phone notifications); push is off while the keys are blank
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "https://kghss-project.vercel.app"
+    cron_secret: str = ""  # guards /push/reminders, called by an external cron
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
     @property

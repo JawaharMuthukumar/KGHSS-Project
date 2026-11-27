@@ -99,6 +99,21 @@ class LessonPlan(Base):
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class Homework(Base):
+    """Homework a subject teacher gives one class on a school day; the HM checks it against that day's timetable."""
+    __tablename__ = "homework"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("teachers.id", ondelete="CASCADE"), index=True)
+    class_id: Mapped[int] = mapped_column(ForeignKey("classes.id", ondelete="CASCADE"), index=True)
+    subject: Mapped[str] = mapped_column(String(100))
+    academic_year: Mapped[str] = mapped_column(String(9), index=True)
+    given_on: Mapped[date] = mapped_column(Date, index=True)
+    due_on: Mapped[date] = mapped_column(Date)
+    details: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class Student(Base):
     __tablename__ = "students"
     id: Mapped[int] = mapped_column(primary_key=True)

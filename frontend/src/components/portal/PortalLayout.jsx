@@ -106,7 +106,7 @@ function NavGroup({ item, counts, onNavigate }) {
   );
 }
 
-const kindIcons = { certificate: "FileCheck2", leave: "CalendarDays" };
+const kindIcons = { certificate: "FileCheck2", leave: "CalendarDays", notes: "BookOpen", homework: "ClipboardList" };
 
 /** Header bell: everything waiting on this user, plus unread notices. */
 function NotificationBell() {

@@ -133,6 +133,7 @@ export function AlertsProvider({ role, username, children }) {
 
   const visibleItems = state.items.filter((i) => !(i.clear_on_visit && cleared.has(i.key)));
   const certificateCount = visibleItems.filter((i) => i.kind === "certificate" && !i.silent_badge).length;
+  const homeworkCount = visibleItems.filter((i) => i.kind === "homework").length;
 
   const unread = noticePath ? state.notices.filter((n) => n.id > (seenNoticeId ?? Infinity)) : [];
   const unreadNotices = unread.length;
@@ -145,7 +146,7 @@ export function AlertsProvider({ role, username, children }) {
 
   const value = useMemo(
     () => ({
-      counts: { ...state.counts, certificates: certificateCount, notices: unreadNotices },
+      counts: { ...state.counts, certificates: certificateCount, homework: homeworkCount, notices: unreadNotices },
       items: visibleItems,
       profileMissing: state.profileMissing,
       unreadNotices,

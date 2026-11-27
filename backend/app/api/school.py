@@ -20,7 +20,7 @@ from app.services.mark_scheme import class_scheme, mark_passed, subject_componen
 from app.models.entities import (Account, AcademicClass, Teacher, Student, ClassTeacherAssignment,
     SubjectTeacherAssignment, Assessment, Mark, AttendanceMonth, AttendanceRecord, TimetableEntry,
     Notice, CertificateRequest, LeaveRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage,
-    PagePost, PagePostImage, LessonPlan, AccountSignature)
+    PagePost, PagePostImage, LessonPlan, AccountSignature, Homework)
 from app.schemas.common import (ClassIn, ClassTeacherIn, SubjectTeacherIn, TeacherCreate, TeacherUpdate,
     StudentCreate, StudentUpdate, StudentSelfUpdate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, NoticeUpdate, CertificateIn, DecisionIn,
     LeaveRequestIn, ComplaintMessageIn, EventIn, EventUpdate, GalleryIn, PublicContactIn)
@@ -908,6 +908,16 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
                           "to": "/teacher/notes-of-lessons", "created_at": p.decided_at})
     else:
         plans = plans.filter(LessonPlan.id < 0)
+    # Homework: students are told about homework given in the last two days (cleared once they open My Homework).
+    homework = db.query(Homework)
+    if account.role == "student":
+        homework = homework.filter(Homework.class_id == student.class_id)
+        since = (datetime.utcnow() + timedelta(hours=5, minutes=30)).date() - timedelta(days=1)
+        for h in homework.filter(Homework.given_on >= since).order_by(Homework.id.desc()).limit(10).all():
+            items.append({"key": f"homework-{h.id}", "kind": "homework", "title": f"New homework · {h.subject}",
+                          "detail": h.details[:80], "to": "/student/homework", "created_at": h.created_at, "clear_on_visit": True})
+    elif account.role == "teacher":
+        homework = homework.filter(Homework.teacher_id == teacher_profile(db, account).id)
     items.sort(key=lambda i: i["created_at"] or datetime.min, reverse=True)
 
     counts = {"certificates": sum(1 for i in items if i["kind"] == "certificate" and not i.get("silent_badge")), "leave": sum(1 for i in items if i["kind"] == "leave" and not i.get("silent_badge")),
@@ -922,7 +932,8 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
             ("Address", (student.address or "").strip())) if not filled]
     return {"counts": counts, "items": items, "notices": recent_notices, "profile_missing": profile_missing,
             "versions": {"certificates": version(certs, CertificateRequest, extra=[CertificateRequest.downloaded_at]), "leave": version(leaves, LeaveRequest), "notices": version(notices, Notice, decided=False),
-                         "notes": version(plans, LessonPlan, extra=[LessonPlan.uploaded_at])}}
+                         "notes": version(plans, LessonPlan, extra=[LessonPlan.uploaded_at]),
+                         "homework": version(homework, Homework, decided=False, extra=[Homework.updated_at])}}
 
 
 @router.get("/classes/{class_code}/notices")

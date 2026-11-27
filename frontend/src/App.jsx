@@ -55,6 +55,9 @@ const TeacherReports = lazy(() => import("./pages/teacher/Reports"));
 const ClassAnalytics = lazy(() => import("./pages/teacher/ClassAnalytics"));
 const TeacherNotesOfPresence = lazy(() => import("./pages/teacher/NotesOfPresence"));
 const AdminNotesOfPresence = lazy(() => import("./pages/admin/NotesOfPresence"));
+const TeacherHomework = lazy(() => import("./pages/teacher/Homework"));
+const AdminHomework = lazy(() => import("./pages/admin/Homework"));
+const MyHomework = lazy(() => import("./pages/student/MyHomework"));
 const AdminAcademicYear = lazy(() => import("./pages/admin/AcademicYear"));
 const AdminStudentOverview = lazy(() => import("./pages/admin/StudentOverview"));
 const AdminTeacherOverview = lazy(() => import("./pages/admin/TeacherOverview"));
@@ -117,6 +120,7 @@ export default function App() {
                   <Route path="timetables" element={<AdminTimetables />} />
                   <Route path="reports" element={<AdminResultsReports />} />
                   <Route path="notes-of-lessons" element={<AdminNotesOfPresence />} />
+                  <Route path="homework" element={<AdminHomework />} />
                   <Route path="academic-year" element={<AdminAcademicYear />} />
                   <Route path="attendance-report" element={<AdminAttendanceReport />} />
                   <Route path="notices" element={<AdminNotices />} />
@@ -146,6 +150,7 @@ export default function App() {
                   <Route path="reports" element={<TeacherReports />} />
                   <Route path="analytics" element={<ClassAnalytics />} />
                   <Route path="notes-of-lessons" element={<TeacherNotesOfPresence />} />
+                  <Route path="homework" element={<TeacherHomework />} />
                   <Route path="promotion" element={<TeacherPromotion />} />
                 </Route>
               </Route>
@@ -157,6 +162,7 @@ export default function App() {
                   <Route path="results" element={<MyResults />} />
                   <Route path="timetable" element={<StudentTimetable />} />
                   <Route path="notices" element={<MyNotices />} />
+                  <Route path="homework" element={<MyHomework />} />
                   <Route path="leave" element={<MyLeave />} />
                   <Route path="progress" element={<MyProgress />} />
                   <Route path="certificates" element={<MyCertificates />} />

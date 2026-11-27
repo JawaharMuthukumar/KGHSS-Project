@@ -1,6 +1,7 @@
 import { authStorage } from "../lib/authStorage";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { api, setUnauthorizedHandler } from "../lib/apiClient";
+import { LAST_USER_KEY } from "../lib/loginRedirect";
 
 const AuthContext = createContext(null);
 
@@ -16,14 +17,21 @@ function readStoredUser() {
   }
 }
 
+/** Forget the session, remembering whose it was (see lib/loginRedirect). */
+function clearSession() {
+  const prev = readStoredUser();
+  if (prev?.username) authStorage.setItem(LAST_USER_KEY, prev.username);
+  authStorage.removeItem(TOKEN_KEY);
+  authStorage.removeItem(USER_KEY);
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readStoredUser);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
-      authStorage.removeItem(TOKEN_KEY);
-      authStorage.removeItem(USER_KEY);
+      clearSession();
       setUser(null);
     });
   }, []);
@@ -41,8 +49,7 @@ export function AuthProvider({ children }) {
         if (!cancelled) setUser(me);
       } catch {
         if (!cancelled) {
-          authStorage.removeItem(TOKEN_KEY);
-          authStorage.removeItem(USER_KEY);
+          clearSession();
           setUser(null);
         }
       } finally {
@@ -65,13 +72,13 @@ export function AuthProvider({ children }) {
     });
     authStorage.setItem(TOKEN_KEY, data.access_token);
     authStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    authStorage.removeItem(LAST_USER_KEY);
     setUser(data.user);
     return data.user;
   };
 
   const logout = () => {
-    authStorage.removeItem(TOKEN_KEY);
-    authStorage.removeItem(USER_KEY);
+    clearSession();
     setUser(null);
   };
 

@@ -4,6 +4,7 @@ import Container from "../components/ui/Container";
 import Icon from "../components/ui/Icon";
 import SEO from "../components/utility/SEO";
 import { useAuth } from "../context/AuthContext";
+import { afterLoginPath } from "../lib/loginRedirect";
 import { api, ApiError } from "../lib/apiClient";
 
 export default function StudentLogin() {
@@ -124,14 +125,13 @@ function SignInCard({ classInfo, onBack }) {
     setError("");
     setSubmitting(true);
     try {
-      await login({
+      const user = await login({
         username: form.register.trim(),
         password: form.password,
         classCode: classInfo.code,
         role: "student",
       });
-      const from = location.state?.from?.pathname;
-      navigate(from && from.startsWith("/student") ? from : "/student", { replace: true });
+      navigate(afterLoginPath(location.state, user), { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {

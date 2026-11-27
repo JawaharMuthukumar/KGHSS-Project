@@ -4,6 +4,7 @@ import Container from "../components/ui/Container";
 import Icon from "../components/ui/Icon";
 import SEO from "../components/utility/SEO";
 import { useAuth } from "../context/AuthContext";
+import { afterLoginPath } from "../lib/loginRedirect";
 import { ApiError } from "../lib/apiClient";
 import StudentLogin from "./StudentLogin";
 
@@ -67,8 +68,7 @@ function PortalCard({ copy, role }) {
     setSubmitting(true);
     try {
       const user = await login({ username: form.id.trim(), password: form.password, role });
-      const from = location.state?.from?.pathname;
-      navigate(from && from.startsWith(`/${user.role}`) ? from : `/${user.role}`, { replace: true });
+      navigate(afterLoginPath(location.state, user), { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {

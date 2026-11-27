@@ -2,7 +2,7 @@ import { useRef } from "react";
 import Card from "../ui/Card";
 import Banner from "../portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
-import { PASS_MARK } from "../../constants/academic";
+import { markPassed } from "../../constants/academic";
 import { ContentSkeleton } from "../ui/Skeleton";
 import { printElement } from "../../lib/printElement";
 import { PrintButton } from "./MyClassReport";
@@ -60,7 +60,7 @@ export default function ClassMarkReport({ classCode, term }) {
             <tbody>
               {data.students.map((row, i) => {
                 const bySubject = Object.fromEntries(row.marks.map((m) => [m.subject, m]));
-                const failed = row.marks.some((m) => !m.absent && m.score < (m.max * PASS_MARK) / 100);
+                const failed = row.marks.some((m) => !m.absent && !markPassed(m));
                 return (
                   <tr key={row.student_id} className="border-b border-navy/6 print:border-navy/20 last:border-0 break-inside-avoid">
                     <td className="px-3 py-2.5 print:py-1 text-navy/50">{i + 1}</td>

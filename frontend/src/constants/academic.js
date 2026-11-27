@@ -7,6 +7,19 @@ export const ALL_EXAM_TERMS = [...new Set([...TERMS_MIDDLE, ...TERMS_SENIOR])];
 export const termsForGrade = (grade) =>
   grade == null ? ALL_EXAM_TERMS : grade >= 11 ? TERMS_HSC : grade === 10 ? TERMS_SENIOR : TERMS_MIDDLE;
 export const PASS_MARK = 35;
+/** 11th–12th split exams pass on Theory alone: 15/70 (Physics, Chemistry, Biology, CS), 25/90 (Tamil, English, Maths).
+ *  Practical and Internal are never pass/fail. null for every other mark. Mirrors backend mark_scheme.theory_pass_mark. */
+export const theoryPassMark = (components) => {
+  const c = components || {};
+  return "theory" in c && "internal" in c ? ("practical" in c ? 15 : 25) : null;
+};
+/** Pass/fail for one subject mark: the Theory rule above, else 35% of the subject's maximum. */
+export const markPassed = ({ score, max, absent, components }) => {
+  if (absent || score == null) return false;
+  const theoryPass = theoryPassMark(components);
+  if (theoryPass != null) return (Number(components.theory) || 0) >= theoryPass;
+  return score >= ((max ?? 100) * PASS_MARK) / 100;
+};
 export const DEFAULT_MAX_SCORE = 100;
 
 export const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "A1+", "A1-", "A1B+", "A1B-"];

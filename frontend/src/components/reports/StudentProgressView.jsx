@@ -125,7 +125,7 @@ export default function StudentProgressView({ data, meLabel = "My %" }) {
       <Panel title="Tips for the next exam" subtitle="Weakest subject first — put a little extra time where it counts most">
         <div className="grid md:grid-cols-2 gap-3">
           {tips.map((x) => (
-            <div key={x.subject} className={`rounded-2xl border px-4 py-3 ${x.latest < 35 ? "border-red-200 bg-red-50/50" : "border-navy/10"}`}>
+            <div key={x.subject} className={`rounded-2xl border px-4 py-3 ${x.passed === false || (x.passed == null && x.latest < 35) ? "border-red-200 bg-red-50/50" : "border-navy/10"}`}>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-semibold text-navy">{x.subject}</span>
                 <span className="text-sm font-semibold text-navy tabular-nums">{x.latest}%</span>

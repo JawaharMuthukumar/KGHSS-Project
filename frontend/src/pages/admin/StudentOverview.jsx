@@ -45,7 +45,7 @@ export default function StudentOverview() {
   const o = data.overall;
   const att = data.attendance;
   const latest = data.exams.filter((e) => e.percent != null).at(-1);
-  const below = latest ? Object.values(latest.subjects).filter((s) => s.absent || (s.percent != null && s.percent < 35)) : [];
+  const below = latest ? Object.values(latest.subjects).filter((s) => s.absent || s.passed === false || (s.passed == null && s.percent != null && s.percent < 35)) : [];
   const parentPhone = profile.father_phone || profile.mother_phone || profile.guardian_phone;
 
   return (

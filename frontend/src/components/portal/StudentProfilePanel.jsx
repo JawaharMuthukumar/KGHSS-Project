@@ -5,7 +5,7 @@ import FormField, { inputClass } from "./FormField";
 import { api, ApiError } from "../../lib/apiClient";
 import { formatDate } from "../../utils/formatDate";
 import { ContentSkeleton } from "../ui/Skeleton";
-import { BLOOD_GROUPS, normalizeBloodGroup } from "../../constants/academic";
+import { BLOOD_GROUPS, markPassed, normalizeBloodGroup } from "../../constants/academic";
 import { mobileInputProps } from "../../utils/mobile";
 
 const editableFields = [
@@ -253,7 +253,7 @@ export default function StudentProfilePanel({ studentId, editable = false, onSav
                   <span className="text-navy/70">
                     {r.subject} <span className="text-navy/40">· {r.term}</span>
                   </span>
-                  <span className={`font-semibold ${r.absent ? "text-navy/40" : r.score < r.max * 0.35 ? "text-red-600" : "text-navy"}`}>
+                  <span className={`font-semibold ${r.absent ? "text-navy/40" : !markPassed(r) ? "text-red-600" : "text-navy"}`}>
                     {r.absent ? "Absent" : `${r.score}/${r.max}`}
                   </span>
                 </div>

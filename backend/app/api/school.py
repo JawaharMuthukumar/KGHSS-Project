@@ -16,7 +16,7 @@ from app.api.auth import teachers_named
 from app.services.permissions import teacher_profile, student_profile, assigned_class, assigned_classes, is_class_teacher_of, can_access_class
 from app.services.permissions import require_teacher_class_scope
 from app.services.signoff import exam_signatures
-from app.services.mark_scheme import class_scheme, subject_components, subjects_for_class, terms_for_grade
+from app.services.mark_scheme import class_scheme, mark_passed, subject_components, subjects_for_class, terms_for_grade, theory_pass_mark
 from app.models.entities import (Account, AcademicClass, Teacher, Student, ClassTeacherAssignment,
     SubjectTeacherAssignment, Assessment, Mark, AttendanceMonth, AttendanceRecord, TimetableEntry,
     Notice, CertificateRequest, LeaveRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage,
@@ -436,6 +436,13 @@ SUBJECT_ABBR = {"Tamil": "TAM", "English": "ENG", "Maths": "MAT", "Science": "SC
 ROMAN = {6: "VI", 7: "VII", 8: "VIII", 9: "IX", 10: "X", 11: "XI", 12: "XII"}
 
 
+def subject_pass_label(cls, subject: str, term: str, pass_mark: int):
+    """The pass mark shown for a subject in the term register: an int (35% rule) or "15/70" / "25/90" (Theory only)."""
+    parts = {k: mx for k, _, mx in subject_components(cls, subject, term)}
+    theory_pass = theory_pass_mark(parts)
+    return f"{theory_pass}/{parts['theory']}" if theory_pass is not None else pass_mark
+
+
 @router.get("/classes/{class_code}/term-report")
 def class_term_report(class_code: str, term: str, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
     """Class teacher's printable term register ("My Report") and the HM result summary ("HM Report") for one class."""
@@ -469,11 +476,13 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
             if m is None: scores.append(None); continue
             if m.absent: absent.append(SUBJECT_ABBR.get(subj, subj)); scores.append("AB"); continue
             scores.append(m.score)
-            if m.score < m.maximum_score * PASS / 100: failed.append(SUBJECT_ABBR.get(subj, subj))
+            if not mark_passed(m.score, m.maximum_score, False, m.components): failed.append(SUBJECT_ABBR.get(subj, subj))
         written = [x for x in scores if isinstance(x, int)]
         appeared = bool(written)
         passed = appeared and not failed and not absent and len(written) == len(subjects)
-        rows.append({"student_id": s.id, "registration_no": s.registration_no, "name": s.account.full_name,
+        # Pass / fail per subject (11th–12th split exams: on Theory alone), kept for the subject-wise result below
+        oks = [None if not (m := sm.get(subj)) or m.absent else mark_passed(m.score, m.maximum_score, False, m.components) for subj in subjects]
+        rows.append({"student_id": s.id, "registration_no": s.registration_no, "name": s.account.full_name, "_oks": oks,
             "community": s.community, "gender": gender_key(s), "medium": medium_key(s), "scores": scores,
             "total": sum(written) if appeared else None, "appeared": appeared, "passed": passed,
             "failed_subjects": failed, "absent_subjects": absent,
@@ -503,10 +512,11 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
     for i, subj in enumerate(subjects):
         vals = [(r["scores"][i], r["name"]) for r in rows if isinstance(r["scores"][i], int)]
         sc = [v for v, _ in vals]
+        ok = sum(1 for r in rows if r["_oks"][i])
         top = max(sc) if sc else None
         subject_result.append({"subject": SUBJECT_ABBR.get(subj, subj), "max": top, "min": min(sc) if sc else None,
             "average": round(sum(sc) / len(sc), 2) if sc else None, "appeared": len(sc),
-            "passed": sum(1 for v in sc if v >= pass_mark), "pass_percent": round(sum(1 for v in sc if v >= pass_mark) * 100 / len(sc)) if sc else None})
+            "passed": ok, "pass_percent": round(ok * 100 / len(sc)) if sc else None})
         toppers.append({"subject": SUBJECT_ABBR.get(subj, subj), "mark": top, "names": [n for v, n in vals if v == top] if sc else []})
     totals = [(r["total"], r["name"]) for r in rows if r["appeared"]]
     tt = [t for t, _ in totals]
@@ -534,7 +544,9 @@ def class_term_report(class_code: str, term: str, db: Session = Depends(get_db),
 
     return {"class_code": cls.code, "title": f"{ROMAN.get(cls.grade, cls.grade)} - {cls.group_name + ' ' if cls.group_name else ''}{cls.section}", "academic_year": cls.academic_year,
         "term": term, "subjects": [SUBJECT_ABBR.get(s, s) for s in subjects], "max_marks": subject_max, "pass_marks": pass_mark,
-        "working_days": working_days if months else None, "students": rows,
+        # Pass mark per subject: 35% of the total, or for 11th–12th split exams the Theory pass mark (e.g. "15/70")
+        "subject_pass_marks": [subject_pass_label(cls, subj, term, pass_mark) for subj in subjects],
+        "working_days": working_days if months else None, "students": [{k: v for k, v in r.items() if k != "_oks"} for r in rows],
         "hm": {"medium": medium, "roll": roll, "appeared": appd, "passed": passd, "pass_percent": pass_pct,
             "subject_result": subject_result, "toppers": toppers, "failed_counts": failed_counts,
             "total_failed": appd["TOT"] - passd["TOT"], "absent": roll["TOT"] - appd["TOT"], "ranges": ranges}}
@@ -576,10 +588,10 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
     class_top = {t: max([v for v in (term_total(t, s.id) for s in students) if v is not None], default=None) for t in report_card_terms(cls)}
 
     # Class rank per exam, the same rule as the term report: only students who wrote and passed every subject
-    # (35% of each subject's maximum) are ranked; equal totals share a rank.
+    # (35% of each subject's maximum; 11th–12th split exams on Theory alone) are ranked; equal totals share a rank.
     def passed_all(term, sid):
         sm = marks[term].get(sid)
-        return bool(sm) and len(sm) == len(subjects) and all(not m.absent and m.score >= m.maximum_score * 35 / 100 for m in sm.values())
+        return bool(sm) and len(sm) == len(subjects) and all(mark_passed(m.score, m.maximum_score, m.absent, m.components) for m in sm.values())
     ranks = {}
     for t in report_card_terms(cls):
         totals = sorted(((term_total(t, s.id), s.id) for s in students if passed_all(t, s.id)), reverse=True)
@@ -609,7 +621,10 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
                 parts = split_parts[term][subj]; m = sm.get(subj)
                 if len(parts) < 2 or not m or m.absent: splits.append(None); continue
                 given = m.components or {}
-                splits.append([{"key": k, "label": label, "max": mx, "value": given.get(k)} for k, label, mx in parts])
+                # 11th–12th: only Theory has a pass mark (15/70 or 25/90); Practical and Internal are never pass/fail.
+                theory_pass = theory_pass_mark(given)
+                splits.append([{"key": k, "label": label, "max": mx, "value": given.get(k),
+                                **({"pass_mark": theory_pass} if k == "theory" and theory_pass is not None else {})} for k, label, mx in parts])
             total = term_total(term, s.id)
             att = attendance.get(term)
             rows.append({"term": term, "scores": scores, "splits": splits, "total": total, "remark": report_remark(total * 100 / (term_max[term] * len(subjects))),
@@ -1521,7 +1536,7 @@ def consolidated_report(term: str = Query(...), academic_year: str | None = None
     student_totals = {}
     for sid, ms in by_student.items():
         total = sum(m.score for m in ms); maximum = sum(m.maximum_score for m in ms)
-        failed = sum(1 for m in ms if not m.absent and m.score < (m.maximum_score * PASS_MARK / 100))
+        failed = sum(1 for m in ms if not m.absent and not mark_passed(m.score, m.maximum_score, False, m.components))
         student_totals[sid] = {"total": total, "maximum": maximum, "percentage": round(total*100/maximum, 2) if maximum else 0.0, "failed_subjects": failed}
 
     # Enrollment & result summary, by medium x gender (roll = every currently enrolled student, not just this term's assessed classes)
@@ -1543,11 +1558,11 @@ def consolidated_report(term: str = Query(...), academic_year: str | None = None
     # Subject-wise stats (non-absent scores only)
     by_subject = defaultdict(list)
     for m in marks:
-        if not m.absent: by_subject[m.subject].append(m.score)
+        if not m.absent: by_subject[m.subject].append((m.score, mark_passed(m.score, m.maximum_score, False, m.components)))
     subject_stats = [
-        {"subject": subj, "max": max(scores), "min": min(scores), "average": round(sum(scores)/len(scores), 2),
-         "pass_percent": round(sum(1 for sc in scores if sc >= PASS_MARK)*100/len(scores), 2)}
-        for subj, scores in sorted(by_subject.items())
+        {"subject": subj, "max": max(sc for sc, _ in vals), "min": min(sc for sc, _ in vals), "average": round(sum(sc for sc, _ in vals)/len(vals), 2),
+         "pass_percent": round(sum(1 for _, ok in vals if ok)*100/len(vals), 2)}
+        for subj, vals in sorted(by_subject.items())
     ]
 
     # Marks distribution: 10 equal bins over each student's overall percentage

@@ -10,7 +10,7 @@ import { TableSkeleton } from "../ui/Skeleton";
 import { useToast } from "../ui/Toast";
 import { api, ApiError } from "../../lib/apiClient";
 import { saveBlob } from "../../lib/download";
-import { PASS_MARK } from "../../constants/academic";
+import { markPassed } from "../../constants/academic";
 import { formatDate } from "../../utils/formatDate";
 
 const SHORT = { theory: "Th", practical: "Pr", internal: "In", sa: "SA", fa: "FA", total: "Mark" };
@@ -87,7 +87,7 @@ export default function SubjectMarksPanel({ pairs }) {
       const typed = comps.some((c) => r.components[c.key] !== "" && r.components[c.key] != null);
       const bad = comps.find((c) => r.components[c.key] !== "" && r.components[c.key] != null && (Number(r.components[c.key]) < 0 || Number(r.components[c.key]) > c.max || Number.isNaN(Number(r.components[c.key]))));
       const total = comps.reduce((t, c) => t + (Number(r.components[c.key]) || 0), 0);
-      return { ...s, absent: r.absent, typed, bad, total, below: !r.absent && typed && total < (max * PASS_MARK) / 100 };
+      return { ...s, absent: r.absent, typed, bad, total, below: !r.absent && typed && !markPassed({ score: total, max, components: Object.fromEntries(comps.map((c) => [c.key, Number(r.components[c.key]) || 0])) }) };
     });
     return {
       list,

@@ -51,10 +51,11 @@ export default function MyClassReport({ classCode, term }) {
               </tr>
               <tr className="font-bold">
                 <td colSpan={6} className={cell}>PASS MARKS</td>
-                {data.subjects.map((s) => (
-                  <td key={s} className={cell}>{data.pass_marks}</td>
+                {/* 11th–12th split exams: the Theory pass mark (e.g. 15/70); no total pass mark then */}
+                {data.subjects.map((s, i) => (
+                  <td key={s} className={cell}>{data.subject_pass_marks?.[i] ?? data.pass_marks}</td>
                 ))}
-                <td className={cell}>{data.pass_marks * n}</td>
+                <td className={cell}>{(data.subject_pass_marks || []).every((p) => typeof p === "number") ? data.pass_marks * n : ""}</td>
                 <td className={cell} colSpan={7}></td>
               </tr>
               <tr className="font-bold">

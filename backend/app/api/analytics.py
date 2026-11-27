@@ -1,7 +1,8 @@
 """HM's results analytics: the whole school or one class for one exam, plus the exam-to-exam trend of the year.
 
 A student "appeared" when they have at least one written (non-absent) mark; they "passed" when they appeared, were
-absent in no subject and scored at least 35% of every subject's maximum (the same rule as the class term report).
+absent in no subject and passed every subject (the same rule as the class term report): 35% of the subject's maximum,
+or in 11th–12th split exams the Theory part alone (15/70 Physics/Chemistry/Biology/CS, 25/90 Tamil/English/Maths).
 """
 from collections import defaultdict
 
@@ -13,12 +14,11 @@ from app.api.school import current_academic_year, get_class
 from app.core.database import get_db
 from app.core.dependencies import require_roles
 from app.models.entities import Account, AcademicClass, Assessment, Mark, Student, SubjectTeacherAssignment, Teacher
-from app.services.mark_scheme import TERMS_MIDDLE, TERMS_SENIOR, subjects_for_class, terms_for_grade
+from app.services.mark_scheme import TERMS_MIDDLE, TERMS_SENIOR, mark_passed, subjects_for_class, terms_for_grade
 from app.services.permissions import is_class_teacher_of, student_profile, teacher_profile
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
-PASS = 35  # percent of each subject's maximum
 BANDS = [("90–100", 90), ("75–89", 75), ("60–74", 60), ("35–59", 35), ("Below 35", 0)]
 
 
@@ -52,7 +52,7 @@ def _rows(students, marks_by_student: dict, code_of: dict) -> list[dict]:
         ms = marks_by_student.get(s.id)
         if not ms: continue
         written = [m for m in ms if not m.absent]
-        failed = [m.subject for m in written if m.score < m.maximum_score * PASS / 100]
+        failed = [m.subject for m in written if not mark_passed(m.score, m.maximum_score, False, m.components)]
         absent = [m.subject for m in ms if m.absent]
         total = sum(m.score for m in written); maximum = sum(m.maximum_score for m in ms)
         rows.append({"student_id": s.id, "class_code": code_of[s.class_id], "gender": _gender(s),
@@ -82,16 +82,16 @@ def _bands(rows: list[dict]) -> list[dict]:
 
 
 def _subjects(rows: list[dict]) -> list[dict]:
-    scores = defaultdict(list)  # subject -> [(score, max)]
+    scores = defaultdict(list)  # subject -> [(score, max, passed)]
     for r in rows:
         for m in r["marks"]:
-            if not m.absent: scores[m.subject].append((m.score, m.maximum_score))
+            if not m.absent: scores[m.subject].append((m.score, m.maximum_score, mark_passed(m.score, m.maximum_score, False, m.components)))
     order = ["Tamil", "English", "Maths", "Science", "Social Science", "Physics", "Chemistry", "Biology", "Computer Science"]
     out = []
     for subject, vals in scores.items():
         out.append({"subject": subject, "written": len(vals),
-                    "average_percent": round(sum(s * 100 / mx for s, mx in vals) / len(vals), 1),
-                    "pass_percent": _pct(sum(1 for s, mx in vals if s >= mx * PASS / 100), len(vals))})
+                    "average_percent": round(sum(s * 100 / mx for s, mx, _ in vals) / len(vals), 1),
+                    "pass_percent": _pct(sum(1 for _, _, ok in vals if ok), len(vals))})
     return sorted(out, key=lambda x: (order.index(x["subject"]) if x["subject"] in order else len(order), x["subject"]))
 
 
@@ -109,7 +109,7 @@ def _subject_teacher_lines(db: Session, classes: list[AcademicClass], rows: list
             if m.absent: s["absent"] += 1; continue
             pct = m.score * 100 / m.maximum_score if m.maximum_score else 0
             s["written"] += 1; s["sum"] += pct
-            if pct < PASS: s["failed"] += 1
+            if not mark_passed(m.score, m.maximum_score, False, m.components): s["failed"] += 1
     lines = []
     for (code, subject), s in stats.items():
         tid = assigned.get((code, subject))
@@ -319,10 +319,11 @@ def student_progress(db: Session, student: Student) -> dict:
         maximum = sum(m.maximum_score for m in mine)
         subjects = {m.subject: {"subject": m.subject, "score": m.score, "max": m.maximum_score, "absent": m.absent,
                                 "percent": None if m.absent else round(m.score * 100 / m.maximum_score, 1),
+                                "passed": mark_passed(m.score, m.maximum_score, m.absent, m.components),
                                 "class_average": avg(subj_pcts[(t, m.subject)])} for m in mine}
         exams.append({"term": t, "group": "mid" if t in MID_TERM_EXAMS else "main",
                       "percent": round(sum(m.score for m in written) * 100 / maximum, 1) if maximum and written else None,
-                      "passed": bool(written) and all(not m.absent and m.score >= m.maximum_score * PASS / 100 for m in mine),
+                      "passed": bool(written) and all(mark_passed(m.score, m.maximum_score, m.absent, m.components) for m in mine),
                       "class_average": class_avg.get(t), "subjects": subjects,
                       "rank": (1 + sum(1 for v in totals[t].values() if v > totals[t][student.id])) if student.id in totals.get(t, {}) else None,
                       "ranked_of": len(totals.get(t, {}))})
@@ -333,10 +334,11 @@ def student_progress(db: Session, student: Student) -> dict:
         seen = [(e["term"], e["subjects"][subj]["percent"]) for e in exams if subj in e["subjects"] and e["subjects"][subj]["percent"] is not None]
         if not seen: continue
         latest_term, latest = seen[-1]
+        latest_passed = next(e["subjects"][subj]["passed"] for e in exams if e["term"] == latest_term)
         prev_term, prev = seen[-2] if len(seen) > 1 else (None, None)
         change = round(latest - prev, 1) if prev is not None else None
         subjects.append({"subject": subj, "latest_term": latest_term, "latest": latest, "previous_term": prev_term, "previous": prev,
-                         "change": change, "target": _target(latest), "tip": _subject_tip(subj, latest, change),
+                         "passed": latest_passed, "change": change, "target": _target(latest), "tip": _subject_tip(subj, latest, change),
                          "history": [{"term": t, "percent": p} for t, p in seen]})
 
     overall = None
@@ -427,7 +429,7 @@ def teacher_overview(teacher_id: int, term: str | None = None, db: Session = Dep
                 if m.absent: s["absent"] += 1; s["failing"].append((r, m)); continue
                 pct = m.score * 100 / m.maximum_score if m.maximum_score else 0
                 s["written"] += 1; s["sum"] += pct
-                if pct >= PASS: s["passed"] += 1
+                if mark_passed(m.score, m.maximum_score, False, m.components): s["passed"] += 1
                 else: s["failing"].append((r, m))
         return stats
 

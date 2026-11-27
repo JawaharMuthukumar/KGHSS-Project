@@ -71,6 +71,28 @@ def subject_components(cls: AcademicClass, subject: str, term: str) -> list[tupl
     return THEORY_PRACTICAL_INTERNAL if practical else THEORY_INTERNAL
 
 
+PASS_PERCENT = 35
+
+
+def theory_pass_mark(components: dict | None) -> int | None:
+    """11th–12th split exams are passed on Theory alone: 15/70 for practical subjects (Physics, Chemistry, Biology,
+    CS), 25/90 for the rest (Tamil, English, Maths). Practical and Internal are never pass/fail. None otherwise."""
+    c = components or {}
+    if "theory" in c and "internal" in c:
+        return 15 if "practical" in c else 25
+    return None
+
+
+def mark_passed(score, maximum, absent: bool, components: dict | None = None) -> bool:
+    """Pass/fail for one subject mark: the 11th–12th Theory rule above, else 35% of the subject total."""
+    if absent or score is None:
+        return False
+    theory_pass = theory_pass_mark(components)
+    if theory_pass is not None:
+        return (components.get("theory") or 0) >= theory_pass
+    return score >= (maximum or 100) * PASS_PERCENT / 100
+
+
 def class_scheme(cls: AcademicClass) -> dict:
     """Terms plus, per term, each subject's components (10th's split differs between mid terms and the other exams)."""
     terms = terms_for_grade(cls.grade)

@@ -4,7 +4,7 @@ import Card from "../../components/ui/Card";
 import Banner from "../../components/portal/Banner";
 import { useApiResource } from "../../hooks/useApiResource";
 import { api } from "../../lib/apiClient";
-import { ALL_EXAM_TERMS, PASS_MARK } from "../../constants/academic";
+import { ALL_EXAM_TERMS, markPassed } from "../../constants/academic";
 import { ContentSkeleton } from "../../components/ui/Skeleton";
 import Icon from "../../components/ui/Icon";
 import ReportCard from "../../components/reports/ReportCard";
@@ -91,7 +91,7 @@ export default function MyResults() {
                     {terms.map((term) => {
                       const cell = matrix[`${subject}__${term}`];
                       if (!cell) return <td key={term} className="px-3 py-2.5 text-center text-navy/20">—</td>;
-                      const fail = !cell.absent && cell.score < (cell.max * PASS_MARK) / 100;
+                      const fail = !cell.absent && !markPassed(cell);
                       return (
                         <td key={term} className={`px-3 py-2.5 text-center font-semibold ${cell.absent ? "text-navy/40" : fail ? "text-red-600" : "text-navy"}`}>
                           {cell.absent ? "AB" : `${cell.score}/${cell.max}`}

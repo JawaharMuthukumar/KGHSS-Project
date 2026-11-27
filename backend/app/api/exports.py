@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.core.dependencies import require_roles
 from app.models.entities import (Account, AcademicClass, AttendanceMonth, AttendanceRecord, ClassTeacherAssignment, Mark,
     Student, SubjectTeacherAssignment, Teacher)
-from app.services.mark_scheme import subject_components, subjects_for_class
+from app.services.mark_scheme import mark_passed, subject_components, subjects_for_class
 from app.services.permissions import can_access_class, teacher_profile
 
 router = APIRouter(prefix="/exports", tags=["Downloads"])
@@ -134,7 +134,7 @@ def export_mark_report(class_code: str, term: str, db: Session = Depends(get_db)
     rows = []
     for r in report["students"]:
         by = {m["subject"]: m for m in r["marks"]}
-        failed = any(not m["absent"] and m["score"] < m["max"] * 35 / 100 for m in r["marks"])
+        failed = any(not m["absent"] and not mark_passed(m["score"], m["max"], False, m["components"]) for m in r["marks"])
         rows.append([r["registration_no"], r["name"], cls.code, cls.section, cls.group_name,
                      *("AB" if by.get(s, {}).get("absent") else by.get(s, {}).get("score") for s in subjects),
                      r["total"], r["maximum"], r["percentage"], ("Fail" if failed else "Pass") if r["marks"] else None])

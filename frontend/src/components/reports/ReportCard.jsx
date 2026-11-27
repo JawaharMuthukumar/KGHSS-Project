@@ -77,8 +77,14 @@ function Score({ value, passMark = PASS_MARK }) {
  * English alongside. Sized to fit half an A4 portrait page so two print per sheet.
  */
 const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
-  // Each exam row carries its own pass mark; the note lists every pass mark the card uses.
-  const passMarks = [...new Set(card.rows.map((r) => r.pass_mark ?? PASS_MARK))].join(" / ");
+  // Each exam row carries its own pass mark (single marks); 11th–12th split exams pass on Theory alone (15/70, 25/90).
+  // The note lists every pass mark the card uses.
+  const passMarks = [
+    ...new Set([
+      ...card.rows.filter((r) => r.scores.some((_, i) => !r.splits?.[i])).map((r) => String(r.pass_mark ?? PASS_MARK)),
+      ...card.rows.flatMap((r) => (r.splits || []).flatMap((s) => (s || []).filter((p) => p.pass_mark != null).map((p) => `Theory ${p.pass_mark}/${p.max}`))),
+    ]),
+  ].join(" / ");
   // Which split parts appear on this card (for the T / P / I key under the table)
   const usedParts = [...new Set(card.rows.flatMap((r) => (r.splits || []).flatMap((s) => (s || []).map((p) => p.key))))].filter((k) => PART_SHORT[k]);
   const hasSplits = usedParts.length > 0;
@@ -173,8 +179,7 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
                   ];
                 }
                 // One box per part; the first split row also shows each box's max (e.g. I10 | T90), as on the paper card.
-                // A subject below the pass mark gets every part circled in red.
-                const failed = typeof sc === "number" && sc < (r.pass_mark ?? PASS_MARK);
+                // Only Theory has a pass mark (sent as pass_mark); Practical and Internal are never circled.
                 const parts = orderParts(split);
                 return parts.map((p, k) => (
                   <td
@@ -189,8 +194,8 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
                         {p.max}
                       </span>
                     )}
-                    {failed && p.value != null ? (
-                      // A subject below the pass mark: every part is circled in red, like a failed single mark
+                    {p.pass_mark != null && p.value != null && p.value < p.pass_mark ? (
+                      // Theory below its pass mark: circled in red, like a failed single mark
                       <span
                         style={printExact}
                         className="inline-flex items-center justify-center min-w-[1.35rem] h-[1.35rem] px-0.5 rounded-full border-2 border-red-600 bg-red-50 text-red-700 font-bold text-[10px]"

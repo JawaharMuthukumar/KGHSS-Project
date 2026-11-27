@@ -571,6 +571,7 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
     # Per-exam subject maximum from the mark scheme; the pass mark is 35% of it.
     term_max = {t: sum(limit for _, _, limit in subject_components(cls, subjects[0], t)) if subjects else 100 for t in terms_for_grade(cls.grade)}
     cards = []
+    split_parts = {t: {subj: subject_components(cls, subj, t) for subj in subjects} for t in terms_for_grade(cls.grade)}
     for s in students:
         if only_student_id is not None and s.id != only_student_id: continue
         rows = []
@@ -580,9 +581,16 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
             if not sm:
                 rows.append({"term": term, "scores": [None] * len(subjects), "total": None, "remark": None, "class_top": class_top[term], "attendance": None, **limits}); continue
             scores = [None if subj not in sm else "AB" if sm[subj].absent else sm[subj].score for subj in subjects]
+            # Split marks (Theory / Practical / Internal …) for subjects whose pattern in this exam has more than one part
+            splits = []
+            for subj in subjects:
+                parts = split_parts[term][subj]; m = sm.get(subj)
+                if len(parts) < 2 or not m or m.absent: splits.append(None); continue
+                given = m.components or {}
+                splits.append([{"key": k, "label": label, "max": mx, "value": given.get(k)} for k, label, mx in parts])
             total = term_total(term, s.id)
             att = attendance.get(term)
-            rows.append({"term": term, "scores": scores, "total": total, "remark": report_remark(total * 100 / (term_max[term] * len(subjects))),
+            rows.append({"term": term, "scores": scores, "splits": splits, "total": total, "remark": report_remark(total * 100 / (term_max[term] * len(subjects))),
                 "class_top": class_top[term], "attendance": {"present": att[1][s.id], "working": att[0]} if att and att[1].get(s.id) is not None else None, **limits})
         cards.append({"student_id": s.id, "registration_no": s.registration_no, "name": s.account.full_name, "rows": rows})
     return {"class_code": cls.code, "grade": cls.grade, "academic_year": cls.academic_year, "subjects": subjects,

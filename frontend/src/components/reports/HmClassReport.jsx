@@ -35,8 +35,10 @@ export default function HmClassReport({ classCode, term }) {
           <p className="text-center font-bold text-sm mb-3">
             GHSS KANGAYAMPALAYAM — {data.title} (BATCH {data.academic_year}) — {data.term}
           </p>
-          <div className="grid grid-cols-2 gap-4 items-start min-w-[900px]">
-            <div className="flex flex-col gap-4">
+          {/* minmax(0,1fr): each half keeps its width, so a wide table (11th–12th have 6 subjects + TOT) wraps
+              inside its half instead of spilling over the other one */}
+          <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-4 items-start min-w-[900px]">
+            <div className="flex flex-col gap-4 min-w-0">
               {/* Roll / appeared / passed by gender for this class's medium */}
               <table className="w-full border-collapse">
                 <thead>
@@ -64,9 +66,13 @@ export default function HmClassReport({ classCode, term }) {
               </table>
 
               {/* Toppers */}
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse table-fixed">
+                <colgroup>
+                  <col className="w-9" />
+                  {hm.toppers.map((t) => <col key={t.subject} />)}
+                </colgroup>
                 <tbody>
-                  <tr><td colSpan={hm.toppers.length + 1} className={title}>SCHOOL TOPPERS</td></tr>
+                  <tr><td colSpan={hm.toppers.length + 1} className={title}>CLASS TOPPERS</td></tr>
                   <tr className="font-bold">
                     <td className={cell}>SUB</td>
                     {hm.toppers.map((t) => <td key={t.subject} className={cell}>{t.subject}</td>)}
@@ -77,7 +83,14 @@ export default function HmClassReport({ classCode, term }) {
                   </tr>
                   <tr>
                     <td className={cell}></td>
-                    {hm.toppers.map((t) => <td key={t.subject} className={`${cell} text-[10px]`}>{t.names.join(", ")}</td>)}
+                    {hm.toppers.map((t) => (
+                      // One name per line; a word only breaks if a single name is wider than its column
+                      <td key={t.subject} className={`${cell} !px-0.5 text-[9px] tracking-tight break-words align-top`}>
+                        {t.names.map((n) => (
+                          <span key={n} className="block">{n}</span>
+                        ))}
+                      </td>
+                    ))}
                   </tr>
                 </tbody>
               </table>
@@ -105,7 +118,7 @@ export default function HmClassReport({ classCode, term }) {
               </table>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 min-w-0">
               {/* Subject-wise result */}
               <table className="w-full border-collapse">
                 <tbody>

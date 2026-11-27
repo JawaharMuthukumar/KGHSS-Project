@@ -29,6 +29,15 @@ const TAMIL_TERM = {
 };
 
 const PASS_MARK = 35;
+// Split-mark parts shown under a subject's total (e.g. "T64 · P25")
+const PART_SHORT = { theory: "T", practical: "P", internal: "I", sa: "SA", fa: "FA" };
+const PART_NAMES = {
+  theory: "கோட்பாடு / Theory",
+  practical: "செய்முறை / Practical",
+  internal: "அக மதிப்பீடு / Internal",
+  sa: "SA",
+  fa: "FA",
+};
 // Printed two per A4 portrait sheet: rows are a little tighter on paper so both cards always fit one page.
 const cell = "border border-black px-1 py-1 print:py-0.5 text-center align-middle";
 // Tamil words must never split mid-word: wrap only at spaces, and balance multi-word labels so no
@@ -70,6 +79,9 @@ function Score({ value, passMark = PASS_MARK }) {
 const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
   // Each exam row carries its own pass mark; the note lists every pass mark the card uses.
   const passMarks = [...new Set(card.rows.map((r) => r.pass_mark ?? PASS_MARK))].join(" / ");
+  // Which split parts appear on this card (for the T / P / I key under the table)
+  const usedParts = [...new Set(card.rows.flatMap((r) => (r.splits || []).flatMap((s) => (s || []).map((p) => p.key))))].filter((k) => PART_SHORT[k]);
+  const hasSplits = usedParts.length > 0;
   return (
     <div ref={ref} className="report-card bg-white text-black border-2 border-black p-3 print:p-2 text-[11px]" style={{ breakInside: "avoid", ...printExact }}>
       <div className="flex items-start justify-between gap-3 mb-2">
@@ -149,11 +161,20 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
                   {r.subject_max && r.subject_max !== 100 ? ` (/${r.subject_max})` : ""}
                 </span>
               </td>
-              {r.scores.map((sc, i) => (
-                <td key={i} className={cell}>
-                  <Score value={sc} passMark={r.pass_mark} />
-                </td>
-              ))}
+              {r.scores.map((sc, i) => {
+                const split = r.splits?.[i];
+                return (
+                  <td key={i} className={cell}>
+                    <Score value={sc} passMark={r.pass_mark} />
+                    {/* Exams whose pattern splits the 100 (Theory / Practical / Internal) show each part under the total */}
+                    {split && (
+                      <span className="block mt-0.5 text-[8px] leading-none text-black/70 whitespace-nowrap" title={split.map((p) => `${p.label} ${p.value ?? "-"}/${p.max}`).join(", ")}>
+                        {split.map((p) => `${PART_SHORT[p.key] || p.label[0]}${p.value ?? "-"}`).join(" · ")}
+                      </span>
+                    )}
+                  </td>
+                );
+              })}
               <td className={`${cell} font-bold`}>{r.total ?? ""}</td>
               <td className={`${cell} text-[10px] font-semibold leading-tight ${noSplit}`}>{r.remark ?? ""}</td>
               <td className={cell}>{r.attendance ? `${r.attendance.present}/${r.attendance.working}` : ""}</td>
@@ -174,6 +195,12 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
           குறிப்பு : வட்டமிட்ட மதிப்பெண்கள் தேர்ச்சி மதிப்பெண்ணுக்கு ({passMarks}) குறைவு, அந்தப் பாடங்களில் கவனம் தேவை.
           <br />
           Note: Circled marks are below the pass mark ({passMarks}); those subjects need attention.
+          {hasSplits && (
+            <>
+              <br />
+              {usedParts.map((k) => `${PART_SHORT[k]} = ${PART_NAMES[k]}`).join(" · ")}
+            </>
+          )}
         </p>
       </div>
     </div>

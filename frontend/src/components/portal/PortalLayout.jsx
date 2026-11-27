@@ -477,7 +477,7 @@ function PortalShell({ role }) {
                     <Icon name="KeyRound" size={17} />
                     Change Password
                   </button>
-                  {role === "teacher" && (
+                  {(role === "teacher" || role === "admin") && (
                     <button
                       type="button"
                       role="menuitem"
@@ -569,8 +569,9 @@ function PortalShell({ role }) {
       )}
       <ChangePasswordDialog open={passwordOpen} onClose={() => setPasswordOpen(false)} />
       {role === "admin" && <ChangeStaffIdDialog open={staffIdOpen} onClose={() => setStaffIdOpen(false)} />}
-      {role === "teacher" && (
+      {(role === "teacher" || role === "admin") && (
         <SignatureDialog
+          role={role}
           open={signatureOpen}
           onClose={() => {
             setSignatureOpen(false);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PortalPageHeader from "../../components/portal/PortalPageHeader";
 import Card from "../../components/ui/Card";
 import Icon from "../../components/ui/Icon";
@@ -27,7 +27,7 @@ function Decide({ plan, onDone }) {
     setBusy(true);
     try {
       await api.patch(`/lesson-plans/${plan.id}/decision`, { approve, note: approve ? undefined : note });
-      toast.success(approve ? `Approved: ${plan.teacher_name} · ${plan.class_code} ${plan.subject}` : "Returned to the teacher");
+      toast.success(approve ? `Approved and signed: ${plan.teacher_name} · ${plan.class_code} ${plan.subject}` : "Returned to the teacher");
       setReturning(false);
       onDone();
     } catch (err) {
@@ -152,6 +152,13 @@ function WeekByWeek() {
 /** HM: approve each week's lesson plans, follow the year week by week, and print any selection as one PDF. */
 export default function AdminNotesOfPresence() {
   const [tab, setTab] = useState("pending");
+  // Approving stamps the HM's signature on the PDF, so it must exist first
+  const signature = useApiResource("/me/signature");
+  useEffect(() => {
+    window.addEventListener("kghss:signature-changed", signature.reload);
+    return () => window.removeEventListener("kghss:signature-changed", signature.reload);
+  }, [signature.reload]);
+  const hasSignature = Boolean(signature.data?.image);
   const { data: setup } = useApiResource("/lesson-plans/setup");
   const { data: classes } = useApiResource("/classes");
   const [filters, setFilters] = useState({ teacher_id: "", class_code: "", week_from: "", week_to: "", status: "" });
@@ -174,6 +181,16 @@ export default function AdminNotesOfPresence() {
         title="Notes of Lessons"
         description="Teachers' weekly lesson plans (Monday – Friday) per class. Approve each one, follow the year week by week, and print any weeks as one PDF for the report."
       />
+
+      {signature.data && !hasSignature && (
+        <Banner tone="warning" className="mb-4">
+          <strong className="font-semibold">Add your signature to approve plans.</strong> When you approve, your signature, "APPROVED" and the
+          date and time are stamped on the teacher's PDF.{" "}
+          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("kghss:open-signature"))} className="font-semibold underline">
+            Open My Signature
+          </button>
+        </Banner>
+      )}
 
       <div className="flex gap-1 mb-5 border-b border-navy/8">
         {TABS.map((t) => (

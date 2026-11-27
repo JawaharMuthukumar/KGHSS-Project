@@ -54,6 +54,15 @@ class TeacherSignature(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
+class AccountSignature(Base):
+    """The HM's signature (PNG data URL) — stamped on Notes of Lessons PDFs when they approve them.
+    Teachers' signatures stay in teacher_signatures."""
+    __tablename__ = "account_signatures"
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True)
+    image: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 class AcademicYear(Base):
     """The school year the HM runs: its label (e.g. 2026-2027) and the start / end dates the HM sets.
     Exactly one row is current; closing it (Academic Year page) promotes students, clears that year's

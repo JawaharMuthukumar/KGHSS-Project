@@ -1,5 +1,5 @@
 // Exam terms per grade band — mirrors backend app/services/mark_scheme.py.
-export const TERMS_MIDDLE = ["Term 1", "Quarterly", "Term 2", "Half Yearly", "Term 3", "Annual Exam"];
+export const TERMS_MIDDLE = ["1st Mid Term", "Quarterly", "2nd Mid Term", "Half Yearly", "3rd Mid Term", "Annual Exam"]; // 6th–9th
 export const TERMS_SENIOR = ["1st Mid Term", "Quarterly", "2nd Mid Term", "Half Yearly", "3rd Mid Term", "Revision 1", "Revision 2", "Revision 3"];
 // 10th uses TERMS_SENIOR; 11th–12th have no 3rd Mid Term.
 export const TERMS_HSC = TERMS_SENIOR.filter((t) => t !== "3rd Mid Term");

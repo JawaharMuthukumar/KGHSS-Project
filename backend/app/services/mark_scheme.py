@@ -8,7 +8,7 @@ from sqlalchemy.orm import object_session
 
 from app.models.entities import AcademicClass, SubjectGroup
 
-TERMS_MIDDLE = ["Term 1", "Quarterly", "Term 2", "Half Yearly", "Term 3", "Annual Exam"]
+TERMS_MIDDLE = ["1st Mid Term", "Quarterly", "2nd Mid Term", "Half Yearly", "3rd Mid Term", "Annual Exam"]  # 6th–9th
 TERMS_SENIOR = ["1st Mid Term", "Quarterly", "2nd Mid Term", "Half Yearly", "3rd Mid Term", "Revision 1", "Revision 2", "Revision 3"]  # 10th
 TERMS_HSC = [t for t in TERMS_SENIOR if t != "3rd Mid Term"]  # 11th–12th: no 3rd Mid Term
 

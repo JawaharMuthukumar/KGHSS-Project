@@ -20,6 +20,8 @@ from app.core.database import get_db
 from app.core.dependencies import require_roles
 from app.models.entities import Account, AcademicClass, LessonPlan, SubjectTeacherAssignment, Teacher
 from app.services.permissions import teacher_profile
+from app.services.pdf_stamp import stamp_approval
+from app.api.signatures import hm_signature
 from app.services.academic_year import current_year, monday, year_weeks
 
 router = APIRouter(prefix="/lesson-plans", tags=["Notes of Lessons"])
@@ -152,8 +154,21 @@ def decide_plan(plan_id: int, data: DecisionIn, db: Session = Depends(get_db), a
     plan = db.get(LessonPlan, plan_id)
     if not plan: raise HTTPException(404, "Lesson plan not found")
     if not data.approve and not (data.note or "").strip(): raise HTTPException(422, "Give the teacher a reason for returning it")
+    now = datetime.utcnow()
+    if data.approve:
+        # Approving stamps the HM's signature, "APPROVED" and the date/time (IST) on the PDF's last page; the stamped
+        # PDF replaces the upload (no second copy kept), so the signature it was approved with never changes.
+        if plan.status == "approved": raise HTTPException(409, "This plan is already approved")
+        signature = hm_signature(db, account)
+        if not signature: raise HTTPException(409, "Add your signature first (profile menu → My Signature) — it is stamped on approved plans")
+        original = db.query(LessonPlan.pdf).filter(LessonPlan.id == plan.id).scalar()
+        try:
+            stamped = stamp_approval(original, signature, now + timedelta(hours=5, minutes=30))
+        except (PdfReadError, ValueError) as exc:
+            raise HTTPException(422, "This PDF could not be stamped. Return it and ask the teacher to upload it again.") from exc
+        plan.pdf = stamped; plan.file_size = len(stamped)
     plan.status = "approved" if data.approve else "returned"; plan.note = None if data.approve else data.note.strip()
-    plan.decided_by = account.id; plan.decided_at = datetime.utcnow()
+    plan.decided_by = account.id; plan.decided_at = now
     db.commit()
     return out_many(db, [plan])[0]
 

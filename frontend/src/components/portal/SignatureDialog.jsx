@@ -168,7 +168,8 @@ function UploadPad({ onChange, onError }) {
 }
 
 /** Teacher's own signature: draw it or upload a photo; used when they sign their class's report cards. */
-export default function SignatureDialog({ open, onClose }) {
+export default function SignatureDialog({ open, onClose, role = "teacher" }) {
+  const isHM = role === "admin";
   const toast = useToast();
   const [current, setCurrent] = useState(undefined); // undefined = loading, null = none
   const [mode, setMode] = useState("draw");
@@ -194,7 +195,7 @@ export default function SignatureDialog({ open, onClose }) {
     setError("");
     try {
       await api.put("/me/signature", { image: draft });
-      toast.success("Signature saved. Sign your class's report cards from Reports → Report Cards.");
+      toast.success(isHM ? "Signature saved. It is stamped on the Notes of Lessons you approve." : "Signature saved. Sign your class's report cards from Reports → Report Cards.");
       onClose();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not save the signature. Please try again.");
@@ -231,7 +232,11 @@ export default function SignatureDialog({ open, onClose }) {
           </span>
           <div className="min-w-0 flex-1">
             <h2 id="sig-title" className="font-heading font-bold text-navy text-base">My Signature</h2>
-            <p className="text-sm text-navy/60 mt-0.5">Shown in the class teacher sign column of report cards you sign.</p>
+            <p className="text-sm text-navy/60 mt-0.5">
+              {isHM
+                ? "Stamped, with the date and time, on every Notes of Lessons plan you approve."
+                : "Shown in the class teacher sign column of report cards you sign."}
+            </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="text-navy/45 hover:text-navy">
             <Icon name="X" size={20} />
@@ -251,7 +256,11 @@ export default function SignatureDialog({ open, onClose }) {
             </div>
             {confirmRemove && (
               <div className="mt-3 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-700">
-                <p>This also removes your signature from every report card exam you signed. You will need to sign them again with a new signature.</p>
+                <p>
+                  {isHM
+                    ? "You will need a signature again before approving more Notes of Lessons. Plans you already approved keep their stamp."
+                    : "This also removes your signature from every report card exam you signed. You will need to sign them again with a new signature."}
+                </p>
                 <div className="mt-2 flex gap-2">
                   <button type="button" onClick={remove} disabled={busy} className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg">
                     Yes, remove

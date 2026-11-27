@@ -1,4 +1,4 @@
-"""Teacher digital signatures and the class teacher's per-exam report-card sign-off."""
+"""Digital signatures (teachers and the HM) and the class teacher's per-exam report-card sign-off."""
 import base64
 import binascii
 from datetime import datetime
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.school import get_class, term_assessment
 from app.core.database import get_db
 from app.core.dependencies import require_roles
-from app.models.entities import Account, Assessment, Teacher, TeacherSignature
+from app.models.entities import Account, AccountSignature, Assessment, Teacher, TeacherSignature
 from app.services.mark_scheme import terms_for_grade
 from app.services.permissions import can_access_class, is_class_teacher_of, teacher_profile
 from app.services.signoff import marks_fingerprint, signoff_state
@@ -27,14 +27,20 @@ class SignatureIn(BaseModel):
     image: str = Field(min_length=len(PREFIX) + 10, max_length=MAX_BYTES * 2)
 
 
-@router.get("/me/signature", summary="The signed-in teacher's own signature")
-def my_signature(db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
-    sig = db.get(TeacherSignature, teacher_profile(db, account).id)
+def hm_signature(db: Session, account: Account) -> str | None:
+    """The HM's signature image (used to stamp approved Notes of Lessons)."""
+    sig = db.get(AccountSignature, account.id)
+    return sig.image if sig else None
+
+
+@router.get("/me/signature", summary="The signed-in teacher's or HM's own signature")
+def my_signature(db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher", "admin"))):
+    sig = db.get(AccountSignature, account.id) if account.role == "admin" else db.get(TeacherSignature, teacher_profile(db, account).id)
     return {"image": sig.image if sig else None, "updated_at": sig.updated_at if sig else None}
 
 
-@router.put("/me/signature", summary="Save the signed-in teacher's signature (PNG data URL)")
-def save_signature(data: SignatureIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
+@router.put("/me/signature", summary="Save the signed-in teacher's or HM's signature (PNG data URL)")
+def save_signature(data: SignatureIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher", "admin"))):
     if not data.image.startswith(PREFIX): raise HTTPException(422, "Signature must be a PNG image")
     try:
         raw = base64.b64decode(data.image[len(PREFIX):], validate=True)
@@ -46,18 +52,29 @@ def save_signature(data: SignatureIn, db: Session = Depends(get_db), account: Ac
     except (UnidentifiedImageError, OSError) as exc:
         raise HTTPException(422, "Signature image is not valid") from exc
     if img.format != "PNG" or img.width > 1600 or img.height > 800: raise HTTPException(422, "Signature image must be a PNG up to 1600×800")
-    teacher = teacher_profile(db, account)
-    sig = db.get(TeacherSignature, teacher.id)
-    if sig: sig.image = data.image; sig.updated_at = datetime.utcnow()
-    else: db.add(TeacherSignature(teacher_id=teacher.id, image=data.image))
+    if account.role == "admin":
+        sig = db.get(AccountSignature, account.id)
+        if sig: sig.image = data.image; sig.updated_at = datetime.utcnow()
+        else: db.add(AccountSignature(account_id=account.id, image=data.image))
+    else:
+        teacher = teacher_profile(db, account)
+        sig = db.get(TeacherSignature, teacher.id)
+        if sig: sig.image = data.image; sig.updated_at = datetime.utcnow()
+        else: db.add(TeacherSignature(teacher_id=teacher.id, image=data.image))
     db.commit()
     return {"saved": True}
 
 
-@router.delete("/me/signature", summary="Remove the signed-in teacher's signature and every sign-off made with it")
-def delete_signature(db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
-    """Removing the signature also withdraws all of this teacher's exam sign-offs, so a signature added later
-    (e.g. the real teacher's after a test signature) never appears on exams they did not sign themselves."""
+@router.delete("/me/signature", summary="Remove the signed-in user's signature (a teacher's also withdraws their report-card sign-offs)")
+def delete_signature(db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher", "admin"))):
+    """A teacher removing their signature also withdraws all their exam sign-offs, so a signature added later
+    (e.g. the real teacher's after a test signature) never appears on exams they did not sign themselves.
+    The HM's already-approved Notes of Lessons keep the stamp they were approved with."""
+    if account.role == "admin":
+        sig = db.get(AccountSignature, account.id)
+        if sig: db.delete(sig)
+        db.commit()
+        return {"removed": bool(sig), "signoffs_withdrawn": 0}
     teacher = teacher_profile(db, account)
     sig = db.get(TeacherSignature, teacher.id)
     if sig: db.delete(sig)

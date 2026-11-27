@@ -254,7 +254,7 @@ def latest_exam_summary(db: Session = Depends(get_db), _: Account = Depends(requ
 
 # ---------------- Student: my progress across the year's exams ----------------
 
-MID_TERM_EXAMS = {"Term 1", "Term 2", "Term 3", "1st Mid Term", "2nd Mid Term", "3rd Mid Term"}
+MID_TERM_EXAMS = {"1st Mid Term", "2nd Mid Term", "3rd Mid Term"}
 
 
 def _target(pct: float) -> int:

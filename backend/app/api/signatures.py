@@ -4,7 +4,7 @@ import binascii
 from datetime import datetime
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.school import get_class, term_assessment
 from app.core.database import get_db
 from app.core.dependencies import require_roles
-from app.models.entities import Account, Teacher, TeacherSignature
+from app.models.entities import Account, Assessment, Teacher, TeacherSignature
 from app.services.mark_scheme import terms_for_grade
 from app.services.permissions import can_access_class, is_class_teacher_of, teacher_profile
 from app.services.signoff import marks_fingerprint, signoff_state
@@ -54,11 +54,17 @@ def save_signature(data: SignatureIn, db: Session = Depends(get_db), account: Ac
     return {"saved": True}
 
 
-@router.delete("/me/signature", summary="Remove the signed-in teacher's signature")
+@router.delete("/me/signature", summary="Remove the signed-in teacher's signature and every sign-off made with it")
 def delete_signature(db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
-    sig = db.get(TeacherSignature, teacher_profile(db, account).id)
-    if sig: db.delete(sig); db.commit()
-    return Response(status_code=204)
+    """Removing the signature also withdraws all of this teacher's exam sign-offs, so a signature added later
+    (e.g. the real teacher's after a test signature) never appears on exams they did not sign themselves."""
+    teacher = teacher_profile(db, account)
+    sig = db.get(TeacherSignature, teacher.id)
+    if sig: db.delete(sig)
+    withdrawn = (db.query(Assessment).filter(Assessment.signed_by == teacher.id)
+                 .update({Assessment.signed_by: None, Assessment.signed_at: None, Assessment.signed_fingerprint: None}, synchronize_session=False))
+    db.commit()
+    return {"removed": bool(sig), "signoffs_withdrawn": withdrawn}
 
 
 def _signoff_out(db: Session, term: str, assessment) -> dict:

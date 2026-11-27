@@ -175,9 +175,11 @@ export default function SignatureDialog({ open, onClose }) {
   const [draft, setDraft] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setConfirmRemove(false);
     setDraft(null);
     setError("");
     setCurrent(undefined);
@@ -203,10 +205,15 @@ export default function SignatureDialog({ open, onClose }) {
 
   const remove = async () => {
     setBusy(true);
+    setConfirmRemove(false);
     try {
-      await api.delete("/me/signature");
+      const res = await api.delete("/me/signature");
       setCurrent(null);
-      toast.success("Signature removed. Report cards you signed no longer show it.");
+      toast.success(
+        res?.signoffs_withdrawn
+          ? `Signature removed, and taken off ${res.signoffs_withdrawn} signed exam${res.signoffs_withdrawn === 1 ? "" : "s"}. Sign them again after adding a new signature.`
+          : "Signature removed."
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not remove the signature.");
     } finally {
@@ -236,10 +243,25 @@ export default function SignatureDialog({ open, onClose }) {
             <p className="text-xs font-semibold text-navy/50 mb-2">Current signature</p>
             <div className="flex items-center gap-3">
               <img src={current} alt="Your current signature" className="h-14 max-w-[70%] object-contain rounded" style={PAPER} />
-              <button type="button" onClick={remove} disabled={busy} className="ml-auto text-xs font-semibold text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg">
-                Remove
-              </button>
+              {!confirmRemove && (
+                <button type="button" onClick={() => setConfirmRemove(true)} disabled={busy} className="ml-auto text-xs font-semibold text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg">
+                  Remove
+                </button>
+              )}
             </div>
+            {confirmRemove && (
+              <div className="mt-3 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                <p>This also removes your signature from every report card exam you signed. You will need to sign them again with a new signature.</p>
+                <div className="mt-2 flex gap-2">
+                  <button type="button" onClick={remove} disabled={busy} className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg">
+                    Yes, remove
+                  </button>
+                  <button type="button" onClick={() => setConfirmRemove(false)} className="text-xs font-semibold text-navy/60 px-3 py-1.5 rounded-lg hover:bg-navy/5">
+                    Keep it
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

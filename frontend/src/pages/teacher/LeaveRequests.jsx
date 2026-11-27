@@ -45,7 +45,7 @@ export default function LeaveRequests() {
             description="Student leave requests go to the class teacher of the student's class."
           />
         ) : (
-          <LeaveReviewPanel emptyText="No student leave requests." />
+          <LeaveReviewPanel canForward emptyText="No student leave requests." />
         ))}
       {tab === "mine" && <MyLeavePanel types={TEACHER_LEAVE_TYPES} approverLabel="the HM" />}
     </div>

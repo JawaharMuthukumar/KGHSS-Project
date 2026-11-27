@@ -85,6 +85,11 @@ def initialize_schema_and_reference_classes():
         ("students", "status", "VARCHAR(20)"),
         ("classes", "intake_open", "BOOLEAN"),
         ("accounts", "password_is_default", "BOOLEAN"),
+        ("leave_requests", "forward_state", "VARCHAR(20)"),
+        ("leave_requests", "teacher_remark", "TEXT"),
+        ("leave_requests", "forwarded_at", "TIMESTAMP"),
+        ("leave_requests", "hm_remark", "TEXT"),
+        ("leave_requests", "hm_replied_at", "TIMESTAMP"),
     ]
     inspector = inspect(engine)
     for table, column, ddl_type in added_columns:

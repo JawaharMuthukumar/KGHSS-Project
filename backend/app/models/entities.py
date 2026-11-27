@@ -288,6 +288,13 @@ class LeaveRequest(Base):
     decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Student leave the class teacher forwarded to the HM for advice: None → "with_hm" → "hm_replied"; the class
+    # teacher still approves or rejects. Remarks are between the teacher and the HM (never shown to the student).
+    forward_state: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    teacher_remark: Mapped[str | None] = mapped_column(Text, nullable=True)
+    forwarded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    hm_remark: Mapped[str | None] = mapped_column(Text, nullable=True)
+    hm_replied_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class ComplaintThread(Base):

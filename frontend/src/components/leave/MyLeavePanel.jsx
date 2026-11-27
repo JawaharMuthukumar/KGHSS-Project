@@ -125,7 +125,8 @@ export default function MyLeavePanel({ types, approverLabel }) {
                 {r.decision_note && <p className="text-xs text-navy/60 mt-0.5 italic">Note: {r.decision_note}</p>}
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Badge tone={LEAVE_STATUS_TONE[r.status] || "navy"}>{r.status}</Badge>
+                {/* A student sees only that the class teacher sent it to the HM — never their remarks */}
+                <Badge tone={LEAVE_STATUS_TONE[r.status] || "navy"}>{r.status === "pending" && r.forward_state === "with_hm" ? "Sent to HM" : r.status}</Badge>
                 {r.status === "pending" && (
                   <button
                     type="button"

@@ -15,14 +15,35 @@ const filters = [
   { id: "all", label: "All" },
 ];
 
-// Approve/reject list: class teacher sees their class's student requests, admin sees teacher requests.
-export default function LeaveReviewPanel({ showClass = false, emptyText = "No leave requests." }) {
+/**
+ * Approve/reject list: class teacher sees their class's student requests, admin sees teacher requests.
+ * `canForward` (class teacher): a student's request can also be forwarded to the HM with remarks; the HM's reply
+ * comes back here and the class teacher still approves or rejects.
+ */
+export default function LeaveReviewPanel({ showClass = false, canForward = false, emptyText = "No leave requests." }) {
   const { data: requests, loading, error, reload } = useApiResource("/leave-requests", { query: { scope: "review" }, live: "leave" });
   const [filter, setFilter] = useState("pending");
   const [busyId, setBusyId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectNote, setRejectNote] = useState("");
   const [actionError, setActionError] = useState("");
+  const [forwardingId, setForwardingId] = useState(null);
+  const [remark, setRemark] = useState("");
+
+  const forward = async (id) => {
+    setBusyId(id);
+    setActionError("");
+    try {
+      await api.post(`/leave-requests/${id}/forward`, { remark: remark.trim() });
+      setForwardingId(null);
+      setRemark("");
+      reload();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Could not forward this request. Please try again.");
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const decide = async (id, approve, note) => {
     setBusyId(id);
@@ -39,7 +60,10 @@ export default function LeaveReviewPanel({ showClass = false, emptyText = "No le
     }
   };
 
-  const rows = (requests || []).filter((r) => filter === "all" || r.status === "pending");
+  // HM replies waiting on the class teacher come first
+  const rows = (requests || [])
+    .filter((r) => filter === "all" || r.status === "pending")
+    .sort((a, b) => (b.status === "pending" && b.forward_state === "hm_replied") - (a.status === "pending" && a.forward_state === "hm_replied"));
   const pendingCount = (requests || []).filter((r) => r.status === "pending").length;
 
   return (
@@ -102,12 +126,53 @@ export default function LeaveReviewPanel({ showClass = false, emptyText = "No le
                   <td data-label="Reason" className="px-4 py-3 text-navy/60 min-w-[12rem]">
                     {r.reason}
                     {r.decision_note && <p className="text-xs italic text-navy/50 mt-0.5">Note: {r.decision_note}</p>}
+                    {r.teacher_remark && <p className="text-xs text-navy/55 mt-1">Your remark to HM: {r.teacher_remark}</p>}
+                    {r.hm_remark && (
+                      <p className="text-xs mt-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 px-2 py-1">
+                        <span className="font-semibold">HM:</span> {r.hm_remark}
+                      </p>
+                    )}
                   </td>
                   <td className="tc-aside px-4 py-3">
-                    <Badge tone={LEAVE_STATUS_TONE[r.status] || "navy"}>{r.status}</Badge>
+                    {r.status === "pending" && r.forward_state ? (
+                      <Badge tone={r.forward_state === "with_hm" ? "gold" : "teal"}>{r.forward_state === "with_hm" ? "With HM" : "HM replied"}</Badge>
+                    ) : (
+                      <Badge tone={LEAVE_STATUS_TONE[r.status] || "navy"}>{r.status}</Badge>
+                    )}
                   </td>
                   <td className="tc-full pt-1 px-4 py-3">
-                    {r.status === "pending" && rejectingId !== r.id && (
+                    {forwardingId === r.id && (
+                      <div className="flex flex-col items-end gap-2 min-w-[16rem]">
+                        <textarea
+                          autoFocus
+                          rows={2}
+                          maxLength={1000}
+                          placeholder="Remarks for the HM (e.g. already took 8 days leave; marks are low)"
+                          value={remark}
+                          onChange={(e) => setRemark(e.target.value)}
+                          className={inputClass + " text-xs py-1.5"}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setForwardingId(null)}
+                            className="text-xs font-semibold text-navy/60 hover:bg-navy/6 px-2.5 py-1.5 rounded-lg"
+                          >
+                            Back
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyId === r.id || remark.trim().length < 2}
+                            onClick={() => forward(r.id)}
+                            className="flex items-center gap-1 text-xs font-semibold text-navy-dark bg-gold hover:bg-gold-light px-2.5 py-1.5 rounded-lg disabled:opacity-60"
+                          >
+                            <Icon name="Send" size={13} />
+                            Send to HM
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {r.status === "pending" && rejectingId !== r.id && forwardingId !== r.id && (
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
@@ -130,6 +195,21 @@ export default function LeaveReviewPanel({ showClass = false, emptyText = "No le
                           <Icon name="X" size={14} />
                           Reject
                         </button>
+                        {canForward && r.forward_state !== "with_hm" && (
+                          <button
+                            type="button"
+                            disabled={busyId === r.id}
+                            onClick={() => {
+                              setForwardingId(r.id);
+                              setRejectingId(null);
+                              setRemark("");
+                            }}
+                            className="flex items-center gap-1 text-xs font-semibold text-navy hover:bg-navy/6 px-2.5 py-1.5 rounded-lg whitespace-nowrap"
+                          >
+                            <Icon name="Send" size={14} />
+                            {r.forward_state === "hm_replied" ? "Ask HM again" : "Forward to HM"}
+                          </button>
+                        )}
                       </div>
                     )}
                     {rejectingId === r.id && (

@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -847,14 +848,17 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
     if account.role == "admin":
         # The HM's queue is what the class teachers have approved and is waiting to be printed.
         cert_pending = certs.filter(CertificateRequest.status == "approved"); cert_link = "/admin/certificates"
-        leaves = leaves.filter(LeaveRequest.applicant_role == "teacher"); leave_pending = leaves.filter(LeaveRequest.status == "pending"); leave_link = "/admin/leave-requests"
+        # Teacher leave to decide, plus student leave class teachers forwarded for the HM's remarks
+        leaves = leaves.filter((LeaveRequest.applicant_role == "teacher") | LeaveRequest.forward_state.isnot(None))
+        leave_pending = leaves.filter(LeaveRequest.applicant_role == "teacher", LeaveRequest.status == "pending"); leave_link = "/admin/leave-requests"
         notices = notices.filter(Notice.id < 0)  # the HM writes notices; nothing to alert on
     elif account.role == "teacher":
         class_ids = [c.id for c in assigned_classes(db, teacher_profile(db, account))] or [-1]
         certs = certs.join(Student, Student.id == CertificateRequest.student_id).filter(Student.class_id.in_(class_ids))
         cert_pending = certs.filter(CertificateRequest.status == "pending"); cert_link = "/teacher/certificates"
         leaves = leaves.filter(LeaveRequest.applicant_role == "student", LeaveRequest.class_id.in_(class_ids))
-        leave_pending = leaves.filter(LeaveRequest.status == "pending"); leave_link = "/teacher/leave-requests"
+        # Waiting on the class teacher: new requests and ones the HM replied on (not those still with the HM)
+        leave_pending = leaves.filter(LeaveRequest.status == "pending", (LeaveRequest.forward_state.is_(None)) | (LeaveRequest.forward_state == "hm_replied")); leave_link = "/teacher/leave-requests"
         notices = notices.filter(Notice.audience.in_(["all", "teachers"]))
     elif account.role == "student":
         student = student_profile(db, account)
@@ -872,8 +876,18 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
                           "created_at": req.decided_at if to_print else req.created_at})
     if leave_pending is not None:
         for req in leave_pending.order_by(LeaveRequest.id.desc()).limit(10).all():
-            items.append({"key": f"leave-{req.id}", "kind": "leave", "title": "New leave request",
-                          "detail": f"{db.get(Account, req.applicant_id).full_name} · {req.days} day{'s' if req.days != 1 else ''}", "to": leave_link, "created_at": req.created_at})
+            name = db.get(Account, req.applicant_id).full_name
+            if req.forward_state == "hm_replied":
+                items.append({"key": f"leave-{req.id}-hm-{int(req.hm_replied_at.timestamp()) if req.hm_replied_at else 0}", "kind": "leave", "title": "HM replied on a leave request",
+                              "detail": f"{name} · {req.hm_remark}", "to": leave_link, "created_at": req.hm_replied_at})
+            else:
+                items.append({"key": f"leave-{req.id}", "kind": "leave", "title": "New leave request",
+                              "detail": f"{name} · {req.days} day{'s' if req.days != 1 else ''}", "to": leave_link, "created_at": req.created_at})
+    if account.role == "admin":
+        for req in leaves.filter(LeaveRequest.forward_state == "with_hm", LeaveRequest.status == "pending").order_by(LeaveRequest.forwarded_at.desc()).limit(10).all():
+            s = db.get(Student, req.student_id)
+            items.append({"key": f"leave-fwd-{req.id}-{int(req.forwarded_at.timestamp()) if req.forwarded_at else 0}", "kind": "leave", "title": "Student leave forwarded to you",
+                          "detail": f"{s.account.full_name if s else 'Student'} · {s.school_class.code if s else ''} · {req.teacher_remark or ''}", "to": "/admin/leave-requests", "created_at": req.forwarded_at})
     if account.role == "student":
         # Progress messages: approved = moved to the HM (no badge), printed = collect it from the HM (badge for a week), rejected.
         recent = datetime.utcnow() - timedelta(days=7)
@@ -946,7 +960,7 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
             ("Father's or mother's name", (student.father_name or "").strip() or (student.mother_name or "").strip()),
             ("Address", (student.address or "").strip())) if not filled]
     return {"counts": counts, "items": items, "notices": recent_notices, "profile_missing": profile_missing,
-            "versions": {"certificates": version(certs, CertificateRequest, extra=[CertificateRequest.downloaded_at]), "leave": version(leaves, LeaveRequest), "notices": version(notices, Notice, decided=False),
+            "versions": {"certificates": version(certs, CertificateRequest, extra=[CertificateRequest.downloaded_at]), "leave": version(leaves, LeaveRequest, extra=[LeaveRequest.forwarded_at, LeaveRequest.hm_replied_at]), "notices": version(notices, Notice, decided=False),
                          "notes": version(plans, LessonPlan, extra=[LessonPlan.uploaded_at]),
                          "homework": version(homework, Homework, decided=False, extra=[Homework.updated_at])}}
 
@@ -1073,12 +1087,19 @@ def leave_days_by_month(start: date, end: date) -> dict[str, int]:
     return dict(days)
 
 
-def leave_out(db: Session, req: LeaveRequest) -> dict:
+def leave_out(db: Session, req: LeaveRequest, internal: bool = True) -> dict:
+    """`internal=False` (the student's own view) leaves out the class teacher ↔ HM remarks."""
     applicant = db.get(Account, req.applicant_id); cls = db.get(AcademicClass, req.class_id) if req.class_id else None
-    return {"id": req.id, "applicant_role": req.applicant_role, "applicant_name": applicant.full_name, "applicant_username": applicant.username,
-            "class_code": cls.code if cls else None, "leave_type": req.leave_type, "from_date": req.from_date, "to_date": req.to_date,
-            "days": req.days, "reason": req.reason, "status": req.status, "decision_note": req.decision_note,
-            "created_at": req.created_at, "decided_at": req.decided_at}
+    out = {"id": req.id, "applicant_role": req.applicant_role, "applicant_name": applicant.full_name, "applicant_username": applicant.username,
+           "student_id": req.student_id, "class_code": cls.code if cls else None, "leave_type": req.leave_type, "from_date": req.from_date, "to_date": req.to_date,
+           "days": req.days, "reason": req.reason, "status": req.status, "decision_note": req.decision_note,
+           "created_at": req.created_at, "decided_at": req.decided_at, "forward_state": req.forward_state}
+    if internal:
+        teacher_ids = class_teachers_of(db, req.class_id) if req.class_id else []
+        names = [a.full_name for a in db.query(Account).filter(Account.id.in_(teacher_ids)).all()] if teacher_ids else []
+        out.update({"class_teacher_name": ", ".join(names) or None, "teacher_remark": req.teacher_remark, "forwarded_at": req.forwarded_at,
+                    "hm_remark": req.hm_remark, "hm_replied_at": req.hm_replied_at})
+    return out
 
 
 def mark_leave_absent(db: Session, req: LeaveRequest):
@@ -1110,10 +1131,16 @@ def apply_leave(data: LeaveRequestIn, db: Session = Depends(get_db), account: Ac
     return leave_out(db, req)
 
 
-@router.get("/leave-requests", summary="scope=mine for own requests, scope=review for requests awaiting your decision")
-def list_leave_requests(scope: str = Query("mine", pattern="^(mine|review)$"), db: Session = Depends(get_db), account: Account = Depends(current_account)):
+@router.get("/leave-requests", summary="scope=mine for own requests, scope=review for requests awaiting your decision, scope=forwarded (HM) for student leave class teachers sent for advice")
+def list_leave_requests(scope: str = Query("mine", pattern="^(mine|review|forwarded)$"), db: Session = Depends(get_db), account: Account = Depends(current_account)):
     q = db.query(LeaveRequest)
-    if scope == "mine" or account.role == "student": q = q.filter_by(applicant_id=account.id)
+    if scope == "mine" or account.role == "student":
+        q = q.filter_by(applicant_id=account.id)
+        return [leave_out(db, r, internal=account.role != "student") for r in q.order_by(LeaveRequest.created_at.desc()).all()]
+    if scope == "forwarded":
+        if account.role != "admin": raise HTTPException(403, "Only the HM sees forwarded student leave")
+        q = q.filter(LeaveRequest.applicant_role == "student", LeaveRequest.forward_state.isnot(None))
+        return [leave_out(db, r) for r in q.order_by(LeaveRequest.forwarded_at.desc()).all()]
     elif account.role == "teacher":
         class_ids = [c.id for c in assigned_classes(db, teacher_profile(db, account))]
         if not class_ids: return []
@@ -1137,6 +1164,39 @@ def decide_leave(request_id: int, data: DecisionIn, db: Session = Depends(get_db
     db.commit()
     notify(db, [req.applicant_id], f"Leave {req.status}", f"{req.from_date:%d %b} – {req.to_date:%d %b}" + (f" · {req.decision_note}" if req.decision_note else ""),
            "/student/leave" if req.applicant_role == "student" else "/teacher/leave-requests", f"leave-{req.id}")
+    return leave_out(db, req)
+
+
+class LeaveRemarkIn(BaseModel):
+    remark: str = Field(min_length=2, max_length=1000)
+
+
+@router.post("/leave-requests/{request_id}/forward", summary="Class teacher forwards a student's leave to the HM with remarks")
+def forward_leave(request_id: int, data: LeaveRemarkIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
+    req = db.get(LeaveRequest, request_id)
+    if not req or req.applicant_role != "student": raise HTTPException(404, "Student leave request not found")
+    if not is_class_teacher_of(db, teacher_profile(db, account), db.get(AcademicClass, req.class_id)):
+        raise HTTPException(403, "Only the class teacher may forward this request")
+    if req.status != "pending": raise HTTPException(409, "Request has already been decided")
+    if req.forward_state == "with_hm": raise HTTPException(409, "Already with the HM")
+    req.forward_state = "with_hm"; req.teacher_remark = data.remark.strip(); req.forwarded_at = datetime.utcnow()
+    req.hm_remark = None; req.hm_replied_at = None
+    db.commit()
+    student = db.get(Student, req.student_id)
+    notify(db, admins(db), "Student leave forwarded to you", f"{student.account.full_name} ({student.school_class.code}) · {account.full_name}: {req.teacher_remark}",
+           "/admin/leave-requests", f"leave-{req.id}")
+    return leave_out(db, req)
+
+
+@router.post("/leave-requests/{request_id}/hm-reply", summary="HM sends remarks on a forwarded student leave back to the class teacher")
+def hm_reply_leave(request_id: int, data: LeaveRemarkIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin"))):
+    req = db.get(LeaveRequest, request_id)
+    if not req or req.applicant_role != "student" or not req.forward_state: raise HTTPException(404, "Forwarded leave request not found")
+    if req.status != "pending": raise HTTPException(409, "The class teacher has already decided this request")
+    req.forward_state = "hm_replied"; req.hm_remark = data.remark.strip(); req.hm_replied_at = datetime.utcnow()
+    db.commit()
+    student = db.get(Student, req.student_id)
+    notify(db, class_teachers_of(db, req.class_id), "HM replied on a leave request", f"{student.account.full_name}: {req.hm_remark}", "/teacher/leave-requests", f"leave-{req.id}")
     return leave_out(db, req)
 
 

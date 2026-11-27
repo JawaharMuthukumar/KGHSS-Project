@@ -16,14 +16,29 @@ export function printElement(element, { orientation = "landscape", title = docum
     </head><body>${element.outerHTML}</body></html>`);
   doc.close();
 
+  // Wait for something to finish loading, but never hang the print button (fallback after `ms`).
+  const settle = (ready, attach, ms = 5000) =>
+    ready ? null : new Promise((done) => { attach(done); setTimeout(done, ms); });
+
+  let printed = false;
   const run = async () => {
+    if (printed) return;
+    printed = true;
+    // In the deployed site the app's CSS is a <link>ed file (in development it is inline <style>), so the copy
+    // has to load it before printing — otherwise the card prints unstyled with full-size logos.
+    await Promise.all(
+      [...doc.querySelectorAll('link[rel="stylesheet"]')].map((l) => settle(l.sheet, (done) => { l.onload = l.onerror = done; }))
+    );
     // Logos are <img>s: wait for them so they are never missing from the printout
-    await Promise.all([...doc.images].map((img) => (img.complete ? null : new Promise((done) => { img.onload = img.onerror = done; }))));
+    await Promise.all([...doc.images].map((img) => settle(img.complete, (done) => { img.onload = img.onerror = done; })));
+    try {
+      await doc.fonts?.ready; // Tamil web font
+    } catch {
+      /* older browsers: print with what is loaded */
+    }
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
     setTimeout(() => iframe.remove(), 1000);
   };
-  // Give linked stylesheets/fonts a moment to load before printing
-  if (doc.readyState === "complete") setTimeout(run, 300);
-  else iframe.onload = () => setTimeout(run, 300);
+  setTimeout(run, 50);
 }

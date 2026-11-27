@@ -64,17 +64,22 @@ export default function ClassReportCards({ classCode }) {
             // Each pair fills one A4 sheet; the dashed line marks where to cut.
             <div key={i} className="flex flex-col gap-4 pb-4 print:gap-2 print:pb-0" style={{ breakAfter: i < pairs.length - 1 ? "page" : "auto" }}>
               {pair.map((card, j) => (
-                <div key={card.student_id} data-student={card.student_id} className="relative group">
+                <div key={card.student_id} data-student={card.student_id}>
                   {j === 1 && <div className="border-t border-dashed border-black/40 mb-4 print:mb-2" />}
+                  {/* Per-card print sits in its own strip above the card (never on top of the Reg. No / name), and is
+                      always visible so it also works on phones; the strip is left out of printouts. */}
+                  <div className="print:hidden flex items-center justify-end gap-2 mb-1.5">
+                    <span className="text-xs text-navy/50 truncate">{card.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => printOne(card.student_id, card.name)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-navy border border-navy/15 px-3 py-1.5 rounded-full hover:border-gold hover:bg-gold/10 transition-colors"
+                    >
+                      <Icon name="Printer" size={13} />
+                      Print this card
+                    </button>
+                  </div>
                   <ReportCard meta={data} card={card} />
-                  <button
-                    type="button"
-                    onClick={() => printOne(card.student_id, card.name)}
-                    className="print:hidden absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs font-semibold text-navy bg-white border border-navy/15 px-2.5 py-1.5 rounded-full shadow-sm hover:bg-navy/5 transition-opacity"
-                  >
-                    <Icon name="Printer" size={12} />
-                    Print
-                  </button>
                 </div>
               ))}
             </div>

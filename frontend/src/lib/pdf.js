@@ -18,12 +18,18 @@ function saveBlob(blob, filename) {
 
 /**
  * Open an API PDF to view / print. Computers: a new tab (the browser's viewer has Print and Save); the tab is
- * opened inside the click so pop-up blockers allow it. Phones: the PDF is downloaded instead, so it opens in the
- * phone's PDF app, which has Print and Share.
+ * opened inside the click so pop-up blockers allow it. Phones: the phone's print screen opens straight away
+ * (printer, copies, Save as PDF) — see pdfPrint.js; `filename` is only used if that fails and the file is saved.
  */
 export async function openPdf(path, query, filename = "document.pdf") {
   if (isMobile()) {
-    saveBlob(await api.get(path, query ? { query } : undefined), filename);
+    const blob = await api.get(path, query ? { query } : undefined);
+    try {
+      const { printPdfBlob } = await import("./pdfPrint");
+      await printPdfBlob(blob);
+    } catch {
+      saveBlob(blob, filename); // very old phone browser: fall back to the PDF app
+    }
     return;
   }
   const tab = window.open("", "_blank");

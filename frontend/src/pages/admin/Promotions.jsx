@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import PortalPageHeader from "../../components/portal/PortalPageHeader";
 import Card from "../../components/ui/Card";
 import Icon from "../../components/ui/Icon";
@@ -21,28 +22,6 @@ export default function Promotions() {
   const { data, loading, error, reload } = useApiResource("/promotions");
   const [tab, setTab] = useState("lists");
   const [openClass, setOpenClass] = useState(null);
-  const [startOpen, setStartOpen] = useState(false);
-  const [typedYear, setTypedYear] = useState("");
-  const [starting, setStarting] = useState(false);
-  const toast = useToast();
-
-  const startYear = async () => {
-    setStarting(true);
-    try {
-      const res = await api.post("/promotions/start-new-year", { confirm_year: typedYear.trim() });
-      setStartOpen(false);
-      setTypedYear("");
-      await reload();
-      toast.success(
-        `${res.academic_year} started · ${res.promoted} promoted, ${res.not_promoted} repeating, ${res.left} TC, ${res.passed_out} passed out`
-      );
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Could not start the new year.");
-    } finally {
-      setStarting(false);
-    }
-  };
-
   const withStudents = (data?.classes || []).filter((c) => c.student_count > 0);
   const approved = withStudents.filter((c) => c.status === "approved" && !c.missing_count).length;
 
@@ -136,40 +115,28 @@ export default function Promotions() {
       </Card>
 
       {data && (
-        <Banner tone="warning" className="mb-4">
-          <strong className="block font-semibold">Start the new year only after the final exam — it cannot be undone.</strong>
-          Pressing “Start {data.next_academic_year}” moves every student to their next class at once, and their login and records go with
-          the new class. Promotion lists are real data: if a list is submitted or approved just to try things out, send it back (or have it
-          cleared) before the real year-end promotion.
-        </Banner>
-      )}
-
-      {data && (
         <Card className="p-5">
           <div className="flex flex-wrap items-start gap-4">
             <span className="flex items-center justify-center w-11 h-11 rounded-2xl bg-gold/15 text-gold-dark shrink-0">
-              <Icon name="TrendingUp" size={22} />
+              <Icon name="CalendarRange" size={22} />
             </span>
             <div className="flex-1 min-w-[14rem]">
-              <h2 className="font-heading font-bold text-navy">Start academic year {data.next_academic_year}</h2>
+              <h2 className="font-heading font-bold text-navy">Starting {data.next_academic_year}</h2>
               <p className="text-sm text-navy/60 mt-1">
-                Moves every class together using the approved lists: promoted students go to their new class, not promoted students stay,
-                TC and passed-out students lose their login. The new year starts with no class teachers, subject teachers or timetables — assign them
-                afterwards.
+                Once every class is approved, start the new year from the <strong>Academic Year</strong> page. It promotes every class with these
+                lists, clears this year's Notes of Presence (after you download the backup) and sets the new year's dates — in one step.
               </p>
               <p className="text-xs font-semibold text-navy/50 mt-2">
                 {approved} of {withStudents.length} classes approved
                 {!data.ready && data.blockers.length > 0 && ` · waiting for ${data.blockers.join(", ")}`}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setStartOpen(true)}
-              disabled={!data.ready}
-              className="bg-gold text-navy-dark font-semibold text-sm px-6 py-2.5 rounded-full hover:bg-gold-light transition-colors disabled:opacity-50 max-sm:w-full"
+            <Link
+              to="/admin/academic-year"
+              className="bg-gold text-navy-dark font-semibold text-sm px-6 py-2.5 rounded-full hover:bg-gold-light transition-colors max-sm:w-full text-center"
             >
-              Start {data.next_academic_year}
-            </button>
+              Go to Academic Year
+            </Link>
           </div>
         </Card>
       )}
@@ -181,33 +148,6 @@ export default function Promotions() {
         {openClass && <ClassReview key={openClass} classCode={openClass} onChanged={reload} onClose={() => setOpenClass(null)} />}
       </Drawer>
 
-      <ConfirmDialog
-        open={startOpen}
-        danger
-        title={`Start academic year ${data?.next_academic_year}?`}
-        message={
-          <>
-            <p>Every class moves to {data?.next_academic_year} now. This can't be undone.</p>
-            <p>Type <strong className="text-navy">{data?.next_academic_year}</strong> to confirm.</p>
-          </>
-        }
-        confirmLabel="Yes, start"
-        busy={starting}
-        confirmDisabled={typedYear.trim() !== data?.next_academic_year}
-        onConfirm={startYear}
-        onCancel={() => {
-          setStartOpen(false);
-          setTypedYear("");
-        }}
-      >
-        <input
-          value={typedYear}
-          onChange={(e) => setTypedYear(e.target.value)}
-          placeholder={data?.next_academic_year}
-          aria-label="Type the new academic year"
-          className={inputClass}
-        />
-      </ConfirmDialog>
     </div>
   );
 }

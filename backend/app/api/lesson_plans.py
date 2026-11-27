@@ -1,7 +1,7 @@
 """Notes of Presence: teachers upload a weekly lesson plan PDF per class + subject; the HM approves or returns it.
 
-Weeks run Monday–Friday and are identified by their Monday. The academic year's weeks start at the week of
-1 June and end at the week of 31 May. Any number of plans can be merged into one PDF (e.g. three weeks, or the
+Weeks run Monday–Friday and are identified by their Monday. The weeks follow the start and end dates the HM sets on the
+Academic Year page. Any number of plans can be merged into one PDF (e.g. three weeks, or the
 whole year) for printing or for the government report.
 """
 from collections import defaultdict
@@ -20,24 +20,16 @@ from app.core.database import get_db
 from app.core.dependencies import require_roles
 from app.models.entities import Account, AcademicClass, LessonPlan, SubjectTeacherAssignment, Teacher
 from app.services.permissions import teacher_profile
+from app.services.academic_year import current_year, monday, year_weeks
 
 router = APIRouter(prefix="/lesson-plans", tags=["Notes of Presence"])
 
 MAX_BYTES = 3 * 1024 * 1024
 
 
-def monday(d: date) -> date:
-    return d - timedelta(days=d.weekday())
-
-
-def year_weeks(academic_year: str) -> list[date]:
-    """Mondays of every week of the academic year (June to May)."""
-    start = int(academic_year[:4])
-    first, last = monday(date(start, 6, 1)), date(start + 1, 5, 31)
-    weeks, d = [], first
-    while d <= last:
-        weeks.append(d); d += timedelta(days=7)
-    return weeks
+def weeks_now(db: Session) -> list[date]:
+    """Mondays of the running year, from the start/end dates the HM set on the Academic Year page."""
+    return year_weeks(current_year(db))
 
 
 def week_label(m: date) -> str:
@@ -87,7 +79,7 @@ def _filtered(db: Session, account: Account, year: str, teacher_id: int | None, 
 def setup(db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
     year = current_academic_year(db)
     today = monday(date.today())
-    weeks = [{"week_start": w, "label": week_label(w)} for w in year_weeks(year) if w <= today + timedelta(days=21)]
+    weeks = [{"week_start": w, "label": week_label(w)} for w in weeks_now(db) if w <= today + timedelta(days=21)]
     out = {"academic_year": year, "current_week": today, "weeks": weeks}
     if account.role == "teacher":
         out["slots"] = [{"class_code": s["class_code"], "subject": s["subject"]} for s in teacher_slots(db, teacher_profile(db, account), year)]
@@ -116,7 +108,7 @@ async def upload_plan(class_code: str = Form(...), subject: str = Form(...), wee
     if not db.query(SubjectTeacherAssignment).filter_by(class_id=cls.id, subject=subject, teacher_id=teacher.id, academic_year=year).first():
         raise HTTPException(403, f"You are not the {subject} teacher of {cls.code}")
     week = monday(week_start)
-    if week not in year_weeks(year): raise HTTPException(422, f"Pick a week of the {year} school year")
+    if week not in weeks_now(db): raise HTTPException(422, f"Pick a week of the {year} school year")
     if week > monday(date.today()) + timedelta(days=21): raise HTTPException(422, "You can upload up to three weeks ahead only")
     data = await file.read()
     if len(data) > MAX_BYTES: raise HTTPException(422, "The PDF must be 3 MB or smaller")
@@ -210,7 +202,7 @@ def overview(db: Session = Depends(get_db), _: Account = Depends(require_roles("
     for p in db.query(LessonPlan).filter(LessonPlan.academic_year == year).all():
         by_week[p.week_start][(p.class_id, p.subject)] = p
     weeks = []
-    for w in reversed([w for w in year_weeks(year) if w <= today]):
+    for w in reversed([w for w in weeks_now(db) if w <= today]):
         plans = by_week.get(w, {})
         missing = [{"teacher_name": names.get(t), "class_code": code, "subject": subj} for t, cid, code, subj in slots if (cid, subj) not in plans]
         weeks.append({"week_start": w, "label": week_label(w), "expected": len(slots), "uploaded": len(plans),

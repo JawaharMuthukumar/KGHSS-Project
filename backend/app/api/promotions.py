@@ -208,13 +208,13 @@ def return_class_promotion(class_code: str, data: ReturnIn, db: Session = Depend
     return get_class_promotion(class_code, db, account)
 
 
-@router.post("/start-new-year", summary="HM moves every class to the next academic year using the approved lists")
-def start_new_year(data: StartYearIn, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
-    overview = promotion_overview(db, _)
+def promote_all(db: Session, account: Account) -> dict:
+    """Move every class to the next academic year using the approved lists. Does not commit: the Academic Year
+    page's "start new year" runs this together with its own steps in one transaction."""
+    overview = promotion_overview(db, account)
     year, new_year = overview["academic_year"], overview["next_academic_year"]
-    if data.confirm_year != new_year: raise HTTPException(422, f"Type {new_year} to confirm")
     if not overview["ready"]:
-        raise HTTPException(409, "These classes are not approved yet: " + ", ".join(overview["blockers"]))
+        raise HTTPException(409, "These classes' promotion lists are not approved yet: " + ", ".join(overview["blockers"]))
 
     classes = db.query(AcademicClass).filter_by(is_active=True).all()
     moved = {"promoted": 0, "not_promoted": 0, "left": 0, "passed_out": 0}
@@ -247,5 +247,13 @@ def start_new_year(data: StartYearIn, db: Session = Depends(get_db), _: Account 
         cls.academic_year = new_year
     # Last year's class notices were for last year's batch.
     db.query(Notice).filter(Notice.audience == "class", Notice.published.is_(True)).update({Notice.published: False})
-    db.commit()
+    db.flush()
     return {"previous_year": year, "academic_year": new_year, **moved}
+
+
+@router.post("/start-new-year", summary="Kept for older screens: starts the new year the same way as the Academic Year page")
+def start_new_year(data: StartYearIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin"))):
+    from app.api.academic_year import start_next_year  # the full year change now lives on the Academic Year page
+    overview = promotion_overview(db, account)
+    if data.confirm_year != overview["next_academic_year"]: raise HTTPException(422, f"Type {overview['next_academic_year']} to confirm")
+    return start_next_year(db, account, None, None)

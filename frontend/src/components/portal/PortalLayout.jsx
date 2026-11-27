@@ -13,6 +13,7 @@ import ChangeStaffIdDialog from "./ChangeStaffIdDialog";
 import SignatureDialog from "./SignatureDialog";
 import { AlertsProvider, useAlerts } from "../../context/AlertsContext";
 import { formatDate } from "../../utils/formatDate";
+import { useApiResource } from "../../hooks/useApiResource";
 import { SCHOOL_LOGO, SCHOOL_LOGO_ALT } from "../../constants/brand";
 
 /** Lets a teacher who is Class Teacher of several sections pick which one the portal pages work on. */
@@ -315,6 +316,11 @@ function PortalShell({ role }) {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [staffIdOpen, setStaffIdOpen] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
+  const { data: academicYear, reload: reloadYear } = useApiResource("/academic-year");
+  useEffect(() => {
+    window.addEventListener("kghss:academic-year-changed", reloadYear);
+    return () => window.removeEventListener("kghss:academic-year-changed", reloadYear);
+  }, [reloadYear]);
   // Report Cards' "Add your signature" link opens the same dialog
   useEffect(() => {
     const open = () => setSignatureOpen(true);
@@ -384,11 +390,23 @@ function PortalShell({ role }) {
             <img src={SCHOOL_LOGO} alt={SCHOOL_LOGO_ALT} className="w-9 h-9 rounded-full bg-white object-contain shrink-0" />
             <div className="min-w-0">
               <p className="font-heading font-bold text-navy text-[15px] leading-tight truncate">{pageTitle}</p>
-              <p className="text-[11px] text-navy/45 leading-tight truncate">GHSS Kangayampalayam</p>
+              <p className="text-[11px] text-navy/45 leading-tight truncate">
+                GHSS Kangayampalayam{academicYear ? ` · ${academicYear.display}` : ""}
+              </p>
             </div>
           </div>
           {role === "teacher" && <TeacherClassSwitcher className="hidden lg:flex" />}
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {/* Academic year the HM set (Academic Year page) — shown to every role */}
+            {academicYear && (
+              <span
+                title={`Academic year ${academicYear.label} · ${academicYear.range}`}
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-navy/70 bg-navy/[0.05] border border-navy/10 px-3 py-1.5 rounded-full whitespace-nowrap"
+              >
+                <Icon name="CalendarRange" size={13} className="text-gold-dark" />
+                Academic Year {academicYear.display}
+              </span>
+            )}
             <NotificationBell />
           </div>
           <div className="relative">

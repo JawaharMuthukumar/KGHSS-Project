@@ -54,6 +54,20 @@ class TeacherSignature(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
+class AcademicYear(Base):
+    """The school year the HM runs: its label (e.g. 2026-2027) and the start / end dates the HM sets.
+    Exactly one row is current; closing it (Academic Year page) promotes students, clears that year's
+    Notes of Presence PDFs and makes the next year current."""
+    __tablename__ = "academic_years"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    label: Mapped[str] = mapped_column(String(9), unique=True)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+    is_current: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class LessonPlan(Base):
     """'Notes of Presence': a teacher's weekly lesson plan (PDF) for one class + subject, approved by the HM.
     The PDF bytes live in the DB (Render's disk is wiped on redeploy) and are deferred so lists never load them."""

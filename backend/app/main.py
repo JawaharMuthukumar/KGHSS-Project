@@ -12,6 +12,7 @@ from app.api.exports import router as exports_router
 from app.api.analytics import router as analytics_router
 from app.api.signatures import router as signatures_router
 from app.api.lesson_plans import router as lesson_plans_router
+from app.api.academic_year import router as academic_year_router
 from app.api.promotions import router as promotions_router
 from app.api.school import router as school_router
 from app.core.config import settings
@@ -19,6 +20,7 @@ from app.core.database import Base, engine, get_db
 from app.models import entities  # noqa: F401 - registers models with SQLAlchemy metadata
 from app.models.entities import AcademicClass, OtherSubject, SubjectGroup
 from app.services.mark_scheme import GROUP_SUBJECTS, HSC_PRACTICAL_SUBJECTS
+from app.services.academic_year import current_year
 
 app = FastAPI(
     title=settings.app_name,
@@ -48,6 +50,7 @@ app.include_router(exports_router, prefix=settings.api_v1_prefix)
 app.include_router(analytics_router, prefix=settings.api_v1_prefix)
 app.include_router(signatures_router, prefix=settings.api_v1_prefix)
 app.include_router(lesson_plans_router, prefix=settings.api_v1_prefix)
+app.include_router(academic_year_router, prefix=settings.api_v1_prefix)
 app.mount("/uploads", StaticFiles(directory="uploads", check_dir=False), name="uploads")
 
 
@@ -148,6 +151,9 @@ def initialize_schema_and_reference_classes():
         # Non-exam periods the timetable always offered; the HM adds more (e.g. Physical Education) from Teachers.
         if not db.query(OtherSubject).first():
             db.add_all(OtherSubject(name=n) for n in ("PET", "Library", "Value Education", "Lab", "Drawing", "Yoga"))
+        db.flush()
+        # The running academic year (June–May until the HM sets its dates on the Academic Year page)
+        current_year(db)
         db.commit()
 
 

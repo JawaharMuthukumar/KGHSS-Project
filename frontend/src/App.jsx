@@ -55,6 +55,7 @@ const TeacherReports = lazy(() => import("./pages/teacher/Reports"));
 const ClassAnalytics = lazy(() => import("./pages/teacher/ClassAnalytics"));
 const TeacherNotesOfPresence = lazy(() => import("./pages/teacher/NotesOfPresence"));
 const AdminNotesOfPresence = lazy(() => import("./pages/admin/NotesOfPresence"));
+const AdminAcademicYear = lazy(() => import("./pages/admin/AcademicYear"));
 const TeacherLeaveRequests = lazy(() => import("./pages/teacher/LeaveRequests"));
 const TeacherPromotion = lazy(() => import("./pages/teacher/Promotion"));
 const StudentDashboard = lazy(() => import("./pages/student/StudentDashboard"));
@@ -110,6 +111,7 @@ export default function App() {
                   <Route path="timetables" element={<AdminTimetables />} />
                   <Route path="reports" element={<AdminResultsReports />} />
                   <Route path="notes-of-presence" element={<AdminNotesOfPresence />} />
+                  <Route path="academic-year" element={<AdminAcademicYear />} />
                   <Route path="attendance-report" element={<AdminAttendanceReport />} />
                   <Route path="notices" element={<AdminNotices />} />
                   <Route path="leave-requests" element={<AdminLeaveRequests />} />

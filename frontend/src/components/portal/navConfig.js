@@ -17,6 +17,7 @@ export const portalNav = {
     { to: "/admin/notes-of-presence", label: "Notes of Presence", icon: "BookOpen", badge: "notes" },
     { to: "/admin/attendance-report", label: "Attendance Report", icon: "ClipboardCheck" },
     { to: "/admin/promotions", label: "Promotions", icon: "TrendingUp" },
+    { to: "/admin/academic-year", label: "Academic Year", icon: "CalendarRange" },
     { to: "/admin/notices", label: "Notices", icon: "Bell" },
     { to: "/admin/leave-requests", label: "Leave Requests", icon: "CalendarDays", badge: "leave" },
     { to: "/admin/certificates", label: "Certificates", icon: "FileCheck2", badge: "certificates" },

@@ -10,6 +10,7 @@ import { enableAppInstall } from "../../lib/installApp";
 import InstallAppBanner from "./InstallAppBanner";
 import ChangePasswordDialog from "./ChangePasswordDialog";
 import ChangeStaffIdDialog from "./ChangeStaffIdDialog";
+import SignatureDialog from "./SignatureDialog";
 import { AlertsProvider, useAlerts } from "../../context/AlertsContext";
 import { formatDate } from "../../utils/formatDate";
 import { SCHOOL_LOGO, SCHOOL_LOGO_ALT } from "../../constants/brand";
@@ -313,6 +314,13 @@ function PortalShell({ role }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [staffIdOpen, setStaffIdOpen] = useState(false);
+  const [signatureOpen, setSignatureOpen] = useState(false);
+  // Report Cards' "Add your signature" link opens the same dialog
+  useEffect(() => {
+    const open = () => setSignatureOpen(true);
+    window.addEventListener("kghss:open-signature", open);
+    return () => window.removeEventListener("kghss:open-signature", open);
+  }, []);
   const [darkMode, setDarkMode] = useState(readDarkMode);
   const items = portalNav[role] || [];
   useAutoCapitalize(role === "admin" || role === "teacher");
@@ -451,6 +459,20 @@ function PortalShell({ role }) {
                     <Icon name="KeyRound" size={17} />
                     Change Password
                   </button>
+                  {role === "teacher" && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setSignatureOpen(true);
+                      }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-navy hover:bg-navy/5 transition-colors border-b border-navy/8"
+                    >
+                      <Icon name="Pencil" size={17} />
+                      My Signature
+                    </button>
+                  )}
                   {role === "admin" && (
                     <button
                       type="button"
@@ -529,6 +551,15 @@ function PortalShell({ role }) {
       )}
       <ChangePasswordDialog open={passwordOpen} onClose={() => setPasswordOpen(false)} />
       {role === "admin" && <ChangeStaffIdDialog open={staffIdOpen} onClose={() => setStaffIdOpen(false)} />}
+      {role === "teacher" && (
+        <SignatureDialog
+          open={signatureOpen}
+          onClose={() => {
+            setSignatureOpen(false);
+            window.dispatchEvent(new CustomEvent("kghss:signature-changed"));
+          }}
+        />
+      )}
 
       {role === "student" && <ComplaintFab />}
     </div>

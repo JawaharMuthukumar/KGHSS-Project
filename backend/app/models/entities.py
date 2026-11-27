@@ -45,6 +45,15 @@ class Teacher(Base):
     account: Mapped[Account] = relationship()
 
 
+class TeacherSignature(Base):
+    """A teacher's signature (PNG data URL, transparent background) for signed report cards.
+    Kept in its own table so teacher listings never carry it; only report-card printing reads it."""
+    __tablename__ = "teacher_signatures"
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("teachers.id", ondelete="CASCADE"), primary_key=True)
+    image: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 class Student(Base):
     __tablename__ = "students"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -106,6 +115,11 @@ class Assessment(Base):
     # student's present days ({student_id: days}, never above working_days). When set, reports use these instead.
     working_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     present_days: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Class teacher's sign-off for the report cards: who/when, and a fingerprint of the marks they signed.
+    # If the marks change afterwards the fingerprint no longer matches and the signature stops showing.
+    signed_by: Mapped[int | None] = mapped_column(ForeignKey("teachers.id", ondelete="SET NULL"), nullable=True)
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    signed_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 

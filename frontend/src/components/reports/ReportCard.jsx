@@ -31,6 +31,9 @@ const TAMIL_TERM = {
 const PASS_MARK = 35;
 // Split-mark parts shown under a subject's total (e.g. "T64 · P25")
 const PART_SHORT = { theory: "T", practical: "P", internal: "I", sa: "SA", fa: "FA" };
+// Paper-card order: the smaller assessed parts first, theory last (10 | 90, 10 | 20 | 70, 25 | 75)
+const PART_ORDER = ["internal", "practical", "fa", "sa", "theory"];
+const orderParts = (parts) => [...parts].sort((a, b) => PART_ORDER.indexOf(a.key) - PART_ORDER.indexOf(b.key));
 const PART_NAMES = {
   theory: "கோட்பாடு / Theory",
   practical: "செய்முறை / Practical",
@@ -82,6 +85,10 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
   // Which split parts appear on this card (for the T / P / I key under the table)
   const usedParts = [...new Set(card.rows.flatMap((r) => (r.splits || []).flatMap((s) => (s || []).map((p) => p.key))))].filter((k) => PART_SHORT[k]);
   const hasSplits = usedParts.length > 0;
+  // Like the school's paper card: a subject with split marks gets one box per part (Internal | Practical | Theory)
+  // in the exams that split it; exams without a split use one box across the subject.
+  const colsPer = meta.subjects.map((_, i) => Math.max(1, ...card.rows.map((r) => r.splits?.[i]?.length || 0)));
+  const firstSplitRow = meta.subjects.map((_, i) => card.rows.findIndex((r) => r.splits?.[i]));
   return (
     <div ref={ref} className="report-card bg-white text-black border-2 border-black p-3 print:p-2 text-[11px]" style={{ breakInside: "avoid", ...printExact }}>
       <div className="flex items-start justify-between gap-3 mb-2">
@@ -111,9 +118,7 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
       <table className="w-full border-collapse table-auto">
         <colgroup>
           <col style={{ width: "18%" }} />
-          {meta.subjects.map((s) => (
-            <col key={s} />
-          ))}
+          {meta.subjects.flatMap((s, i) => Array.from({ length: colsPer[i] }, (_, k) => <col key={`${s}-${k}`} />))}
           <col style={{ width: "6%" }} />
           <col style={{ width: "7%" }} />
           <col style={{ width: "6.5%" }} />
@@ -126,8 +131,8 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
             <th className={head}>
               <Bi ta="தேர்வு" en="Exam" nowrap />
             </th>
-            {meta.subjects.map((s) => (
-              <th key={s} className={head}>
+            {meta.subjects.map((s, i) => (
+              <th key={s} colSpan={colsPer[i]} className={head}>
                 <Bi ta={TAMIL_SUBJECT[s] || s} en={s} extra="(100)" nowrap />
               </th>
             ))}
@@ -152,7 +157,7 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
           </tr>
         </thead>
         <tbody>
-          {card.rows.map((r) => (
+          {card.rows.map((r, rowIndex) => (
             <tr key={r.term} className="h-8">
               <td className={`${cell} text-left leading-tight font-semibold ${noSplit}`}>
                 <span className="block text-[10px] whitespace-nowrap print:whitespace-normal">{TAMIL_TERM[r.term] || r.term}</span>
@@ -161,24 +166,46 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
                   {r.subject_max && r.subject_max !== 100 ? ` (/${r.subject_max})` : ""}
                 </span>
               </td>
-              {r.scores.map((sc, i) => {
+              {r.scores.flatMap((sc, i) => {
                 const split = r.splits?.[i];
-                return (
-                  <td key={i} className={cell}>
-                    <Score value={sc} passMark={r.pass_mark} />
-                    {/* Exams whose pattern splits the 100 (Theory / Practical / Internal) show each part under the total */}
-                    {split && (
-                      <span className="block mt-0.5 text-[8px] leading-none text-black/70 whitespace-nowrap" title={split.map((p) => `${p.label} ${p.value ?? "-"}/${p.max}`).join(", ")}>
-                        {split.map((p) => `${PART_SHORT[p.key] || p.label[0]}${p.value ?? "-"}`).join(" · ")}
+                if (!split) {
+                  return [
+                    <td key={i} colSpan={colsPer[i]} className={cell}>
+                      <Score value={sc} passMark={r.pass_mark} />
+                    </td>,
+                  ];
+                }
+                // One box per part; the first split row also shows each box's max (e.g. I10 | T90), as on the paper card.
+                // A subject below the pass mark gets a red line under its boxes.
+                const failed = typeof sc === "number" && sc < (r.pass_mark ?? PASS_MARK);
+                const parts = orderParts(split);
+                return parts.map((p, k) => (
+                  <td
+                    key={`${i}-${p.key}`}
+                    colSpan={k === parts.length - 1 ? colsPer[i] - parts.length + 1 : 1}
+                    title={`${p.label} ${p.value ?? "-"}/${p.max}`}
+                    style={failed ? { ...printExact, boxShadow: "inset 0 -3px 0 #dc2626" } : undefined}
+                    className={`${cell} !px-0.5 ${failed ? "text-red-700 font-bold" : ""}`}
+                  >
+                    {firstSplitRow[i] === rowIndex && (
+                      <span className="block -mt-0.5 mb-0.5 border-b border-black/60 text-[8px] font-semibold leading-tight text-black/70 whitespace-nowrap">
+                        {PART_SHORT[p.key] || p.label[0]}
+                        {p.max}
                       </span>
                     )}
+                    {p.value ?? ""}
                   </td>
-                );
+                ));
               })}
               <td className={`${cell} font-bold`}>{r.total ?? ""}</td>
               <td className={`${cell} text-[10px] font-semibold leading-tight ${noSplit}`}>{r.remark ?? ""}</td>
               <td className={cell}>{r.attendance ? `${r.attendance.present}/${r.attendance.working}` : ""}</td>
-              <td className={cell}></td>
+              {/* Class teacher's digital signature, once they have signed this exam's report cards */}
+              <td className={`${cell} !p-0.5`}>
+                {meta.signatures?.[r.term] && (
+                  <img src={meta.signatures[r.term]} alt="Class teacher signature" className="block mx-auto max-h-7 max-w-full object-contain" />
+                )}
+              </td>
               <td className={cell}>{r.total != null ? r.class_top ?? "" : ""}</td>
               <td className={cell}></td>
             </tr>
@@ -192,9 +219,9 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
           className="inline-flex items-center justify-center w-4 h-4 mt-px rounded-full border-2 border-red-600 bg-red-50 shrink-0"
         />
         <p>
-          குறிப்பு : வட்டமிட்ட மதிப்பெண்கள் தேர்ச்சி மதிப்பெண்ணுக்கு ({passMarks}) குறைவு, அந்தப் பாடங்களில் கவனம் தேவை.
+          குறிப்பு : வட்டமிட்ட / சிவப்புக் கோடிட்ட மதிப்பெண்கள் தேர்ச்சி மதிப்பெண்ணுக்கு ({passMarks}) குறைவு, அந்தப் பாடங்களில் கவனம் தேவை.
           <br />
-          Note: Circled marks are below the pass mark ({passMarks}); those subjects need attention.
+          Note: Circled or red-underlined marks are below the pass mark ({passMarks}); those subjects need attention.
           {hasSplits && (
             <>
               <br />

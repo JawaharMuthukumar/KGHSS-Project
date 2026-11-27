@@ -102,12 +102,6 @@ export default function StudentDashboard() {
                     <p className="text-xs text-navy/55 truncate">
                       {[entry.is_class_teacher ? "Class Teacher" : null, ...entry.subjects].filter(Boolean).join(" · ")}
                     </p>
-                    {entry.phone && (
-                      <a href={`tel:${entry.phone}`} className="inline-flex items-center gap-1 text-xs text-teal hover:underline">
-                        <Icon name="Phone" size={11} />
-                        {entry.phone}
-                      </a>
-                    )}
                   </div>
                   {unread > 0 && (
                     <Link

@@ -15,6 +15,7 @@ from app.core.security import hash_password
 from app.api.auth import teachers_named
 from app.services.permissions import teacher_profile, student_profile, assigned_class, assigned_classes, is_class_teacher_of, can_access_class
 from app.services.permissions import require_teacher_class_scope
+from app.services.signoff import exam_signatures
 from app.services.mark_scheme import class_scheme, subject_components, subjects_for_class, terms_for_grade
 from app.models.entities import (Account, AcademicClass, Teacher, Student, ClassTeacherAssignment,
     SubjectTeacherAssignment, Assessment, Mark, AttendanceMonth, AttendanceRecord, TimetableEntry,
@@ -547,7 +548,7 @@ def report_remark(percent: float) -> str:
     return next(label for floor, label in REMARK_BANDS if percent >= floor)
 
 
-def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | None = None) -> dict:
+def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | None = None, with_signatures: bool = False) -> dict:
     """Per-student report cards (every exam of the year as a row), as printed on the school's progress card.
     Class-wide data is always loaded because each row shows the class's top total for that exam."""
     subjects = subjects_for_class(cls)
@@ -593,7 +594,9 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
             rows.append({"term": term, "scores": scores, "splits": splits, "total": total, "remark": report_remark(total * 100 / (term_max[term] * len(subjects))),
                 "class_top": class_top[term], "attendance": {"present": att[1][s.id], "working": att[0]} if att and att[1].get(s.id) is not None else None, **limits})
         cards.append({"student_id": s.id, "registration_no": s.registration_no, "name": s.account.full_name, "rows": rows})
-    return {"class_code": cls.code, "grade": cls.grade, "academic_year": cls.academic_year, "subjects": subjects,
+    # Class teacher's signature per exam they signed (printed cards only — never sent to the student portal)
+    signatures = exam_signatures(db, assessments) if with_signatures else {}
+    return {"class_code": cls.code, "grade": cls.grade, "academic_year": cls.academic_year, "subjects": subjects, "signatures": signatures,
         "max_total": full, "cards": cards}
 
 
@@ -601,7 +604,7 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
 def class_report_cards(class_code: str, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
     cls = get_class(db, class_code)
     if not can_access_class(db, account, cls, allow_subject=False): raise HTTPException(403, "Only the class teacher can view report cards")
-    return build_report_cards(db, cls)
+    return build_report_cards(db, cls, with_signatures=True)
 
 
 @router.get("/students/{student_id}/report-card", summary="One student's progress card")
@@ -1365,15 +1368,15 @@ def teacher_dashboard(class_code: str | None = None, db: Session = Depends(get_d
 def student_dashboard(db: Session = Depends(get_db), account: Account = Depends(require_roles("student"))):
     student=student_profile(db,account); cls=student.school_class
     notices=db.query(Notice).filter(Notice.published.is_(True),((Notice.class_id==cls.id)|(Notice.class_id.is_(None)&Notice.audience.in_(["all","students","website"])))) .order_by(Notice.created_at.desc()).limit(10).all()
-    # Class teacher first, then subject teachers; each with phone so students/parents can reach them.
+    # Class teacher first, then subject teachers. Phone numbers are not shared with students.
     staff={}
     for link in db.query(ClassTeacherAssignment).filter_by(class_id=cls.id,academic_year=cls.academic_year).all():
         t=db.get(Teacher,link.teacher_id)
-        if t: staff[t.id]={"teacher_id":t.id,"teacher_name":t.account.full_name,"phone":t.phone,"subjects":[],"is_class_teacher":True}
+        if t: staff[t.id]={"teacher_id":t.id,"teacher_name":t.account.full_name,"subjects":[],"is_class_teacher":True}
     for a in db.query(SubjectTeacherAssignment).filter_by(class_id=cls.id,academic_year=cls.academic_year).order_by(SubjectTeacherAssignment.subject).all():
         t=db.get(Teacher,a.teacher_id)
         if not t: continue
-        entry=staff.setdefault(t.id,{"teacher_id":t.id,"teacher_name":t.account.full_name,"phone":t.phone,"subjects":[],"is_class_teacher":False})
+        entry=staff.setdefault(t.id,{"teacher_id":t.id,"teacher_name":t.account.full_name,"subjects":[],"is_class_teacher":False})
         entry["subjects"].append(a.subject)
     # Same subject order as the class's report card (Tamil, English, ...); unknown subjects go last.
     order={sub:i for i,sub in enumerate(subjects_for_class(cls))}

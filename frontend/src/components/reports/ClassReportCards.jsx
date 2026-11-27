@@ -7,18 +7,21 @@ import ReportCard from "./ReportCard";
 import { useApiResource } from "../../hooks/useApiResource";
 import { printElement } from "../../lib/printElement";
 import { ContentSkeleton } from "../ui/Skeleton";
+import ReportSignoff from "./ReportSignoff";
+import { useAuth } from "../../context/AuthContext";
 
 /** Every student's progress card for a class, printed two per A4 portrait sheet. */
 export default function ClassReportCards({ classCode }) {
   const sheet = useRef(null);
   const [search, setSearch] = useState("");
-  const { data, loading, error } = useApiResource(`/classes/${classCode}/report-cards`, {
+  const { user } = useAuth();
+  const { data, loading, error, reload } = useApiResource(`/classes/${classCode}/report-cards`, {
     enabled: Boolean(classCode),
     deps: [classCode],
   });
 
   if (error) return <Banner tone="error">{error.message}</Banner>;
-  if (loading) return <ContentSkeleton rows={4} />;
+  if (loading && !data) return <ContentSkeleton rows={4} />; // re-fetches after signing keep the cards on screen
   if (!data || data.cards.length === 0) return <Card className="p-8 text-center text-navy/50">No students in Class {classCode}.</Card>;
 
   const q = search.trim().toLowerCase();
@@ -33,6 +36,7 @@ export default function ClassReportCards({ classCode }) {
 
   return (
     <div>
+      {user?.role === "teacher" && <ReportSignoff classCode={classCode} onChanged={reload} />}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div className="relative w-full max-w-xs">
           <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy/35" />

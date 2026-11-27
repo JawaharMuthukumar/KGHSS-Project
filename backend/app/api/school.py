@@ -20,7 +20,7 @@ from app.services.mark_scheme import class_scheme, subject_components, subjects_
 from app.models.entities import (Account, AcademicClass, Teacher, Student, ClassTeacherAssignment,
     SubjectTeacherAssignment, Assessment, Mark, AttendanceMonth, AttendanceRecord, TimetableEntry,
     Notice, CertificateRequest, LeaveRequest, ComplaintThread, ComplaintMessage, SchoolEvent, GalleryItem, ContactMessage,
-    PagePost, PagePostImage)
+    PagePost, PagePostImage, LessonPlan)
 from app.schemas.common import (ClassIn, ClassTeacherIn, SubjectTeacherIn, TeacherCreate, TeacherUpdate,
     StudentCreate, StudentUpdate, StudentSelfUpdate, MarksIn, AttendanceIn, TimetableIn, NoticeIn, NoticeUpdate, CertificateIn, DecisionIn,
     LeaveRequestIn, ComplaintMessageIn, EventIn, EventUpdate, GalleryIn, PublicContactIn)
@@ -853,9 +853,27 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
         for req in leaves.filter(LeaveRequest.status != "pending", LeaveRequest.decided_at >= datetime.utcnow() - timedelta(days=3)).order_by(LeaveRequest.id.desc()).limit(5).all():
             items.append({"key": f"leave-{req.id}-{req.status}", "kind": "leave", "title": f"Leave {req.status}", "detail": f"{req.from_date:%d %b} – {req.to_date:%d %b}",
                           "to": "/student/leave", "created_at": req.decided_at, "silent_badge": True})
+    # Notes of Presence: the HM is told about plans waiting for approval; a teacher about plans the HM returned.
+    plans = db.query(LessonPlan)
+    if account.role == "admin":
+        plans = plans.filter(LessonPlan.academic_year == current_academic_year(db))
+        for p in plans.filter(LessonPlan.status == "pending").order_by(LessonPlan.id.desc()).limit(10).all():
+            t = db.get(Teacher, p.teacher_id)
+            items.append({"key": f"notes-{p.id}-{int(p.uploaded_at.timestamp()) if p.uploaded_at else 0}", "kind": "notes", "title": "Lesson plan to approve",
+                          "detail": f"{t.account.full_name if t else 'Teacher'} · {db.get(AcademicClass, p.class_id).code} {p.subject}",
+                          "to": "/admin/notes-of-presence", "created_at": p.uploaded_at})
+    elif account.role == "teacher":
+        plans = plans.filter(LessonPlan.teacher_id == teacher_profile(db, account).id)
+        for p in plans.filter(LessonPlan.status == "returned").order_by(LessonPlan.id.desc()).limit(10).all():
+            items.append({"key": f"notes-returned-{p.id}-{int(p.decided_at.timestamp()) if p.decided_at else 0}", "kind": "notes", "title": "Lesson plan returned by HM",
+                          "detail": f"{db.get(AcademicClass, p.class_id).code} {p.subject} · {p.note or 'see the note'}",
+                          "to": "/teacher/notes-of-presence", "created_at": p.decided_at})
+    else:
+        plans = plans.filter(LessonPlan.id < 0)
     items.sort(key=lambda i: i["created_at"] or datetime.min, reverse=True)
 
-    counts = {"certificates": sum(1 for i in items if i["kind"] == "certificate" and not i.get("silent_badge")), "leave": sum(1 for i in items if i["kind"] == "leave" and not i.get("silent_badge"))}
+    counts = {"certificates": sum(1 for i in items if i["kind"] == "certificate" and not i.get("silent_badge")), "leave": sum(1 for i in items if i["kind"] == "leave" and not i.get("silent_badge")),
+              "notes": sum(1 for i in items if i["kind"] == "notes")}
     cache: dict = {}
     recent_notices = [{"id": n.id, "title": n.title, "author_teacher_id": notice_author(db, n, cache)["author_teacher_id"]} for n in notices.order_by(Notice.id.desc()).limit(30).all()]
     # Students: the self-editable profile fields still blank (the portal nags until they are filled in).
@@ -865,7 +883,8 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
             ("Father's or mother's name", (student.father_name or "").strip() or (student.mother_name or "").strip()),
             ("Address", (student.address or "").strip())) if not filled]
     return {"counts": counts, "items": items, "notices": recent_notices, "profile_missing": profile_missing,
-            "versions": {"certificates": version(certs, CertificateRequest, extra=[CertificateRequest.downloaded_at]), "leave": version(leaves, LeaveRequest), "notices": version(notices, Notice, decided=False)}}
+            "versions": {"certificates": version(certs, CertificateRequest, extra=[CertificateRequest.downloaded_at]), "leave": version(leaves, LeaveRequest), "notices": version(notices, Notice, decided=False),
+                         "notes": version(plans, LessonPlan, extra=[LessonPlan.uploaded_at])}}
 
 
 @router.get("/classes/{class_code}/notices")

@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, JSON, LargeBinary, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -52,6 +52,28 @@ class TeacherSignature(Base):
     teacher_id: Mapped[int] = mapped_column(ForeignKey("teachers.id", ondelete="CASCADE"), primary_key=True)
     image: Mapped[str] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class LessonPlan(Base):
+    """'Notes of Presence': a teacher's weekly lesson plan (PDF) for one class + subject, approved by the HM.
+    The PDF bytes live in the DB (Render's disk is wiped on redeploy) and are deferred so lists never load them."""
+    __tablename__ = "lesson_plans"
+    __table_args__ = (UniqueConstraint("class_id", "subject", "week_start"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("teachers.id", ondelete="CASCADE"), index=True)
+    class_id: Mapped[int] = mapped_column(ForeignKey("classes.id", ondelete="CASCADE"), index=True)
+    subject: Mapped[str] = mapped_column(String(100))
+    academic_year: Mapped[str] = mapped_column(String(9), index=True)
+    week_start: Mapped[date] = mapped_column(Date, index=True)  # the Monday of the week
+    topic: Mapped[str] = mapped_column(String(200))
+    file_name: Mapped[str] = mapped_column(String(200))
+    file_size: Mapped[int] = mapped_column(Integer)
+    pdf: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)  # pending / approved / returned
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)  # HM's reason when returning it
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
 class Student(Base):

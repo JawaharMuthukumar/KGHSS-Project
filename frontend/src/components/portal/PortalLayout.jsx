@@ -112,7 +112,7 @@ function NotificationBell() {
   const { items, unreadNotices, noticePath, counts } = useAlerts();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const total = (counts.certificates || 0) + (counts.leave || 0) + (unreadNotices || 0);
+  const total = (counts.certificates || 0) + (counts.leave || 0) + (counts.notes || 0) + (unreadNotices || 0);
 
   const go = (to) => {
     setOpen(false);

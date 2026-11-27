@@ -11,6 +11,7 @@ from app.api.subject_marks import router as subject_marks_router
 from app.api.exports import router as exports_router
 from app.api.analytics import router as analytics_router
 from app.api.signatures import router as signatures_router
+from app.api.lesson_plans import router as lesson_plans_router
 from app.api.promotions import router as promotions_router
 from app.api.school import router as school_router
 from app.core.config import settings
@@ -46,6 +47,7 @@ app.include_router(subject_marks_router, prefix=settings.api_v1_prefix)
 app.include_router(exports_router, prefix=settings.api_v1_prefix)
 app.include_router(analytics_router, prefix=settings.api_v1_prefix)
 app.include_router(signatures_router, prefix=settings.api_v1_prefix)
+app.include_router(lesson_plans_router, prefix=settings.api_v1_prefix)
 app.mount("/uploads", StaticFiles(directory="uploads", check_dir=False), name="uploads")
 
 

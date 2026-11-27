@@ -53,6 +53,8 @@ const CertificateRequests = lazy(() => import("./pages/teacher/CertificateReques
 const TeacherAttendanceReport = lazy(() => import("./pages/teacher/AttendanceReport"));
 const TeacherReports = lazy(() => import("./pages/teacher/Reports"));
 const ClassAnalytics = lazy(() => import("./pages/teacher/ClassAnalytics"));
+const TeacherNotesOfPresence = lazy(() => import("./pages/teacher/NotesOfPresence"));
+const AdminNotesOfPresence = lazy(() => import("./pages/admin/NotesOfPresence"));
 const TeacherLeaveRequests = lazy(() => import("./pages/teacher/LeaveRequests"));
 const TeacherPromotion = lazy(() => import("./pages/teacher/Promotion"));
 const StudentDashboard = lazy(() => import("./pages/student/StudentDashboard"));
@@ -107,6 +109,7 @@ export default function App() {
                   <Route path="students" element={<AdminStudents />} />
                   <Route path="timetables" element={<AdminTimetables />} />
                   <Route path="reports" element={<AdminResultsReports />} />
+                  <Route path="notes-of-presence" element={<AdminNotesOfPresence />} />
                   <Route path="attendance-report" element={<AdminAttendanceReport />} />
                   <Route path="notices" element={<AdminNotices />} />
                   <Route path="leave-requests" element={<AdminLeaveRequests />} />
@@ -134,6 +137,7 @@ export default function App() {
                   <Route path="certificates" element={<CertificateRequests />} />
                   <Route path="reports" element={<TeacherReports />} />
                   <Route path="analytics" element={<ClassAnalytics />} />
+                  <Route path="notes-of-presence" element={<TeacherNotesOfPresence />} />
                   <Route path="promotion" element={<TeacherPromotion />} />
                 </Route>
               </Route>

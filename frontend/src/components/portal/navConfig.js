@@ -14,6 +14,7 @@ export const portalNav = {
     { to: "/admin/students", label: "Students", icon: "GraduationCap" },
     { to: "/admin/timetables", label: "Timetables", icon: "CalendarRange" },
     { to: "/admin/reports", label: "Results & Reports", icon: "BarChart3" },
+    { to: "/admin/notes-of-presence", label: "Notes of Presence", icon: "BookOpen", badge: "notes" },
     { to: "/admin/attendance-report", label: "Attendance Report", icon: "ClipboardCheck" },
     { to: "/admin/promotions", label: "Promotions", icon: "TrendingUp" },
     { to: "/admin/notices", label: "Notices", icon: "Bell" },
@@ -37,6 +38,7 @@ export const portalNav = {
     { to: "/teacher/certificates", label: "Certificate Requests", icon: "FileCheck2", badge: "certificates" },
     { to: "/teacher/reports", label: "Reports", icon: "FileText" },
     { to: "/teacher/analytics", label: "Class Analytics", icon: "BarChart3" },
+    { to: "/teacher/notes-of-presence", label: "Notes of Presence", icon: "BookOpen", badge: "notes" },
     { to: "/teacher/promotion", label: "Promotion", icon: "TrendingUp" },
   ],
   student: [

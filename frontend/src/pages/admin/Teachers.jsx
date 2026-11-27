@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import PortalPageHeader from "../../components/portal/PortalPageHeader";
 import Card from "../../components/ui/Card";
 import Icon from "../../components/ui/Icon";
@@ -34,6 +35,17 @@ export default function Teachers() {
     setActionError("");
     setDrawer({ mode, teacher });
   };
+
+  // A row opens the teacher's full page; that page's Edit comes back here with ?edit=<id> to open the edit form
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const editId = Number(params.get("edit"));
+  useEffect(() => {
+    if (!editId || !teachers) return;
+    const t = teachers.find((x) => x.id === editId);
+    if (t) setDrawer({ mode: "edit", teacher: t });
+    setParams({}, { replace: true });
+  }, [editId, teachers, setParams]);
 
   const filtered = useMemo(() => {
     const list = [...(teachers || [])].sort((a, b) => a.full_name.localeCompare(b.full_name, undefined, { sensitivity: "base" }));
@@ -82,6 +94,13 @@ export default function Teachers() {
         description="Add teachers, edit their details, or deactivate accounts."
         actions={
           <>
+            <Link
+              to="/admin/teachers/allocation"
+              className="flex items-center gap-1.5 text-sm font-semibold text-navy border border-navy/15 px-4 py-2.5 rounded-full hover:bg-navy/5"
+            >
+              <Icon name="CalendarRange" size={16} />
+              Allocation &amp; Timetables
+            </Link>
             <DownloadButton path="/exports/teachers.csv" filename="teachers.csv" className="py-2.5! px-4! text-sm!" />
             <button
               type="button"
@@ -153,7 +172,7 @@ export default function Teachers() {
               {!loading && filtered.map((t) => (
                 <tr
                   key={t.id}
-                  onClick={() => openTeacher(t)}
+                  onClick={() => navigate(`/admin/teachers/${t.id}`)}
                   className="border-b border-navy/6 last:border-0 hover:bg-navy/[0.05] cursor-pointer"
                 >
                   <td className="tc-primary px-4 py-3">

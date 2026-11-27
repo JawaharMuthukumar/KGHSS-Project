@@ -57,6 +57,8 @@ const TeacherNotesOfPresence = lazy(() => import("./pages/teacher/NotesOfPresenc
 const AdminNotesOfPresence = lazy(() => import("./pages/admin/NotesOfPresence"));
 const AdminAcademicYear = lazy(() => import("./pages/admin/AcademicYear"));
 const AdminStudentOverview = lazy(() => import("./pages/admin/StudentOverview"));
+const AdminTeacherOverview = lazy(() => import("./pages/admin/TeacherOverview"));
+const AdminTeacherAllocation = lazy(() => import("./pages/admin/TeacherAllocation"));
 const TeacherLeaveRequests = lazy(() => import("./pages/teacher/LeaveRequests"));
 const TeacherPromotion = lazy(() => import("./pages/teacher/Promotion"));
 const StudentDashboard = lazy(() => import("./pages/student/StudentDashboard"));
@@ -106,6 +108,8 @@ export default function App() {
                 <Route element={<PortalLayout role="admin" />}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="teachers" element={<AdminTeachers />} />
+                  <Route path="teachers/allocation" element={<AdminTeacherAllocation />} />
+                  <Route path="teachers/:teacherId" element={<AdminTeacherOverview />} />
                   <Route path="class-teachers" element={<AdminClassTeachers />} />
                   <Route path="subject-teachers" element={<AdminSubjectTeachers />} />
                   <Route path="students" element={<AdminStudents />} />

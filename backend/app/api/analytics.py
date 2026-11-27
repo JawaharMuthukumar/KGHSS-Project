@@ -384,3 +384,109 @@ def student_overview(student_id: int, db: Session = Depends(get_db), account: Ac
     worked = sum(r["working"] for r in rows if r["present"] is not None); came = sum(r["present"] for r in rows if r["present"] is not None)
     return {**student_progress(db, student), "student_id": student.id,
             "attendance": {"months": rows, "working": worked, "present": came, "percent": round(came * 100 / worked, 1) if worked else None}}
+
+
+# ---------------- HM: one teacher's subject results + timetable, and the school's allocation table ----------------
+
+def _timetable(db: Session, teacher_ids: list[int]) -> dict[int, list[dict]]:
+    """Each teacher's weekly periods this year: [{weekday, period, class_code, subject}]."""
+    from app.models.entities import TimetableEntry
+    rows = (db.query(TimetableEntry.teacher_id, TimetableEntry.weekday, TimetableEntry.period, AcademicClass.code, TimetableEntry.subject)
+            .join(AcademicClass, AcademicClass.id == TimetableEntry.class_id)
+            .filter(TimetableEntry.teacher_id.in_(teacher_ids), TimetableEntry.academic_year == AcademicClass.academic_year,
+                    AcademicClass.is_active.is_(True))
+            .order_by(TimetableEntry.weekday, TimetableEntry.period).all()) if teacher_ids else []
+    out = defaultdict(list)
+    for tid, wd, period, code, subj in rows:
+        out[tid].append({"weekday": wd, "period": period, "class_code": code, "subject": subj})
+    return out
+
+
+@router.get("/teacher/{teacher_id}", summary="HM: one teacher's classes, subject results per exam (with failing students) and timetable")
+def teacher_overview(teacher_id: int, term: str | None = None, db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+    from app.models.entities import ClassTeacherAssignment
+    teacher = db.get(Teacher, teacher_id)
+    if not teacher: raise HTTPException(404, "Teacher not found")
+    year = current_academic_year(db)
+    slots = (db.query(AcademicClass, SubjectTeacherAssignment.subject)
+             .join(SubjectTeacherAssignment, SubjectTeacherAssignment.class_id == AcademicClass.id)
+             .filter(SubjectTeacherAssignment.teacher_id == teacher.id, SubjectTeacherAssignment.academic_year == year,
+                     AcademicClass.is_active.is_(True))
+             .order_by(AcademicClass.grade, AcademicClass.code).all())
+    classes = list({c.id: c for c, _ in slots}.values())
+    year_rows = _year_rows(db, classes, year) if classes else {}
+    order = list(dict.fromkeys(TERMS_MIDDLE + TERMS_SENIOR))
+    wanted = {(c.code, subj) for c, subj in slots}
+
+    def slot_stats(rows: list[dict]) -> dict:
+        stats = {k: {"written": 0, "passed": 0, "absent": 0, "sum": 0.0, "failing": []} for k in wanted}
+        for r in rows:
+            for m in r["marks"]:
+                s = stats.get((r["class_code"], m.subject))
+                if s is None: continue
+                if m.absent: s["absent"] += 1; s["failing"].append((r, m)); continue
+                pct = m.score * 100 / m.maximum_score if m.maximum_score else 0
+                s["written"] += 1; s["sum"] += pct
+                if pct >= PASS: s["passed"] += 1
+                else: s["failing"].append((r, m))
+        return stats
+
+    terms = [t for t in order if any((r["class_code"], m.subject) in wanted for r in year_rows.get(t, []) for m in r["marks"])]
+    term = term if term in terms else None  # None = each class's own latest exam (6th–9th and 10th–12th exams differ)
+    trend = {t: slot_stats(year_rows.get(t, [])) for t in terms}
+
+    def chosen(key):
+        """(exam, stats) shown for one class + subject: the picked exam, or that class's latest exam with marks."""
+        if term: return term, trend[term][key]
+        for t in reversed(terms):
+            if trend[t][key]["written"] or trend[t][key]["absent"]: return t, trend[t][key]
+        return None, None
+    current = {(c.code, subj): chosen((c.code, subj)) for c, subj in slots}
+
+    failing_ids = {r["student_id"] for _, s in current.values() if s for r, _ in s["failing"]}
+    names = dict(db.query(Student.id, Account.full_name).join(Account, Account.id == Student.account_id)
+                 .filter(Student.id.in_(failing_ids)).all()) if failing_ids else {}
+    out_slots = []
+    for c, subj in slots:
+        exam, s = current[(c.code, subj)]
+        line = {"class_code": c.code, "grade": c.grade, "medium": c.medium, "subject": subj, "exam": exam}
+        if s and (s["written"] or s["absent"]):
+            line.update({"written": s["written"], "passed": s["passed"], "failed": s["written"] - s["passed"], "absent": s["absent"],
+                         "pass_percent": _pct(s["passed"], s["written"]),
+                         "average_percent": round(s["sum"] / s["written"], 1) if s["written"] else None,
+                         "failing": sorted(({"name": names.get(r["student_id"]), "score": None if m.absent else m.score,
+                                             "max": m.maximum_score, "absent": m.absent} for r, m in s["failing"]),
+                                           key=lambda x: (x["score"] is not None, x["score"] or 0))})
+        line["trend"] = [{"term": t, "pass_percent": _pct(trend[t][(c.code, subj)]["passed"], trend[t][(c.code, subj)]["written"])}
+                         for t in terms if trend[t][(c.code, subj)]["written"]]
+        out_slots.append(line)
+    tt = _timetable(db, [teacher.id]).get(teacher.id, [])
+    class_teacher_of = [code for (code,) in db.query(AcademicClass.code)
+                        .join(ClassTeacherAssignment, ClassTeacherAssignment.class_id == AcademicClass.id)
+                        .filter(ClassTeacherAssignment.teacher_id == teacher.id,
+                                ClassTeacherAssignment.academic_year == AcademicClass.academic_year).all()]
+    return {"teacher": {"id": teacher.id, "full_name": teacher.account.full_name, "employee_id": teacher.employee_id,
+                        "username": teacher.account.username, "subject": teacher.subject, "phone": teacher.phone,
+                        "is_active": teacher.account.is_active, "class_teacher_of": class_teacher_of},
+            "academic_year": year, "terms": terms, "term": term, "slots": out_slots, "timetable": tt, "periods_per_week": len(tt)}
+
+
+@router.get("/teacher-allocation", summary="HM: every teacher's classes, subjects and periods per week (printable), with timetables")
+def teacher_allocation(db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
+    year = current_academic_year(db)
+    teachers = (db.query(Teacher).join(Account, Account.id == Teacher.account_id).filter(Account.is_active.is_(True))
+                .order_by(Account.full_name).all())
+    assign = defaultdict(list)
+    for tid, code, subj in (db.query(SubjectTeacherAssignment.teacher_id, AcademicClass.code, SubjectTeacherAssignment.subject)
+                            .join(AcademicClass, AcademicClass.id == SubjectTeacherAssignment.class_id)
+                            .filter(SubjectTeacherAssignment.academic_year == year, AcademicClass.is_active.is_(True))
+                            .order_by(AcademicClass.grade, AcademicClass.code).all()):
+        assign[tid].append((code, subj))
+    tts = _timetable(db, [t.id for t in teachers])
+    rows = []
+    for t in teachers:
+        subjects = list(dict.fromkeys(s for _, s in assign[t.id])) or ([t.subject] if t.subject else [])
+        rows.append({"teacher_id": t.id, "name": t.account.full_name, "employee_id": t.employee_id, "subjects": subjects,
+                     "classes_by_subject": {s: [c for c, sj in assign[t.id] if sj == s] for s in subjects},
+                     "periods_per_week": len(tts.get(t.id, [])), "timetable": tts.get(t.id, [])})
+    return {"academic_year": year, "teachers": rows}

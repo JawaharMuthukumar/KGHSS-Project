@@ -4,7 +4,8 @@ import Banner from "./Banner";
 import { useToast } from "../ui/Toast";
 import { api, ApiError } from "../../lib/apiClient";
 
-const INK = [16, 32, 72]; // dark navy ink, prints like a pen signature
+const INK = [16, 32, 72]; // teachers: dark navy ink, prints like a pen signature
+const HM_INK = [10, 122, 47]; // the HM signs in green ink
 const OUT_W = 600;
 const OUT_H = 200;
 // The pad and previews stay white like paper, even in portal dark mode, so the dark ink stays visible.
@@ -15,7 +16,7 @@ const PAPER = { background: "#ffffff" };
  * `fromPhoto`: the canvas holds a photo — light paper becomes transparent and the strokes are re-inked;
  * otherwise it holds strokes drawn on a transparent canvas and only the crop/fit is needed.
  */
-function cleanSignature(src, fromPhoto) {
+function cleanSignature(src, fromPhoto, ink = INK) {
   const { width: w, height: h } = src;
   const ctx = src.getContext("2d", { willReadFrequently: true });
   const img = ctx.getImageData(0, 0, w, h);
@@ -30,7 +31,7 @@ function cleanSignature(src, fromPhoto) {
     const cut = paper * 0.72;
     for (let i = 0; i < w * h; i++) {
       const a = lum[i] >= cut ? 0 : Math.min(255, 70 + ((cut - lum[i]) / cut) * 400);
-      d[i * 4] = INK[0]; d[i * 4 + 1] = INK[1]; d[i * 4 + 2] = INK[2]; d[i * 4 + 3] = a;
+      d[i * 4] = ink[0]; d[i * 4 + 1] = ink[1]; d[i * 4 + 2] = ink[2]; d[i * 4 + 3] = a;
     }
     ctx.putImageData(img, 0, 0);
   }
@@ -59,7 +60,7 @@ function cleanSignature(src, fromPhoto) {
 }
 
 /** Signature pad: draw with a finger, stylus or mouse. */
-function DrawPad({ onChange }) {
+function DrawPad({ onChange, ink = INK }) {
   const canvas = useRef(null);
   const drawing = useRef(false);
   const last = useRef(null);
@@ -75,8 +76,8 @@ function DrawPad({ onChange }) {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = 2.6;
-    ctx.strokeStyle = `rgb(${INK.join(",")})`;
-  }, []);
+    ctx.strokeStyle = `rgb(${ink.join(",")})`;
+  }, [ink]);
 
   const point = (e) => {
     const r = canvas.current.getBoundingClientRect();
@@ -102,7 +103,7 @@ function DrawPad({ onChange }) {
   const up = () => {
     if (!drawing.current) return;
     drawing.current = false;
-    onChange(cleanSignature(canvas.current, false));
+    onChange(cleanSignature(canvas.current, false, ink));
   };
   const clear = () => {
     const c = canvas.current;
@@ -134,7 +135,7 @@ function DrawPad({ onChange }) {
 }
 
 /** Upload a photo of a signature on plain paper; the background is removed automatically. */
-function UploadPad({ onChange, onError }) {
+function UploadPad({ onChange, onError, ink = INK }) {
   const pick = (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -149,7 +150,7 @@ function UploadPad({ onChange, onError }) {
       c.height = Math.round(img.height * scale);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url);
-      const result = cleanSignature(c, true);
+      const result = cleanSignature(c, true, ink);
       if (!result) return onError("No signature found in the photo. Sign with a dark pen on white paper and try again.");
       onError("");
       onChange(result);
@@ -294,7 +295,11 @@ export default function SignatureDialog({ open, onClose, role = "teacher" }) {
           ))}
         </div>
 
-        {mode === "draw" ? <DrawPad key="draw" onChange={setDraft} /> : <UploadPad onChange={setDraft} onError={setError} />}
+        {mode === "draw" ? (
+          <DrawPad key="draw" onChange={setDraft} ink={isHM ? HM_INK : INK} />
+        ) : (
+          <UploadPad onChange={setDraft} onError={setError} ink={isHM ? HM_INK : INK} />
+        )}
 
         {draft && (
           <div>

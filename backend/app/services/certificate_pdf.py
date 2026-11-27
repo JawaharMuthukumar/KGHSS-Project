@@ -3,7 +3,6 @@
 The bonafide certificate copies the school's printed form (SCHOOL BONAFIDE CERTIFICATE) with the
 blanks filled in from the student's record; other certificate types reuse the same letterhead.
 """
-import base64
 from datetime import datetime
 from functools import lru_cache
 from html import escape
@@ -20,6 +19,7 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
 
 from app.models.entities import Student
+from app.services.signature_ink import ink
 
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
 SCHOOL_LOGO = ASSETS / "school-logo.png"
@@ -84,7 +84,7 @@ def _signature(pdf: canvas.Canvas, issued: datetime | None, y: float = 250, hm_s
     pdf.drawString(MARGIN, y - 26, "DATE    :  " + when)
     right = PAGE_W - MARGIN
     if hm_signature:
-        sig = ImageReader(BytesIO(base64.b64decode(hm_signature.split(",", 1)[1])))
+        sig = ImageReader(ink(hm_signature))  # HM signs in green ink
         pdf.drawImage(sig, right - 150, y + 14, 150, 48, mask="auto", preserveAspectRatio=True, anchor="c")
     pdf.setFont("Times-Bold", 13.5); pdf.drawCentredString(right - 75, y, "HEAD MASTER")
     if hm_signature:

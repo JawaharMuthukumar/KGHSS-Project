@@ -124,7 +124,7 @@ export default function Promotions() {
               <h2 className="font-heading font-bold text-navy">Starting {data.next_academic_year}</h2>
               <p className="text-sm text-navy/60 mt-1">
                 Once every class is approved, start the new year from the <strong>Academic Year</strong> page. It promotes every class with these
-                lists, clears this year's Notes of Presence (after you download the backup) and sets the new year's dates — in one step.
+                lists, clears this year's Notes of Lessons (after you download the backup) and sets the new year's dates — in one step.
               </p>
               <p className="text-xs font-semibold text-navy/50 mt-2">
                 {approved} of {withStudents.length} classes approved

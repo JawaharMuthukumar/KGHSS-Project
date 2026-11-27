@@ -56,6 +56,7 @@ const ClassAnalytics = lazy(() => import("./pages/teacher/ClassAnalytics"));
 const TeacherNotesOfPresence = lazy(() => import("./pages/teacher/NotesOfPresence"));
 const AdminNotesOfPresence = lazy(() => import("./pages/admin/NotesOfPresence"));
 const AdminAcademicYear = lazy(() => import("./pages/admin/AcademicYear"));
+const AdminStudentOverview = lazy(() => import("./pages/admin/StudentOverview"));
 const TeacherLeaveRequests = lazy(() => import("./pages/teacher/LeaveRequests"));
 const TeacherPromotion = lazy(() => import("./pages/teacher/Promotion"));
 const StudentDashboard = lazy(() => import("./pages/student/StudentDashboard"));
@@ -108,9 +109,10 @@ export default function App() {
                   <Route path="class-teachers" element={<AdminClassTeachers />} />
                   <Route path="subject-teachers" element={<AdminSubjectTeachers />} />
                   <Route path="students" element={<AdminStudents />} />
+                  <Route path="students/:studentId" element={<AdminStudentOverview />} />
                   <Route path="timetables" element={<AdminTimetables />} />
                   <Route path="reports" element={<AdminResultsReports />} />
-                  <Route path="notes-of-presence" element={<AdminNotesOfPresence />} />
+                  <Route path="notes-of-lessons" element={<AdminNotesOfPresence />} />
                   <Route path="academic-year" element={<AdminAcademicYear />} />
                   <Route path="attendance-report" element={<AdminAttendanceReport />} />
                   <Route path="notices" element={<AdminNotices />} />
@@ -139,7 +141,7 @@ export default function App() {
                   <Route path="certificates" element={<CertificateRequests />} />
                   <Route path="reports" element={<TeacherReports />} />
                   <Route path="analytics" element={<ClassAnalytics />} />
-                  <Route path="notes-of-presence" element={<TeacherNotesOfPresence />} />
+                  <Route path="notes-of-lessons" element={<TeacherNotesOfPresence />} />
                   <Route path="promotion" element={<TeacherPromotion />} />
                 </Route>
               </Route>

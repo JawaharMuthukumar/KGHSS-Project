@@ -1,5 +1,5 @@
 """Academic Year page: the HM sets the running year's start/end month, downloads a backup of the year's
-Notes of Presence, and closes the year — promoting students, removing that year's lesson-plan PDFs and
+Notes of Lessons, and closes the year — promoting students, removing that year's lesson-plan PDFs and
 making the next year current — in one step."""
 import calendar
 import re
@@ -59,7 +59,7 @@ def notes_stats(db: Session, label: str) -> dict:
     return {"count": count, "bytes": int(size)}
 
 
-@router.get("/close-check", summary="Before starting the next year: promotion readiness and the Notes of Presence to back up")
+@router.get("/close-check", summary="Before starting the next year: promotion readiness and the Notes of Lessons to back up")
 def close_check(db: Session = Depends(get_db), account: Account = Depends(require_roles("admin"))):
     rec = current_year(db); db.commit()
     overview = promotion_overview(db, account)
@@ -74,7 +74,7 @@ def _safe(text: str) -> str:
     return re.sub(r"[^\w\-. ]+", "_", text).strip()[:80] or "file"
 
 
-@router.get("/notes-archive", summary="ZIP of every Notes of Presence PDF of the running year, folder per week")
+@router.get("/notes-archive", summary="ZIP of every Notes of Lessons PDF of the running year, folder per week")
 def notes_archive(db: Session = Depends(get_db), _: Account = Depends(require_roles("admin"))):
     rec = current_year(db)
     codes = dict(db.query(AcademicClass.id, AcademicClass.code).all())
@@ -92,11 +92,11 @@ def notes_archive(db: Session = Depends(get_db), _: Account = Depends(require_ro
             zf.writestr(f"{folder}/{name}.pdf", p.pdf)
     buf.seek(0)
     return StreamingResponse(buf, media_type="application/zip",
-                             headers={"Content-Disposition": f'attachment; filename="Notes of Presence {rec.label}.zip"'})
+                             headers={"Content-Disposition": f'attachment; filename="Notes of Lessons {rec.label}.zip"'})
 
 
 def start_next_year(db: Session, account: Account, start_month: str | None, end_month: str | None) -> dict:
-    """Promote every class, clear the closing year's Notes of Presence PDFs and make the next year current — one commit."""
+    """Promote every class, clear the closing year's Notes of Lessons PDFs and make the next year current — one commit."""
     rec = current_year(db)
     label = next_year(rec.label)
     if start_month and end_month: start, end = month_range(start_month, end_month, label)

@@ -57,7 +57,7 @@ class TeacherSignature(Base):
 class AcademicYear(Base):
     """The school year the HM runs: its label (e.g. 2026-2027) and the start / end dates the HM sets.
     Exactly one row is current; closing it (Academic Year page) promotes students, clears that year's
-    Notes of Presence PDFs and makes the next year current."""
+    Notes of Lessons PDFs and makes the next year current."""
     __tablename__ = "academic_years"
     id: Mapped[int] = mapped_column(primary_key=True)
     label: Mapped[str] = mapped_column(String(9), unique=True)
@@ -69,7 +69,7 @@ class AcademicYear(Base):
 
 
 class LessonPlan(Base):
-    """'Notes of Presence': a teacher's weekly lesson plan (PDF) for one class + subject, approved by the HM.
+    """'Notes of Lessons': a teacher's weekly lesson plan (PDF) for one class + subject, approved by the HM.
     The PDF bytes live in the DB (Render's disk is wiped on redeploy) and are deferred so lists never load them."""
     __tablename__ = "lesson_plans"
     __table_args__ = (UniqueConstraint("class_id", "subject", "week_start"),)

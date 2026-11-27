@@ -95,7 +95,7 @@ export default function NotesOfPresence() {
 
   const header = (
     <PortalPageHeader
-      title="Notes of Presence"
+      title="Notes of Lessons"
       description="Upload your weekly lesson plan (Monday – Friday) for each class you teach. The Headmaster approves it, then you complete that portion with your students."
     />
   );

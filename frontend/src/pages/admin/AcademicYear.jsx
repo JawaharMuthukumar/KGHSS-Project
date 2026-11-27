@@ -71,7 +71,7 @@ export default function AcademicYear() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Notes of Presence ${y.label}.zip`;
+      a.download = `Notes of Lessons ${y.label}.zip`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       setDownloaded(true);
@@ -92,7 +92,7 @@ export default function AcademicYear() {
         next_end_month: nextDates.end,
       });
       toast.success(
-        `${res.year.label} started · ${res.promoted} promoted, ${res.not_promoted} repeating, ${res.left} TC, ${res.passed_out} passed out · ${res.notes_removed} Notes of Presence removed`
+        `${res.year.label} started · ${res.promoted} promoted, ${res.not_promoted} repeating, ${res.left} TC, ${res.passed_out} passed out · ${res.notes_removed} Notes of Lessons removed`
       );
       setConfirm("");
       setNext(null);
@@ -123,7 +123,7 @@ export default function AcademicYear() {
             <p className="text-xs font-semibold uppercase tracking-wide text-navy/45">Current academic year</p>
             <p className="font-heading font-bold text-navy text-2xl">{y.display}</p>
             <p className="text-sm text-navy/60">{y.range}</p>
-            <p className="text-xs text-navy/45 mt-1">Shown to the HM, teachers and students. Notes of Presence weeks run within these months.</p>
+            <p className="text-xs text-navy/45 mt-1">Shown to the HM, teachers and students. Notes of Lessons weeks run within these months.</p>
           </div>
           {!dates && (
             <button
@@ -171,9 +171,9 @@ export default function AcademicYear() {
           )}
         </Step>
 
-        <Step n={2} title="Back up this year's Notes of Presence" done={backupDone}>
+        <Step n={2} title="Back up this year's Notes of Lessons" done={backupDone}>
           {notes.count === 0 ? (
-            "No Notes of Presence uploaded this year — nothing to back up."
+            "No Notes of Lessons uploaded this year — nothing to back up."
           ) : (
             <>
               <p>
@@ -206,7 +206,7 @@ export default function AcademicYear() {
 
         <Step n={4} title="Start the new year" done={false}>
           <p>
-            Moves every class to {data.next_label} using the approved promotion lists, removes this year's Notes of Presence PDFs, unpublishes
+            Moves every class to {data.next_label} using the approved promotion lists, removes this year's Notes of Lessons PDFs, unpublishes
             last year's class notices and makes {data.next_label} the current year. The new year starts with no class teachers, subject teachers or
             timetables — assign them afterwards.
           </p>
@@ -227,7 +227,7 @@ export default function AcademicYear() {
               {busy ? "Working…" : `Start ${data.next_label}`}
             </button>
           </div>
-          {!backupDone && <p className="text-xs text-amber-700 mt-2">Download the Notes of Presence backup first.</p>}
+          {!backupDone && <p className="text-xs text-amber-700 mt-2">Download the Notes of Lessons backup first.</p>}
         </Step>
       </Card>
     </div>

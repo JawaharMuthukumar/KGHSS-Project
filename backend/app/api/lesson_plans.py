@@ -1,4 +1,4 @@
-"""Notes of Presence: teachers upload a weekly lesson plan PDF per class + subject; the HM approves or returns it.
+"""Notes of Lessons: teachers upload a weekly lesson plan PDF per class + subject; the HM approves or returns it.
 
 Weeks run Monday–Friday and are identified by their Monday. The weeks follow the start and end dates the HM sets on the
 Academic Year page. Any number of plans can be merged into one PDF (e.g. three weeks, or the
@@ -22,7 +22,7 @@ from app.models.entities import Account, AcademicClass, LessonPlan, SubjectTeach
 from app.services.permissions import teacher_profile
 from app.services.academic_year import current_year, monday, year_weeks
 
-router = APIRouter(prefix="/lesson-plans", tags=["Notes of Presence"])
+router = APIRouter(prefix="/lesson-plans", tags=["Notes of Lessons"])
 
 MAX_BYTES = 3 * 1024 * 1024
 
@@ -187,7 +187,7 @@ def merged_file(ids: str = Query(..., description="Comma-separated plan ids"), d
         except (PdfReadError, ValueError): continue  # a damaged file never blocks the rest
     out = BytesIO(); writer.write(out)
     first, last = plans[0].week_start, plans[-1].week_start
-    return _pdf_response(out.getvalue(), f"Notes of Presence {first:%d-%m-%Y} to {last + timedelta(days=4):%d-%m-%Y}.pdf")
+    return _pdf_response(out.getvalue(), f"Notes of Lessons {first:%d-%m-%Y} to {last + timedelta(days=4):%d-%m-%Y}.pdf")
 
 
 @router.get("/overview", summary="HM: week-by-week upload and approval status of every teacher's classes this year")

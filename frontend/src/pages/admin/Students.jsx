@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import PortalPageHeader from "../../components/portal/PortalPageHeader";
 import Card from "../../components/ui/Card";
 import Icon from "../../components/ui/Icon";
 import Banner from "../../components/portal/Banner";
-import Drawer from "../../components/portal/Drawer";
-import StudentProfilePanel from "../../components/portal/StudentProfilePanel";
 import { inputClass } from "../../components/portal/FormField";
 import { useApiResource } from "../../hooks/useApiResource";
 import { TableSkeleton } from "../../components/ui/Skeleton";
@@ -24,12 +22,13 @@ export default function Students() {
   const q = search.trim().toLowerCase();
   const { data: classes, loading: classesLoading, error: classesError } = useApiResource("/classes");
   // Students load only for an opened class or a search — never the whole school list by default.
-  const { data: students, loading, error, reload } = useApiResource("/students", {
+  const { data: students, loading, error } = useApiResource("/students", {
     query: classCode ? { class_code: classCode } : {},
     deps: [classCode, Boolean(q)],
     enabled: Boolean(classCode || q),
   });
-  const [activeStudent, setActiveStudent] = useState(null);
+  // A student opens their full page (profile, progress, attendance, report card) — handy for parent meetings
+  const navigate = useNavigate();
 
   const openClass = (code) => {
     setSearch("");
@@ -175,7 +174,7 @@ export default function Students() {
                   filtered.map((s) => (
                     <tr
                       key={s.id}
-                      onClick={() => setActiveStudent(s.id)}
+                      onClick={() => navigate(`/admin/students/${s.id}`)}
                       className="border-b border-navy/6 last:border-0 hover:bg-navy/[0.05] cursor-pointer"
                     >
                       <td className="tc-primary px-4 py-3">
@@ -201,9 +200,6 @@ export default function Students() {
         </>
       )}
 
-      <Drawer open={Boolean(activeStudent)} onClose={() => setActiveStudent(null)} title="Student Profile">
-        {activeStudent && <StudentProfilePanel studentId={activeStudent} editable onSaved={reload} />}
-      </Drawer>
     </div>
   );
 }

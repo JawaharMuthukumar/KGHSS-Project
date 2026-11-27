@@ -171,7 +171,7 @@ export default function AdminNotesOfPresence() {
   return (
     <div>
       <PortalPageHeader
-        title="Notes of Presence"
+        title="Notes of Lessons"
         description="Teachers' weekly lesson plans (Monday – Friday) per class. Approve each one, follow the year week by week, and print any weeks as one PDF for the report."
       />
 

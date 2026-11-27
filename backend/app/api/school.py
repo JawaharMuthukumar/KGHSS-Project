@@ -548,6 +548,16 @@ def report_remark(percent: float) -> str:
     return next(label for floor, label in REMARK_BANDS if percent >= floor)
 
 
+def report_card_terms(cls: AcademicClass) -> list[str]:
+    """Row order on the report card. 11th–12th list the mid terms (one mark, no split) first, then the split-mark
+    exams (Quarterly, Half Yearly, Revisions), like the school's printed card; other classes follow the exam order."""
+    terms = terms_for_grade(cls.grade)
+    if cls.grade >= 11:
+        mids = [t for t in terms if "Mid Term" in t]
+        return mids + [t for t in terms if t not in mids]
+    return terms
+
+
 def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | None = None, with_signatures: bool = False) -> dict:
     """Per-student report cards (every exam of the year as a row), as printed on the school's progress card.
     Class-wide data is always loaded because each row shows the class's top total for that exam."""
@@ -563,20 +573,20 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
         sm = marks[term].get(sid)
         return sum(m.score for m in sm.values() if not m.absent) if sm else None
 
-    class_top = {t: max([v for v in (term_total(t, s.id) for s in students) if v is not None], default=None) for t in terms_for_grade(cls.grade)}
+    class_top = {t: max([v for v in (term_total(t, s.id) for s in students) if v is not None], default=None) for t in report_card_terms(cls)}
 
     # Attendance is recorded per month; each exam row shows June up to that exam's chosen month.
     attendance = {t: exam_attendance(db, cls, a) for t, a in assessments.items()}
 
     full = 100 * len(subjects)
     # Per-exam subject maximum from the mark scheme; the pass mark is 35% of it.
-    term_max = {t: sum(limit for _, _, limit in subject_components(cls, subjects[0], t)) if subjects else 100 for t in terms_for_grade(cls.grade)}
+    term_max = {t: sum(limit for _, _, limit in subject_components(cls, subjects[0], t)) if subjects else 100 for t in report_card_terms(cls)}
     cards = []
-    split_parts = {t: {subj: subject_components(cls, subj, t) for subj in subjects} for t in terms_for_grade(cls.grade)}
+    split_parts = {t: {subj: subject_components(cls, subj, t) for subj in subjects} for t in report_card_terms(cls)}
     for s in students:
         if only_student_id is not None and s.id != only_student_id: continue
         rows = []
-        for term in terms_for_grade(cls.grade):
+        for term in report_card_terms(cls):
             sm = marks[term].get(s.id)
             limits = {"subject_max": term_max[term], "pass_mark": round(term_max[term] * 35 / 100)}
             if not sm:
@@ -613,7 +623,8 @@ def student_report_card(student_id: int, db: Session = Depends(get_db), account:
     if not student: raise HTTPException(404, "Student not found")
     if account.role == "student" and student.account_id != account.id: raise HTTPException(403, "Report card access denied")
     if account.role == "teacher" and not can_access_class(db, account, student.school_class): raise HTTPException(403, "Class access denied")
-    data = build_report_cards(db, student.school_class, only_student_id=student.id)
+    # Staff printing a single card see the class teacher's signature; the student portal never gets it
+    data = build_report_cards(db, student.school_class, only_student_id=student.id, with_signatures=account.role != "student")
     return {**{k: v for k, v in data.items() if k != "cards"}, "card": data["cards"][0]}
 
 
@@ -853,7 +864,7 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
         for req in leaves.filter(LeaveRequest.status != "pending", LeaveRequest.decided_at >= datetime.utcnow() - timedelta(days=3)).order_by(LeaveRequest.id.desc()).limit(5).all():
             items.append({"key": f"leave-{req.id}-{req.status}", "kind": "leave", "title": f"Leave {req.status}", "detail": f"{req.from_date:%d %b} – {req.to_date:%d %b}",
                           "to": "/student/leave", "created_at": req.decided_at, "silent_badge": True})
-    # Notes of Presence: the HM is told about plans waiting for approval; a teacher about plans the HM returned.
+    # Notes of Lessons: the HM is told about plans waiting for approval; a teacher about plans the HM returned.
     plans = db.query(LessonPlan)
     if account.role == "admin":
         plans = plans.filter(LessonPlan.academic_year == current_academic_year(db))
@@ -861,13 +872,13 @@ def portal_alerts(db: Session = Depends(get_db), account: Account = Depends(curr
             t = db.get(Teacher, p.teacher_id)
             items.append({"key": f"notes-{p.id}-{int(p.uploaded_at.timestamp()) if p.uploaded_at else 0}", "kind": "notes", "title": "Lesson plan to approve",
                           "detail": f"{t.account.full_name if t else 'Teacher'} · {db.get(AcademicClass, p.class_id).code} {p.subject}",
-                          "to": "/admin/notes-of-presence", "created_at": p.uploaded_at})
+                          "to": "/admin/notes-of-lessons", "created_at": p.uploaded_at})
     elif account.role == "teacher":
         plans = plans.filter(LessonPlan.teacher_id == teacher_profile(db, account).id)
         for p in plans.filter(LessonPlan.status == "returned").order_by(LessonPlan.id.desc()).limit(10).all():
             items.append({"key": f"notes-returned-{p.id}-{int(p.decided_at.timestamp()) if p.decided_at else 0}", "kind": "notes", "title": "Lesson plan returned by HM",
                           "detail": f"{db.get(AcademicClass, p.class_id).code} {p.subject} · {p.note or 'see the note'}",
-                          "to": "/teacher/notes-of-presence", "created_at": p.decided_at})
+                          "to": "/teacher/notes-of-lessons", "created_at": p.decided_at})
     else:
         plans = plans.filter(LessonPlan.id < 0)
     items.sort(key=lambda i: i["created_at"] or datetime.min, reverse=True)

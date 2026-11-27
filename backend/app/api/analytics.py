@@ -284,7 +284,12 @@ def _subject_tip(subject: str, pct: float, change: float | None) -> str:
 
 @router.get("/my-progress", summary="A student's own results across the year's exams, with per-subject improvement, tips and targets")
 def my_progress(db: Session = Depends(get_db), account: Account = Depends(require_roles("student"))):
-    student = student_profile(db, account); cls = student.school_class; year = cls.academic_year
+    return student_progress(db, student_profile(db, account))
+
+
+def student_progress(db: Session, student: Student) -> dict:
+    """One student's exams this year (with class average and class rank), per-subject change, tips and targets."""
+    cls = student.school_class; year = cls.academic_year
     order = terms_for_grade(cls.grade)
     term_of = dict(db.query(Assessment.id, Assessment.term).filter(Assessment.class_id == cls.id, Assessment.academic_year == year).all())
     marks = db.query(Mark).filter(Mark.assessment_id.in_(term_of.keys())).all() if term_of else []
@@ -300,6 +305,10 @@ def my_progress(db: Session = Depends(get_db), account: Account = Depends(requir
         pcts = [sum(x.score for x in ms if not x.absent) * 100 / sum(x.maximum_score for x in ms) for ms in by.values()
                 if any(not x.absent for x in ms) and sum(x.maximum_score for x in ms)]
         class_avg[t] = round(sum(pcts) / len(pcts), 1) if pcts else None
+    # Each classmate's overall % per exam, for the student's rank (ties share a rank)
+    totals = {t: {sid: sum(x.score for x in ms if not x.absent) * 100 / sum(x.maximum_score for x in ms)
+                  for sid, ms in by.items() if any(not x.absent for x in ms) and sum(x.maximum_score for x in ms)}
+              for t, by in per_student.items()}
     avg = lambda vals: round(sum(vals) / len(vals), 1) if vals else None
 
     exams = []
@@ -314,7 +323,9 @@ def my_progress(db: Session = Depends(get_db), account: Account = Depends(requir
         exams.append({"term": t, "group": "mid" if t in MID_TERM_EXAMS else "main",
                       "percent": round(sum(m.score for m in written) * 100 / maximum, 1) if maximum and written else None,
                       "passed": bool(written) and all(not m.absent and m.score >= m.maximum_score * PASS / 100 for m in mine),
-                      "class_average": class_avg.get(t), "subjects": subjects})
+                      "class_average": class_avg.get(t), "subjects": subjects,
+                      "rank": (1 + sum(1 for v in totals[t].values() if v > totals[t][student.id])) if student.id in totals.get(t, {}) else None,
+                      "ranked_of": len(totals.get(t, {}))})
 
     # Per subject: latest written mark vs the exam before it, with a tip and the next target
     subjects = []
@@ -348,7 +359,28 @@ def my_progress(db: Session = Depends(get_db), account: Account = Depends(requir
         overall = {"latest_term": last["term"], "latest": last["percent"], "previous_term": before["term"] if before else None,
                    "previous": before["percent"] if before else None, "change": change, "passed": last["passed"],
                    "class_average": last["class_average"], "message": msg, "target": _target(last["percent"]),
+                   "rank": last.get("rank"), "ranked_of": last.get("ranked_of"),
                    "strongest": {"subject": strongest["subject"], "percent": strongest["latest"]} if strongest else None,
                    "weakest": {"subject": weakest["subject"], "percent": weakest["latest"]} if weakest else None}
 
-    return {"name": account.full_name, "class_code": cls.code, "academic_year": year, "exams": exams, "subjects": subjects, "overall": overall}
+    return {"name": student.account.full_name, "class_code": cls.code, "academic_year": year, "exams": exams, "subjects": subjects, "overall": overall}
+
+
+@router.get("/student/{student_id}", summary="HM / class teacher: one student's full report — progress, rank, attendance by month")
+def student_overview(student_id: int, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
+    from app.api.school import year_months
+    from app.models.entities import AttendanceMonth, AttendanceRecord
+    from app.services.permissions import can_access_class
+    student = db.get(Student, student_id)
+    if not student: raise HTTPException(404, "Student not found")
+    cls = student.school_class
+    if not can_access_class(db, account, cls, allow_subject=False): raise HTTPException(403, "Only the HM or the class teacher can see this report")
+    first, last = year_months(cls.academic_year)
+    months = (db.query(AttendanceMonth).filter(AttendanceMonth.class_id == cls.id, AttendanceMonth.month >= first, AttendanceMonth.month <= last)
+              .order_by(AttendanceMonth.month).all())
+    present = dict(db.query(AttendanceRecord.attendance_month_id, AttendanceRecord.present_days)
+                   .filter(AttendanceRecord.student_id == student.id, AttendanceRecord.attendance_month_id.in_([m.id for m in months])).all()) if months else {}
+    rows = [{"month": m.month, "working": m.total_days, "present": present.get(m.id)} for m in months]
+    worked = sum(r["working"] for r in rows if r["present"] is not None); came = sum(r["present"] for r in rows if r["present"] is not None)
+    return {**student_progress(db, student), "student_id": student.id,
+            "attendance": {"months": rows, "working": worked, "present": came, "percent": round(came * 100 / worked, 1) if worked else None}}

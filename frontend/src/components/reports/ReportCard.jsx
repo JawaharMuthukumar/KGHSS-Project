@@ -176,7 +176,7 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
                   ];
                 }
                 // One box per part; the first split row also shows each box's max (e.g. I10 | T90), as on the paper card.
-                // A subject below the pass mark gets a red line under its boxes.
+                // A subject below the pass mark gets every part circled in red.
                 const failed = typeof sc === "number" && sc < (r.pass_mark ?? PASS_MARK);
                 const parts = orderParts(split);
                 return parts.map((p, k) => (
@@ -184,8 +184,7 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
                     key={`${i}-${p.key}`}
                     colSpan={k === parts.length - 1 ? colsPer[i] - parts.length + 1 : 1}
                     title={`${p.label} ${p.value ?? "-"}/${p.max}`}
-                    style={failed ? { ...printExact, boxShadow: "inset 0 -3px 0 #dc2626" } : undefined}
-                    className={`${cell} !px-0.5 ${failed ? "text-red-700 font-bold" : ""}`}
+                    className={`${cell} !px-0.5`}
                   >
                     {firstSplitRow[i] === rowIndex && (
                       <span className="block -mt-0.5 mb-0.5 border-b border-black/60 text-[8px] font-semibold leading-tight text-black/70 whitespace-nowrap">
@@ -193,7 +192,17 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
                         {p.max}
                       </span>
                     )}
-                    {p.value ?? ""}
+                    {failed && p.value != null ? (
+                      // A subject below the pass mark: every part is circled in red, like a failed single mark
+                      <span
+                        style={printExact}
+                        className="inline-flex items-center justify-center min-w-[1.35rem] h-[1.35rem] px-0.5 rounded-full border-2 border-red-600 bg-red-50 text-red-700 font-bold text-[10px]"
+                      >
+                        {p.value}
+                      </span>
+                    ) : (
+                      p.value ?? ""
+                    )}
                   </td>
                 ));
               })}
@@ -219,9 +228,9 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
           className="inline-flex items-center justify-center w-4 h-4 mt-px rounded-full border-2 border-red-600 bg-red-50 shrink-0"
         />
         <p>
-          குறிப்பு : வட்டமிட்ட / சிவப்புக் கோடிட்ட மதிப்பெண்கள் தேர்ச்சி மதிப்பெண்ணுக்கு ({passMarks}) குறைவு, அந்தப் பாடங்களில் கவனம் தேவை.
+          குறிப்பு : வட்டமிட்ட மதிப்பெண்கள் தேர்ச்சி மதிப்பெண்ணுக்கு ({passMarks}) குறைவு, அந்தப் பாடங்களில் கவனம் தேவை.
           <br />
-          Note: Circled or red-underlined marks are below the pass mark ({passMarks}); those subjects need attention.
+          Note: Circled marks are below the pass mark ({passMarks}); those subjects need attention.
           {hasSplits && (
             <>
               <br />

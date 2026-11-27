@@ -12,7 +12,7 @@ import { PLAN_STATUS } from "../../constants/notes";
 const kb = (n) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 /**
- * Notes of Presence list with checkboxes: open one plan, or open / download any selection (e.g. three weeks,
+ * Notes of Lessons list with checkboxes: open one plan, or open / download any selection (e.g. three weeks,
  * or the whole year) merged into one PDF for printing or the government report. `actions(plan)` adds row buttons.
  */
 export default function PlanTable({ plans, showTeacher = false, actions, emptyText = "No notes yet." }) {
@@ -65,7 +65,7 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
           <button
             type="button"
             disabled={!selected.length || busy}
-            onClick={() => run(() => downloadPdf("/lesson-plans/merged", merged, "Notes of Presence.pdf"))}
+            onClick={() => run(() => downloadPdf("/lesson-plans/merged", merged, "Notes of Lessons.pdf"))}
             className="flex items-center gap-1.5 text-xs font-semibold border border-navy/15 text-navy px-3.5 py-2 rounded-full hover:border-gold disabled:opacity-50"
           >
             <Icon name="Download" size={14} />

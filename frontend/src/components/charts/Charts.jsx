@@ -141,7 +141,7 @@ export function HBars({ rows, series, max = 100, unit = "%", onRowClick, labelWi
                 <TipRows
                   title={row.label}
                   rows={[
-                    ...series.map((s) => ({ label: s.label, value: fmt(row.values[s.key], unit), color: s.color })),
+                    ...series.map((s) => ({ label: s.label, value: fmt(row.values[s.key], s.unit ?? unit), color: s.color })),
                     ...(row.extra || []),
                   ]}
                 />
@@ -163,7 +163,7 @@ export function HBars({ rows, series, max = 100, unit = "%", onRowClick, labelWi
                       className="h-full rounded-r-[4px]"
                       style={{ width: v ? `${Math.min(v / max, 1) * 85}%` : 0, background: s.color, minWidth: v ? 2 : 0 }}
                     />
-                    <span className="text-[11px] font-semibold text-navy/70 tabular-nums whitespace-nowrap">{fmt(v, unit)}</span>
+                    <span className="text-[11px] font-semibold text-navy/70 tabular-nums whitespace-nowrap">{fmt(v, s.unit ?? unit)}</span>
                   </div>
                 );
               })}
@@ -266,7 +266,7 @@ export function LineChart({ points, series, max = 100, unit = "%" }) {
                 e,
                 <TipRows
                   title={p.label}
-                  rows={[...series.map((s) => ({ label: s.label, value: fmt(p.values[s.key], unit), color: s.color })), ...(p.extra || [])]}
+                  rows={[...series.map((s) => ({ label: s.label, value: fmt(p.values[s.key], s.unit ?? unit), color: s.color })), ...(p.extra || [])]}
                 />
               );
             }}

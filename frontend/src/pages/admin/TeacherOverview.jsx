@@ -16,7 +16,7 @@ import { printElement } from "../../lib/printElement";
 
 const PASS_AVG = [
   { key: "pass", label: "Pass %", color: "var(--viz-series-1)" },
-  { key: "avg", label: "Average %", color: "var(--viz-series-2)" },
+  { key: "avg", label: "Average", color: "var(--viz-series-2)", unit: "" },
 ];
 
 function Field({ label, value }) {
@@ -170,7 +170,7 @@ export default function TeacherOverview() {
                   <span className="ml-auto text-xs text-navy/45">{s.exam}</span>
                 </div>
                 <p className="text-sm text-navy/70 mt-1">
-                  {s.passed} of {s.written} passed · <strong className="text-navy">{s.pass_percent ?? "—"}%</strong> · average {s.average_percent ?? "—"}%
+                  {s.passed} of {s.written} passed · <strong className="text-navy">{s.pass_percent ?? "—"}%</strong> · average {s.average_percent ?? "—"}
                   {s.absent ? ` · ${s.absent} absent` : ""}
                 </p>
                 {s.failing.length > 0 ? (

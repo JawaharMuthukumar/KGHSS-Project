@@ -8,7 +8,8 @@ import { Columns, Donut, HBars, LineChart } from "../charts/Charts";
 
 const PASS_AVG = [
   { key: "pass", label: "Pass %", color: "var(--viz-series-1)" },
-  { key: "avg", label: "Average %", color: "var(--viz-series-2)" },
+  // Every subject is out of 100, so the average is shown as plain marks (no % sign)
+  { key: "avg", label: "Average", color: "var(--viz-series-2)", unit: "" },
 ];
 // Marks ranges, low → high on the one-hue ramp (darker = higher marks).
 const BAND_COLORS = { "Below 35": "var(--viz-band-1)", "35–59": "var(--viz-band-2)", "60–74": "var(--viz-band-3)", "75–89": "var(--viz-band-4)", "90–100": "var(--viz-band-5)" };
@@ -116,7 +117,8 @@ export default function AnalyticsReport({ term, classCode, onSelectClass, onPick
           {scope} · {term}
         </h2>
         <p className="text-sm text-navy/50">
-          Pass = at least 35% in every subject and absent in none. Academic year {data.academic_year}.
+          Pass = passed every subject and absent in none (35 out of 100; +1/+2 Quarterly, Half Yearly and Revisions: Theory 15/70 for
+          Physics, Chemistry, Biology, CS and 25/90 for Tamil, English, Maths). Academic year {data.academic_year}.
         </p>
       </div>
 
@@ -124,7 +126,7 @@ export default function AnalyticsReport({ term, classCode, onSelectClass, onPick
         <StatCard label={`Appeared (of ${s.roll})`} value={s.appeared} icon="Users" tone="navy" />
         <StatCard label="Passed" value={s.passed} icon="Check" tone="success" />
         <StatCard label="Pass %" value={s.pass_percent != null ? `${s.pass_percent}%` : null} icon="TrendingUp" tone="gold" />
-        <StatCard label="Average %" value={s.average_percent != null ? `${s.average_percent}%` : null} icon="BarChart3" tone="teal" />
+        <StatCard label="Average" value={s.average_percent} icon="BarChart3" tone="teal" />
       </div>
 
       {classCode && (
@@ -171,7 +173,7 @@ export default function AnalyticsReport({ term, classCode, onSelectClass, onPick
           />
         </Panel>
 
-        <Panel title="Boys vs Girls" subtitle="Pass % and average % of the students who wrote the exam">
+        <Panel title="Boys vs Girls" subtitle="Pass % and average of the students who wrote the exam">
           <HBars
             series={PASS_AVG}
             rows={[
@@ -203,7 +205,7 @@ export default function AnalyticsReport({ term, classCode, onSelectClass, onPick
         </Panel>
       </div>
 
-      <Panel title="Subject-wise" subtitle="Average % and pass % per subject">
+      <Panel title="Subject-wise" subtitle="Average and pass % per subject">
         <HBars
           series={PASS_AVG}
           labelWidth="7.5rem"
@@ -223,7 +225,7 @@ export default function AnalyticsReport({ term, classCode, onSelectClass, onPick
             <span className="text-right">Wrote</span>
             <span className="text-right">Failed</span>
             <span className="text-right">Pass %</span>
-            <span className="text-right">Average %</span>
+            <span className="text-right">Average</span>
           </div>
           <div className="flex flex-col">
             {data.teachers.map((t) => (
@@ -237,7 +239,7 @@ export default function AnalyticsReport({ term, classCode, onSelectClass, onPick
                   <span className="md:text-right text-navy/70 tabular-nums"><span className="md:hidden text-navy/45">Wrote </span>{t.written}</span>
                   <span className="md:text-right"><span className="md:hidden text-navy/45">Failed </span>{failedCell(t.failed)}</span>
                   <span className="md:text-right text-navy/70 tabular-nums"><span className="md:hidden text-navy/45">Pass </span>{pct(t.pass_percent)}</span>
-                  <span className="md:text-right text-navy/70 tabular-nums"><span className="md:hidden text-navy/45">Avg </span>{pct(t.average_percent)}</span>
+                  <span className="md:text-right text-navy/70 tabular-nums"><span className="md:hidden text-navy/45">Avg </span>{t.average_percent ?? "—"}</span>
                 </summary>
                 <table className="w-full text-sm mb-2 ml-0 md:ml-6 md:w-[calc(100%-1.5rem)]">
                   <thead>
@@ -279,7 +281,7 @@ export default function AnalyticsReport({ term, classCode, onSelectClass, onPick
                   <th className={`${th} text-right`}>Failed</th>
                   <th className={`${th} text-right`}>Absent</th>
                   <th className={`${th} text-right`}>Pass %</th>
-                  <th className={`${th} text-right`}>Average %</th>
+                  <th className={`${th} text-right`}>Average</th>
                 </tr>
               </thead>
               <tbody>
@@ -291,7 +293,7 @@ export default function AnalyticsReport({ term, classCode, onSelectClass, onPick
                     <td className="px-3 py-2.5 text-right">{failedCell(x.failed)}</td>
                     <td className="px-3 py-2.5 text-right text-navy/60 tabular-nums">{x.absent}</td>
                     <td className="px-3 py-2.5 text-right text-navy/70 tabular-nums">{pct(x.pass_percent)}</td>
-                    <td className="px-3 py-2.5 text-right text-navy/70 tabular-nums">{pct(x.average_percent)}</td>
+                    <td className="px-3 py-2.5 text-right text-navy/70 tabular-nums">{x.average_percent ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

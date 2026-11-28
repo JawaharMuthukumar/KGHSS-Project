@@ -84,13 +84,13 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
       </div>
       {error && <Banner tone="error" className="m-3">{error}</Banner>}
 
+      <div className="overflow-x-auto">
       <table className="table-cards w-full text-sm">
         <thead>
           <tr className="text-left text-xs font-semibold uppercase tracking-wide text-navy/45 border-b border-navy/8">
             <th className="px-4 py-3 w-10"></th>
             <th className="px-4 py-3">Week</th>
-            {showTeacher && <th className="px-4 py-3">Teacher</th>}
-            <th className="px-4 py-3">Class · Subject</th>
+            <th className="px-4 py-3">{showTeacher ? "Class · Subject / Teacher" : "Class · Subject"}</th>
             <th className="px-4 py-3">Topic</th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3 text-right">Actions</th>
@@ -99,7 +99,7 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
         <tbody>
           {!plans.length && (
             <tr>
-              <td colSpan={showTeacher ? 7 : 6} className="px-4 py-8 text-center text-navy/40">{emptyText}</td>
+              <td colSpan={6} className="px-4 py-8 text-center text-navy/40">{emptyText}</td>
             </tr>
           )}
           {plans.map((p) => (
@@ -108,20 +108,30 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
                 <input type="checkbox" checked={picked.has(p.id)} onChange={() => toggle(p.id)} aria-label={`Select ${p.week_label} ${p.class_code} ${p.subject}`} className="w-4 h-4 accent-[var(--color-gold-dark)]" />
               </td>
               <td className="tc-primary px-4 py-3">
-                <p className="font-medium text-navy whitespace-nowrap">{p.week_label}</p>
-                <p className="text-xs text-navy/45">Uploaded {formatDate(p.uploaded_at)}</p>
+                <div className="text-left">
+                  <p className="font-medium text-navy whitespace-nowrap">{p.week_label}</p>
+                  <p className="text-xs text-navy/45">Uploaded {formatDate(p.uploaded_at)}</p>
+                </div>
               </td>
-              {showTeacher && <td data-label="Teacher" className="px-4 py-3 text-navy/80">{p.teacher_name}</td>}
-              <td data-label="Class · Subject" className="px-4 py-3 text-navy/80 whitespace-nowrap">
-                {p.class_code} · {p.subject}
+              <td data-label="Class · Subject" className="px-4 py-3 text-navy/80">
+                <div>
+                  <span className="block whitespace-nowrap">
+                    {p.class_code} · {p.subject}
+                  </span>
+                  {/* HM view: the teacher under the class (saves a column so Approve / Return fit) */}
+                  {showTeacher && <span className="block text-xs text-navy/50">{p.teacher_name}</span>}
+                </div>
               </td>
-              <td data-label="Topic" className="px-4 py-3 text-navy/70">
-                {p.topic}
-                <p className="text-[11px] text-navy/40 truncate max-w-[16rem]">
-                  {p.file_name} · {kb(p.file_size)}
-                </p>
+              <td data-label="Topic" className="px-4 py-3 text-navy/70 max-w-[18rem]">
+                <div className="min-w-0">
+                  <p className="line-clamp-2">{p.topic}</p>
+                  <p className="text-[11px] text-navy/40 truncate max-w-[16rem]">
+                    {p.file_name} · {kb(p.file_size)}
+                  </p>
+                </div>
               </td>
-              <td data-label="Status" className="px-4 py-3">
+              <td data-label="Status" className="px-4 py-3 whitespace-nowrap">
+                <div>
                 <Badge tone={PLAN_STATUS[p.status]?.tone}>{PLAN_STATUS[p.status]?.label || p.status}</Badge>
                 {p.decided_at && (
                   <p className="text-[11px] text-navy/45 mt-1">
@@ -130,26 +140,30 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
                   </p>
                 )}
                 {p.status === "returned" && p.note && <p className="text-[11px] text-red-600 italic mt-0.5">“{p.note}”</p>}
+                </div>
               </td>
               <td className="tc-full px-4 py-3">
-                <div className="flex flex-wrap items-center justify-end gap-1.5">
+                {/* One line on computers: View and Print are icon buttons so Approve / Return still fit beside them */}
+                <div className="flex flex-wrap md:flex-nowrap items-center justify-end gap-1 whitespace-nowrap">
                   <button
                     type="button"
                     disabled={busy}
+                    title="View PDF"
+                    aria-label={`View ${p.class_code} ${p.subject} PDF`}
                     onClick={() => run(() => viewPdf(`/lesson-plans/${p.id}/file`, undefined, `${p.class_code} ${p.subject} ${p.week_label}.pdf`))}
-                    className="flex items-center gap-1 text-xs font-semibold text-navy hover:bg-navy/6 px-2.5 py-1.5 rounded-lg"
+                    className="flex items-center justify-center gap-1 text-xs font-semibold text-navy hover:bg-navy/6 border border-navy/12 w-8 h-8 rounded-lg"
                   >
-                    <Icon name="Eye" size={14} />
-                    View
+                    <Icon name="Eye" size={15} />
                   </button>
                   <button
                     type="button"
                     disabled={busy}
+                    title="Print PDF"
+                    aria-label={`Print ${p.class_code} ${p.subject} PDF`}
                     onClick={() => run(() => printPdf(`/lesson-plans/${p.id}/file`))}
-                    className="flex items-center gap-1 text-xs font-semibold text-navy hover:bg-navy/6 px-2.5 py-1.5 rounded-lg"
+                    className="flex items-center justify-center gap-1 text-xs font-semibold text-navy hover:bg-navy/6 border border-navy/12 w-8 h-8 rounded-lg"
                   >
-                    <Icon name="Printer" size={14} />
-                    Print
+                    <Icon name="Printer" size={15} />
                   </button>
                   {actions?.(p)}
                 </div>
@@ -158,6 +172,7 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
           ))}
         </tbody>
       </table>
+      </div>
     </Card>
   );
 }

@@ -226,6 +226,7 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
       </table>
 
       <div className="mt-1.5 flex items-start gap-1.5 text-[10px] leading-snug">
+        <div className="flex items-start gap-1.5 flex-1 min-w-0">
         <span
           style={printExact}
           className="inline-flex items-center justify-center w-4 h-4 mt-px rounded-full border-2 border-red-600 bg-red-50 shrink-0"
@@ -241,6 +242,16 @@ const ReportCard = forwardRef(function ReportCard({ meta, card }, ref) {
             </>
           )}
         </p>
+        </div>
+        {/* Head Master's signature (green ink, no date); blank space to sign by hand when none is saved */}
+        <div className="shrink-0 w-36 text-center">
+          <div className="h-9 flex items-end justify-center">
+            {meta.hm_signature && <img src={meta.hm_signature} alt="Head Master signature" className="max-h-9 max-w-full object-contain" style={printExact} />}
+          </div>
+          <p className="border-t border-black/60 pt-0.5 font-semibold leading-tight">
+            தலைமையாசிரியர் <span className="block text-[8.5px] font-normal text-black/70">Head Master</span>
+          </p>
+        </div>
       </div>
     </div>
   );

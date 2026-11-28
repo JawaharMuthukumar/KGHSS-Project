@@ -1,3 +1,4 @@
+import base64
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from io import BytesIO
@@ -572,6 +573,15 @@ def report_card_terms(cls: AcademicClass) -> list[str]:
     return terms
 
 
+def school_hm_signature(db: Session) -> str | None:
+    """The active HM's My Signature re-inked green, as a PNG data URL (None if the HM hasn't added one)."""
+    sig = (db.query(AccountSignature).join(Account, Account.id == AccountSignature.account_id)
+           .filter(Account.role == "admin", Account.is_active.is_(True)).order_by(AccountSignature.updated_at.desc()).first())
+    if not sig: return None
+    from app.services.signature_ink import ink
+    return "data:image/png;base64," + base64.b64encode(ink(sig.image).getvalue()).decode()
+
+
 def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | None = None, with_signatures: bool = False) -> dict:
     """Per-student report cards (every exam of the year as a row), as printed on the school's progress card.
     Class-wide data is always loaded because each row shows the class's top total for that exam."""
@@ -635,7 +645,9 @@ def build_report_cards(db: Session, cls: AcademicClass, only_student_id: int | N
         cards.append({"student_id": s.id, "registration_no": s.registration_no, "name": s.account.full_name, "rows": rows})
     # Class teacher's signature per exam they signed (printed cards only — never sent to the student portal)
     signatures = exam_signatures(db, assessments) if with_signatures else {}
-    return {"class_code": cls.code, "grade": cls.grade, "academic_year": cls.academic_year, "subjects": subjects, "signatures": signatures,
+    # The HM's signature (green ink, no date) at the bottom right of every printed card — never sent to the student portal
+    hm_sign = school_hm_signature(db) if with_signatures else None
+    return {"class_code": cls.code, "grade": cls.grade, "academic_year": cls.academic_year, "subjects": subjects, "signatures": signatures, "hm_signature": hm_sign,
         "max_total": full, "cards": cards}
 
 

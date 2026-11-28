@@ -83,8 +83,11 @@ def _filtered(db: Session, account: Account, year: str, teacher_id: int | None, 
 def setup(db: Session = Depends(get_db), account: Account = Depends(require_roles("admin", "teacher"))):
     year = current_academic_year(db)
     today = monday(date.today())
+    # On Saturday/Sunday (IST) teachers prepare the coming week, so that week is the default
+    ist = (datetime.utcnow() + timedelta(hours=5, minutes=30)).date()
+    current = monday(ist) + timedelta(days=7) if ist.weekday() >= 5 else monday(ist)
     weeks = [{"week_start": w, "label": week_label(w)} for w in weeks_now(db) if w <= today + timedelta(days=21)]
-    out = {"academic_year": year, "current_week": today, "weeks": weeks}
+    out = {"academic_year": year, "current_week": current, "weeks": weeks}
     if account.role == "teacher":
         out["slots"] = [{"class_code": s["class_code"], "subject": s["subject"]} for s in teacher_slots(db, teacher_profile(db, account), year)]
     else:

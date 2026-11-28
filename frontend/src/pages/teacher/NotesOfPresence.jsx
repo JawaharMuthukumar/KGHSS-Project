@@ -29,6 +29,8 @@ export default function NotesOfPresence() {
   const [saving, setSaving] = useState(false);
   const browse = useRef(null);
 
+  // Saturday / Sunday: the server makes the coming week the default (teachers prepare it at the weekend)
+  const weekend = [0, 6].includes(new Date().getDay());
   const weeks = useMemo(() => [...(setup?.weeks || [])].reverse(), [setup]); // newest first
   const weekValue = week || setup?.current_week || "";
   // This week's plan per class + subject, for the chip status and to block approved ones
@@ -128,7 +130,7 @@ export default function NotesOfPresence() {
                 {weeks.map((w) => (
                   <option key={w.week_start} value={w.week_start}>
                     {w.label}
-                    {w.week_start === setup.current_week ? " (this week)" : ""}
+                    {w.week_start === setup.current_week ? (weekend ? " (next week)" : " (this week)") : ""}
                   </option>
                 ))}
               </select>
@@ -212,7 +214,7 @@ export default function NotesOfPresence() {
         </Card>
 
         <Card className="p-5 lg:col-span-2">
-          <h2 className="font-heading font-bold text-navy text-sm">This week</h2>
+          <h2 className="font-heading font-bold text-navy text-sm">{weekend ? "Next week" : "This week"}</h2>
           <p className="text-xs text-navy/50 mb-3">{weeks.find((w) => w.week_start === setup.current_week)?.label}</p>
           <ul className="flex flex-col gap-2">
             {thisWeek.map((s) => (

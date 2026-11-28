@@ -13,9 +13,10 @@ const kb = (n) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${
 
 /**
  * Notes of Lessons list with checkboxes: open one plan, or open / download any selection (e.g. three weeks,
- * or the whole year) merged into one PDF for printing or the government report. `actions(plan)` adds row buttons.
+ * or the whole year) merged into one PDF for printing or the government report. `actions(plan)` adds row buttons;
+ * `bulkActions(selectedPlans, clearSelection)` adds buttons for the ticked rows (HM: approve / return them all).
  */
-export default function PlanTable({ plans, showTeacher = false, actions, emptyText = "No notes yet." }) {
+export default function PlanTable({ plans, showTeacher = false, actions, bulkActions, emptyText = "No notes yet." }) {
   const [picked, setPicked] = useState(() => new Set());
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -52,6 +53,7 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
           <input type="checkbox" checked={allPicked} onChange={toggleAll} className="w-4 h-4 accent-[var(--color-gold-dark)]" />
           Select all ({plans.length})
         </label>
+        {bulkActions && selected.length > 0 && bulkActions(plans.filter((p) => picked.has(p.id)), () => setPicked(new Set()))}
         <div className="ml-auto flex flex-wrap gap-2">
           <button
             type="button"
@@ -88,12 +90,12 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
       <table className="table-cards w-full text-sm">
         <thead>
           <tr className="text-left text-xs font-semibold uppercase tracking-wide text-navy/45 border-b border-navy/8">
-            <th className="px-4 py-3 w-10"></th>
-            <th className="px-4 py-3">Week</th>
-            <th className="px-4 py-3">{showTeacher ? "Class · Subject / Teacher" : "Class · Subject"}</th>
-            <th className="px-4 py-3">Topic</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3 text-right">Actions</th>
+            <th className="pl-4 pr-1 py-3 w-8"></th>
+            <th className="px-3 py-3">Week</th>
+            <th className="px-3 py-3">{showTeacher ? "Class · Subject / Teacher" : "Class · Subject"}</th>
+            <th className="px-3 py-3">Topic</th>
+            <th className="px-3 py-3">Status</th>
+            <th className="px-3 py-3 text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -104,33 +106,33 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
           )}
           {plans.map((p) => (
             <tr key={p.id} className="border-b border-navy/6 last:border-0">
-              <td className="tc-aside px-4 py-3">
+              <td className="tc-aside pl-4 pr-1 py-3">
                 <input type="checkbox" checked={picked.has(p.id)} onChange={() => toggle(p.id)} aria-label={`Select ${p.week_label} ${p.class_code} ${p.subject}`} className="w-4 h-4 accent-[var(--color-gold-dark)]" />
               </td>
-              <td className="tc-primary px-4 py-3">
+              <td className="tc-primary px-3 py-3">
                 <div className="text-left">
-                  <p className="font-medium text-navy whitespace-nowrap">{p.week_label}</p>
+                  <p className="font-medium text-navy min-[1340px]:whitespace-nowrap">{p.week_label}</p>
                   <p className="text-xs text-navy/45">Uploaded {formatDate(p.uploaded_at)}</p>
                 </div>
               </td>
-              <td data-label="Class · Subject" className="px-4 py-3 text-navy/80">
+              <td data-label="Class · Subject" className="px-3 py-3 text-navy/80">
                 <div>
-                  <span className="block whitespace-nowrap">
+                  <span className="block min-[1340px]:whitespace-nowrap">
                     {p.class_code} · {p.subject}
                   </span>
                   {/* HM view: the teacher under the class (saves a column so Approve / Return fit) */}
                   {showTeacher && <span className="block text-xs text-navy/50">{p.teacher_name}</span>}
                 </div>
               </td>
-              <td data-label="Topic" className="px-4 py-3 text-navy/70 max-w-[18rem]">
+              <td data-label="Topic" className="px-3 py-3 text-navy/70 max-w-[18rem]">
                 <div className="min-w-0">
                   <p className="line-clamp-2">{p.topic}</p>
-                  <p className="text-[11px] text-navy/40 truncate max-w-[16rem]">
+                  <p className="text-[11px] text-navy/40 line-clamp-1 break-all">
                     {p.file_name} · {kb(p.file_size)}
                   </p>
                 </div>
               </td>
-              <td data-label="Status" className="px-4 py-3 whitespace-nowrap">
+              <td data-label="Status" className="px-3 py-3">
                 <div>
                 <Badge tone={PLAN_STATUS[p.status]?.tone}>{PLAN_STATUS[p.status]?.label || p.status}</Badge>
                 {p.decided_at && (
@@ -142,7 +144,7 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
                 {p.status === "returned" && p.note && <p className="text-[11px] text-red-600 italic mt-0.5">“{p.note}”</p>}
                 </div>
               </td>
-              <td className="tc-full px-4 py-3">
+              <td className="tc-full px-3 py-3">
                 {/* One line on computers: View and Print are icon buttons so Approve / Return still fit beside them */}
                 <div className="flex flex-wrap md:flex-nowrap items-center justify-end gap-1 whitespace-nowrap">
                   <button

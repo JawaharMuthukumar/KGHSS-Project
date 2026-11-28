@@ -171,7 +171,7 @@ class DecisionIn(BaseModel):
 
 
 class BatchDecisionIn(DecisionIn):
-    ids: list[int] = Field(min_length=1, max_length=50)
+    ids: list[int] = Field(min_length=1, max_length=300)
 
 
 @router.patch("/decision", summary="HM approves or returns several lesson plans at once (one upload sent to several classes)")

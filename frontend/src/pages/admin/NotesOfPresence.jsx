@@ -76,18 +76,68 @@ function Decide({ plan, onDone }) {
   return (
     <>
       {plan.status !== "approved" && (
-        <button type="button" disabled={busy} onClick={() => send(true)} className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg">
+        <button type="button" disabled={busy} title={plan.ids?.length > 1 ? `Approve all ${plan.ids.length}` : "Approve"} onClick={() => send(true)} className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 px-2 py-1.5 rounded-lg">
           <Icon name="Check" size={14} />
-          {plan.ids?.length > 1 ? `Approve all ${plan.ids.length}` : "Approve"}
+          {/* Narrow screens: icon only (the title says it), so the row never scrolls sideways */}
+          <span className="hidden max-md:inline min-[1340px]:inline">{plan.ids?.length > 1 ? `Approve all ${plan.ids.length}` : "Approve"}</span>
+          {plan.ids?.length > 1 && <span className="hidden md:max-[1340px]:inline">{plan.ids.length}</span>}
         </button>
       )}
       {plan.status !== "returned" && (
-        <button type="button" disabled={busy} onClick={() => setReturning(true)} className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg">
+        <button type="button" disabled={busy} title="Return to the teacher" onClick={() => setReturning(true)} className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:bg-red-50 px-2 py-1.5 rounded-lg">
           <Icon name="X" size={14} />
-          Return
+          <span className="hidden max-md:inline min-[1340px]:inline">Return</span>
         </button>
       )}
     </>
+  );
+}
+
+/** Ticked rows on "To approve": approve them all at once (each PDF gets the HM stamp), or return them with one reason. */
+function BulkDecide({ rows, onDone }) {
+  const toast = useToast();
+  const [returning, setReturning] = useState(false);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ids = rows.flatMap((r) => r.ids || [r.id]);
+  const send = async (approve) => {
+    setBusy(true);
+    try {
+      await api.patch("/lesson-plans/decision", { ids, approve, note: approve ? undefined : note });
+      toast.success(approve ? `Approved and signed ${ids.length} lesson plan${ids.length === 1 ? "" : "s"}` : `Returned ${ids.length} to the teachers`);
+      setReturning(false);
+      setNote("");
+      onDone();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not update.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (returning) {
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Reason (shown to the teachers)" maxLength={500} className={`${inputClass} !py-1.5 text-xs w-56`} autoFocus />
+        <button type="button" disabled={busy || !note.trim()} onClick={() => send(false)} className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-full disabled:opacity-50">
+          Return {ids.length}
+        </button>
+        <button type="button" onClick={() => setReturning(false)} className="text-xs font-semibold text-navy/55 px-2 py-1.5">
+          Cancel
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <button type="button" disabled={busy} onClick={() => send(true)} className="flex items-center gap-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-3.5 py-2 rounded-full disabled:opacity-60">
+        <Icon name="Check" size={14} />
+        {busy ? "Approving…" : `Approve selected (${ids.length})`}
+      </button>
+      <button type="button" disabled={busy} onClick={() => setReturning(true)} className="flex items-center gap-1 text-xs font-semibold text-red-600 border border-red-200 hover:bg-red-50 px-3.5 py-2 rounded-full">
+        <Icon name="X" size={14} />
+        Return selected
+      </button>
+    </div>
   );
 }
 
@@ -290,7 +340,7 @@ export default function AdminNotesOfPresence() {
             className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${tab === t.id ? "border-gold text-navy" : "border-transparent text-navy/45 hover:text-navy"}`}
           >
             {t.label}
-            {t.id === "pending" && pending.data?.length ? ` (${pending.data.length})` : ""}
+            {t.id === "pending" && pending.data?.length ? ` (${groupBatches(pending.data).length})` : ""}
           </button>
         ))}
       </div>
@@ -299,7 +349,21 @@ export default function AdminNotesOfPresence() {
         (pending.loading && !pending.data ? (
           <ContentSkeleton rows={4} />
         ) : (
-          <PlanTable plans={groupBatches(pending.data || [])} showTeacher emptyText="Nothing waiting for approval." actions={(p) => <Decide plan={p} onDone={refresh} />} />
+          <PlanTable
+            plans={groupBatches(pending.data || [])}
+            showTeacher
+            emptyText="Nothing waiting for approval."
+            actions={(p) => <Decide plan={p} onDone={refresh} />}
+            bulkActions={(rows, clear) => (
+              <BulkDecide
+                rows={rows}
+                onDone={() => {
+                  clear();
+                  refresh();
+                }}
+              />
+            )}
+          />
         ))}
 
       {tab === "missing" && <NotSent />}

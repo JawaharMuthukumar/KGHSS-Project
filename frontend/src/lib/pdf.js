@@ -44,6 +44,31 @@ export async function openPdf(path, query, filename = "document.pdf") {
   }
 }
 
+/** Only look at an API PDF: a new tab on computers; on phones the phone's PDF viewer (no print screen). */
+export async function viewPdf(path, query, filename = "document.pdf") {
+  if (isMobile()) {
+    saveBlob(await api.get(path, query ? { query } : undefined), filename);
+    return;
+  }
+  const tab = window.open("", "_blank");
+  try {
+    const blob = await api.get(path, query ? { query } : undefined);
+    const url = URL.createObjectURL(blob);
+    if (tab) tab.location.href = url;
+    else window.location.href = url;
+  } catch (err) {
+    tab?.close();
+    throw err;
+  }
+}
+
+/** Straight to the print screen (printer, copies, Save as PDF) on computers and phones alike — see pdfPrint.js. */
+export async function printPdf(path, query) {
+  const blob = await api.get(path, query ? { query } : undefined);
+  const { printPdfBlob } = await import("./pdfPrint");
+  await printPdfBlob(blob);
+}
+
 /** Download an API PDF as a file. */
 export async function downloadPdf(path, query, filename) {
   saveBlob(await api.get(path, query ? { query } : undefined), filename);

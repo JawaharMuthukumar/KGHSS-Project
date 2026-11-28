@@ -9,7 +9,7 @@ import { ContentSkeleton } from "../../components/ui/Skeleton";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useToast } from "../../components/ui/Toast";
 import { api, ApiError } from "../../lib/apiClient";
-import { openPdf } from "../../lib/pdf";
+import { printPdf } from "../../lib/pdf";
 
 const TABS = [
   { id: "pending", label: "To approve" },
@@ -18,7 +18,28 @@ const TABS = [
   { id: "all", label: "All notes" },
 ];
 
-/** Approve / return buttons for one plan; a return needs a short reason for the teacher. */
+/**
+ * One upload a teacher sent to several classes (same batch) becomes one row — "9A, 9B · Science" — so the HM
+ * approves or returns them with a single click. `ids` holds every plan in the row.
+ */
+function groupBatches(plans) {
+  const out = [];
+  const byBatch = {};
+  for (const p of plans) {
+    const group = p.batch && byBatch[p.batch];
+    if (group) {
+      group.ids.push(p.id);
+      group.class_code = `${group.class_code}, ${p.class_code}`;
+      continue;
+    }
+    const row = { ...p, ids: [p.id] };
+    if (p.batch) byBatch[p.batch] = row;
+    out.push(row);
+  }
+  return out;
+}
+
+/** Approve / return buttons for one plan (or one grouped upload); a return needs a short reason for the teacher. */
 function Decide({ plan, onDone }) {
   const toast = useToast();
   const [returning, setReturning] = useState(false);
@@ -27,7 +48,9 @@ function Decide({ plan, onDone }) {
   const send = async (approve) => {
     setBusy(true);
     try {
-      await api.patch(`/lesson-plans/${plan.id}/decision`, { approve, note: approve ? undefined : note });
+      const body = { approve, note: approve ? undefined : note };
+      if (plan.ids?.length > 1) await api.patch("/lesson-plans/decision", { ...body, ids: plan.ids });
+      else await api.patch(`/lesson-plans/${plan.id}/decision`, body);
       toast.success(approve ? `Approved and signed: ${plan.teacher_name} · ${plan.class_code} ${plan.subject}` : "Returned to the teacher");
       setReturning(false);
       onDone();
@@ -55,7 +78,7 @@ function Decide({ plan, onDone }) {
       {plan.status !== "approved" && (
         <button type="button" disabled={busy} onClick={() => send(true)} className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg">
           <Icon name="Check" size={14} />
-          Approve
+          {plan.ids?.length > 1 ? `Approve all ${plan.ids.length}` : "Approve"}
         </button>
       )}
       {plan.status !== "returned" && (
@@ -81,7 +104,7 @@ function WeekByWeek() {
     try {
       const plans = await api.get("/lesson-plans", { query: { week_from: w.week_start, week_to: w.week_start, status } });
       if (!plans.length) return setPrintError(`No ${status || ""} notes for ${w.label}.`);
-      await openPdf("/lesson-plans/merged", { ids: plans.map((p) => p.id).join(",") }, `Notes of Lessons ${w.label}.pdf`);
+      await printPdf("/lesson-plans/merged", { ids: plans.map((p) => p.id).join(",") });
     } catch (err) {
       setPrintError(err instanceof ApiError ? err.message : "Could not open the PDF.");
     }
@@ -276,7 +299,7 @@ export default function AdminNotesOfPresence() {
         (pending.loading && !pending.data ? (
           <ContentSkeleton rows={4} />
         ) : (
-          <PlanTable plans={pending.data || []} showTeacher emptyText="Nothing waiting for approval." actions={(p) => <Decide plan={p} onDone={refresh} />} />
+          <PlanTable plans={groupBatches(pending.data || [])} showTeacher emptyText="Nothing waiting for approval." actions={(p) => <Decide plan={p} onDone={refresh} />} />
         ))}
 
       {tab === "missing" && <NotSent />}

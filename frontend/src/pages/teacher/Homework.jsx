@@ -20,7 +20,7 @@ export default function Homework() {
   const toast = useToast();
   const { data: setup, loading: loadingSetup, error: setupError, reload: reloadSetup } = useApiResource("/homework/setup", { live: "homework" });
   const { data: given, loading, reload } = useApiResource("/homework", { live: "homework" });
-  const [slot, setSlot] = useState("");
+  const [picked, setPicked] = useState(null); // slot keys ticked (null = the default one)
   const [details, setDetails] = useState("");
   const [givenOn, setGivenOn] = useState("");
   const [dueOn, setDueOn] = useState("");
@@ -49,9 +49,11 @@ export default function Homework() {
   }
 
   const today = setup.today;
-  // Default to the first class with a period today that has no homework yet, else the first class.
+  // Default: the first class with a period today that has no homework yet (else the first class); the teacher
+  // ticks any others that get the same homework (e.g. the other medium of the same subject).
   const fallback = setup.slots.find((s) => s.periods_today.length && !s.given_today) || setup.slots[0];
-  const slotValue = slot || slotKey(fallback);
+  const chosen = picked ?? [slotKey(fallback)];
+  const toggleSlot = (key) => setPicked(chosen.includes(key) ? chosen.filter((k) => k !== key) : [...chosen, key]);
   const given_on = givenOn || today;
   const due_on = dueOn || nextSchoolDay(given_on);
   const todaySlots = setup.slots.filter((s) => s.periods_today.length);
@@ -65,14 +67,19 @@ export default function Homework() {
   const submit = async (e) => {
     e.preventDefault();
     if (details.trim().length < 2) return setError("Write the homework.");
-    const [class_code, subject] = slotValue.split("|");
+    if (!chosen.length) return setError("Tick at least one class.");
+    const slots = chosen.map((k) => {
+      const [class_code, subject] = k.split("|");
+      return { class_code, subject };
+    });
     setSaving(true);
     setError("");
     try {
-      await api.post("/homework", { class_code, subject, details: details.trim(), given_on, due_on });
-      toast.success(`Homework given to ${class_code} · ${subject}`);
+      await api.post("/homework", { slots, details: details.trim(), given_on, due_on });
+      toast.success(`Homework given to ${slots.map((s) => `${s.class_code} · ${s.subject}`).join(", ")}`);
       setDetails("");
       setDueOn("");
+      setPicked(null);
       refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not save. Please try again.");
@@ -109,19 +116,21 @@ export default function Homework() {
         <Card className="p-5 lg:col-span-3">
           <h2 className="font-heading font-bold text-navy text-sm mb-4">Give homework</h2>
           <form onSubmit={submit} className="flex flex-col gap-4">
-            <FormField label="Class · Subject" htmlFor="hw-slot" required>
+            <FormField label="Classes · tick every class that gets this homework" htmlFor="hw-slot" required>
               <div id="hw-slot" className="flex flex-wrap gap-2">
                 {setup.slots.map((s) => (
                   <button
                     key={slotKey(s)}
                     type="button"
-                    onClick={() => setSlot(slotKey(s))}
+                    onClick={() => toggleSlot(slotKey(s))}
+                    title={s.given_today ? "Homework already given today" : s.periods_today.length ? `Period ${s.periods_today.join(", ")} today` : "No period today"}
                     className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm border transition-colors ${
-                      slotValue === slotKey(s) ? "bg-navy text-white border-navy" : "bg-white text-navy border-navy/15 hover:border-gold"
+                      chosen.includes(slotKey(s)) ? "bg-navy text-white border-navy" : "bg-white text-navy border-navy/15 hover:border-gold"
                     }`}
                   >
+                    <Icon name={chosen.includes(slotKey(s)) ? "CircleCheck" : "Circle"} size={14} />
                     {s.class_code} · {s.subject}
-                    {s.given_today && <Icon name="Check" size={14} className={slotValue === slotKey(s) ? "text-emerald-300" : "text-emerald-600"} />}
+                    {s.given_today && <Icon name="Check" size={14} className={chosen.includes(slotKey(s)) ? "text-emerald-300" : "text-emerald-600"} />}
                   </button>
                 ))}
               </div>
@@ -156,10 +165,10 @@ export default function Homework() {
             {error && <Banner tone="error">{error}</Banner>}
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || !chosen.length}
               className="bg-gold text-navy-dark font-semibold text-sm py-3 rounded-full hover:bg-gold-light transition-colors disabled:opacity-60"
             >
-              {saving ? "Saving…" : "Give Homework"}
+              {saving ? "Saving…" : chosen.length > 1 ? `Give to ${chosen.length} classes` : "Give Homework"}
             </button>
           </form>
         </Card>

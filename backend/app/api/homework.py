@@ -67,11 +67,19 @@ def expected_slots(db: Session, year: str, teacher_id: int | None = None, weekda
 
 
 class HomeworkIn(BaseModel):
-    class_code: str
-    subject: str
+    # One or more of the teacher's classes (e.g. the TM and EM sections of the same subject) get the same homework
+    slots: list["Slot"] = Field(min_length=1, max_length=20)
     details: str = Field(min_length=2, max_length=2000)
     due_on: date
     given_on: date | None = None
+
+
+class Slot(BaseModel):
+    class_code: str
+    subject: str
+
+
+HomeworkIn.model_rebuild()
 
 
 class HomeworkPatch(BaseModel):
@@ -124,17 +132,24 @@ def _own(db: Session, account: Account, homework_id: int) -> Homework:
 
 @router.post("", status_code=201, summary="Teacher gives homework to one of their classes")
 def give_homework(data: HomeworkIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
-    teacher = teacher_profile(db, account); cls = get_class(db, data.class_code); year = current_academic_year(db)
-    if data.subject in NO_HOMEWORK or not db.query(SubjectTeacherAssignment).filter_by(class_id=cls.id, subject=data.subject, teacher_id=teacher.id, academic_year=year).first():
-        raise HTTPException(403, f"You are not the {data.subject} teacher of {cls.code}")
+    teacher = teacher_profile(db, account); year = current_academic_year(db)
     today = today_ist(); given = data.given_on or today
     if given > today: raise HTTPException(422, "Homework can't be dated in the future")
     if given < today - timedelta(days=7): raise HTTPException(422, "Homework can be added for the last 7 days only")
     if data.due_on < given: raise HTTPException(422, "The due date can't be before the day it is given")
-    h = Homework(teacher_id=teacher.id, class_id=cls.id, subject=data.subject, academic_year=year, given_on=given, due_on=data.due_on, details=data.details.strip())
-    db.add(h); db.commit(); db.refresh(h)
-    notify(db, students_of(db, cls.id), f"New homework · {h.subject}", h.details, "/student/homework", f"homework-{h.id}")
-    return out_many(db, [h])[0]
+    targets = []
+    for s in {(x.class_code, x.subject): x for x in data.slots}.values():
+        cls = get_class(db, s.class_code)
+        if s.subject in NO_HOMEWORK or not db.query(SubjectTeacherAssignment).filter_by(class_id=cls.id, subject=s.subject, teacher_id=teacher.id, academic_year=year).first():
+            raise HTTPException(403, f"You are not the {s.subject} teacher of {cls.code}")
+        targets.append((cls, s.subject))
+    # Each class gets its own homework record, so the HM's day check, reminders and edits stay per class
+    items = [Homework(teacher_id=teacher.id, class_id=cls.id, subject=subj, academic_year=year, given_on=given, due_on=data.due_on, details=data.details.strip())
+             for cls, subj in targets]
+    db.add_all(items); db.commit()
+    for (cls, _), h in zip(targets, items):
+        notify(db, students_of(db, cls.id), f"New homework · {h.subject}", h.details, "/student/homework", f"homework-{h.id}")
+    return out_many(db, items)
 
 
 @router.patch("/{homework_id}", summary="Teacher edits their homework")

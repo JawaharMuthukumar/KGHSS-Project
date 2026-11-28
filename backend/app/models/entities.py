@@ -97,6 +97,8 @@ class LessonPlan(Base):
     decided_by: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    # One upload sent to several classes (e.g. the TM and EM sections) shares a batch id, so the HM approves them together
+    batch: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
 
 
 class Homework(Base):

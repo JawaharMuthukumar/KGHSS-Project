@@ -85,6 +85,7 @@ def initialize_schema_and_reference_classes():
         ("students", "status", "VARCHAR(20)"),
         ("classes", "intake_open", "BOOLEAN"),
         ("accounts", "password_is_default", "BOOLEAN"),
+        ("lesson_plans", "batch", "VARCHAR(36)"),
         ("leave_requests", "forward_state", "VARCHAR(20)"),
         ("leave_requests", "teacher_remark", "TEXT"),
         ("leave_requests", "forwarded_at", "TIMESTAMP"),

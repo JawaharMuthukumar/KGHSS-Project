@@ -4,7 +4,7 @@ import Icon from "../ui/Icon";
 import Badge from "../ui/Badge";
 import Banner from "../portal/Banner";
 import { ApiError } from "../../lib/apiClient";
-import { downloadPdf, openPdf } from "../../lib/pdf";
+import { downloadPdf, printPdf, viewPdf } from "../../lib/pdf";
 import { formatDate } from "../../utils/formatDate";
 import { PLAN_STATUS } from "../../constants/notes";
 
@@ -56,11 +56,20 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
           <button
             type="button"
             disabled={!selected.length || busy}
-            onClick={() => run(() => openPdf("/lesson-plans/merged", merged, "Notes of Lessons.pdf"))}
+            onClick={() => run(() => viewPdf("/lesson-plans/merged", merged, "Notes of Lessons.pdf"))}
+            className="flex items-center gap-1.5 text-xs font-semibold border border-navy/15 text-navy px-3.5 py-2 rounded-full hover:border-gold disabled:opacity-50"
+          >
+            <Icon name="Eye" size={14} />
+            View {selected.length || ""} as one PDF
+          </button>
+          <button
+            type="button"
+            disabled={!selected.length || busy}
+            onClick={() => run(() => printPdf("/lesson-plans/merged", merged))}
             className="flex items-center gap-1.5 text-xs font-semibold bg-gold text-navy-dark px-3.5 py-2 rounded-full hover:bg-gold-light disabled:opacity-50"
           >
             <Icon name="Printer" size={14} />
-            Open {selected.length || ""} as one PDF (print)
+            Print {selected.length || ""}
           </button>
           <button
             type="button"
@@ -127,11 +136,20 @@ export default function PlanTable({ plans, showTeacher = false, actions, emptyTe
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => run(() => openPdf(`/lesson-plans/${p.id}/file`, undefined, `${p.class_code} ${p.subject} ${p.week_label}.pdf`))}
+                    onClick={() => run(() => viewPdf(`/lesson-plans/${p.id}/file`, undefined, `${p.class_code} ${p.subject} ${p.week_label}.pdf`))}
                     className="flex items-center gap-1 text-xs font-semibold text-navy hover:bg-navy/6 px-2.5 py-1.5 rounded-lg"
                   >
                     <Icon name="Eye" size={14} />
                     View
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => run(() => printPdf(`/lesson-plans/${p.id}/file`))}
+                    className="flex items-center gap-1 text-xs font-semibold text-navy hover:bg-navy/6 px-2.5 py-1.5 rounded-lg"
+                  >
+                    <Icon name="Printer" size={14} />
+                    Print
                   </button>
                   {actions?.(p)}
                 </div>

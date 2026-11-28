@@ -21,7 +21,7 @@ export default function NotesOfPresence() {
   const { data: setup, loading: loadingSetup, error: setupError } = useApiResource("/lesson-plans/setup");
   const { data: plans, loading, reload } = useApiResource("/lesson-plans", { live: "notes" });
   const [week, setWeek] = useState("");
-  const [slot, setSlot] = useState("");
+  const [picked, setPicked] = useState(null); // slot keys ticked for this upload (null = the default one)
   const [topic, setTopic] = useState("");
   const [file, setFile] = useState(null);
   const [dragging, setDragging] = useState(false);
@@ -31,8 +31,13 @@ export default function NotesOfPresence() {
 
   const weeks = useMemo(() => [...(setup?.weeks || [])].reverse(), [setup]); // newest first
   const weekValue = week || setup?.current_week || "";
-  const slotValue = slot || (setup?.slots?.[0] ? slotKey(setup.slots[0]) : "");
-  const existing = (plans || []).find((p) => p.week_start === weekValue && slotKey(p) === slotValue);
+  // This week's plan per class + subject, for the chip status and to block approved ones
+  const planFor = (key) => (plans || []).find((p) => p.week_start === weekValue && slotKey(p) === key);
+  // Default: the first class not yet uploaded for the chosen week; the teacher ticks any others (e.g. the other medium)
+  const defaultSlot = (setup?.slots || []).find((s) => !planFor(slotKey(s))) || setup?.slots?.[0];
+  const chosen = (picked ?? (defaultSlot ? [slotKey(defaultSlot)] : [])).filter((k) => planFor(k)?.status !== "approved");
+  const replacing = chosen.filter((k) => planFor(k));
+  const toggleSlot = (key) => setPicked(chosen.includes(key) ? chosen.filter((k) => k !== key) : [...chosen, key]);
 
   const takeFile = (f) => {
     if (!f) return;
@@ -59,10 +64,9 @@ export default function NotesOfPresence() {
     e.preventDefault();
     if (!file) return setError("Add the lesson plan PDF (browse, drag & drop, or paste).");
     if (topic.trim().length < 2) return setError("Enter the topic / unit for the week.");
-    const [class_code, subject] = slotValue.split("|");
+    if (!chosen.length) return setError("Tick at least one class.");
     const form = new FormData();
-    form.append("class_code", class_code);
-    form.append("subject", subject);
+    form.append("slots", chosen.join(","));
     form.append("week_start", weekValue);
     form.append("topic", topic.trim());
     form.append("file", file);
@@ -70,9 +74,10 @@ export default function NotesOfPresence() {
     setError("");
     try {
       await api.postForm("/lesson-plans", form);
-      toast.success(`${class_code} ${subject} plan uploaded. The HM will review it.`);
+      toast.success(`Plan uploaded for ${chosen.map((k) => k.replace("|", " ")).join(", ")}. The HM will review it.`);
       setFile(null);
       setTopic("");
+      setPicked(null);
       reload();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Upload failed. Please try again.");
@@ -118,27 +123,43 @@ export default function NotesOfPresence() {
         <Card className="p-5 lg:col-span-3">
           <h2 className="font-heading font-bold text-navy text-sm mb-4">Upload a week's lesson plan</h2>
           <form onSubmit={submit} className="flex flex-col gap-4">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <FormField label="Week" htmlFor="np-week" required>
-                <select id="np-week" value={weekValue} onChange={(e) => setWeek(e.target.value)} className={inputClass}>
-                  {weeks.map((w) => (
-                    <option key={w.week_start} value={w.week_start}>
-                      {w.label}
-                      {w.week_start === setup.current_week ? " (this week)" : ""}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-              <FormField label="Class · Subject" htmlFor="np-slot" required>
-                <select id="np-slot" value={slotValue} onChange={(e) => setSlot(e.target.value)} className={inputClass}>
-                  {setup.slots.map((s) => (
-                    <option key={slotKey(s)} value={slotKey(s)}>
+            <FormField label="Week" htmlFor="np-week" required>
+              <select id="np-week" value={weekValue} onChange={(e) => setWeek(e.target.value)} className={inputClass}>
+                {weeks.map((w) => (
+                  <option key={w.week_start} value={w.week_start}>
+                    {w.label}
+                    {w.week_start === setup.current_week ? " (this week)" : ""}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            {/* Tick every class this plan is for (e.g. both mediums of the same subject) — one upload goes to all of them */}
+            <FormField label="Classes · tick every class this plan is for" htmlFor="np-slots" required>
+              <div id="np-slots" className="flex flex-wrap gap-2">
+                {setup.slots.map((s) => {
+                  const key = slotKey(s);
+                  const plan = planFor(key);
+                  const approved = plan?.status === "approved";
+                  const on = chosen.includes(key);
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      disabled={approved}
+                      onClick={() => toggleSlot(key)}
+                      title={approved ? "Already approved by the HM for this week" : plan ? `${PLAN_STATUS[plan.status].label} — uploading replaces it` : "Not uploaded yet"}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors disabled:cursor-not-allowed ${
+                        on ? "bg-navy text-white border-navy" : approved ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-white text-navy border-navy/15 hover:border-gold"
+                      }`}
+                    >
+                      <Icon name={on ? "CircleCheck" : approved ? "Check" : "Circle"} size={14} />
                       {s.class_code} · {s.subject}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-            </div>
+                      {plan && !approved && <span className={`text-[10px] font-semibold ${on ? "text-gold-light" : "text-gold-dark"}`}>{PLAN_STATUS[plan.status].label}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </FormField>
             <FormField label="Topic / Unit" htmlFor="np-topic" required>
               <input id="np-topic" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Unit 21: Nutrition and Health" maxLength={200} className={inputClass} />
             </FormField>
@@ -174,20 +195,18 @@ export default function NotesOfPresence() {
               <input ref={browse} type="file" accept="application/pdf,.pdf" className="sr-only" onChange={(e) => { takeFile(e.target.files?.[0]); e.target.value = ""; }} />
             </div>
 
-            {existing && (
-              <Banner tone={existing.status === "approved" ? "success" : "info"}>
-                {existing.status === "approved"
-                  ? "This week's plan for this class is already approved by the HM."
-                  : `A plan is already uploaded for this week (${PLAN_STATUS[existing.status].label}). Uploading again replaces it.`}
+            {replacing.length > 0 && (
+              <Banner tone="info">
+                Already uploaded for this week: {replacing.map((k) => k.replace("|", " ")).join(", ")}. Uploading again replaces it.
               </Banner>
             )}
             {error && <Banner tone="error">{error}</Banner>}
             <button
               type="submit"
-              disabled={saving || existing?.status === "approved"}
+              disabled={saving || !chosen.length}
               className="bg-gold text-navy-dark font-semibold text-sm py-3 rounded-full hover:bg-gold-light transition-colors disabled:opacity-60"
             >
-              {saving ? "Uploading…" : existing ? "Replace and send to HM" : "Upload and send to HM"}
+              {saving ? "Uploading…" : chosen.length > 1 ? `Upload to ${chosen.length} classes and send to HM` : "Upload and send to HM"}
             </button>
           </form>
         </Card>
@@ -212,7 +231,7 @@ export default function NotesOfPresence() {
         </Card>
       </div>
 
-      <h2 className="font-heading font-bold text-navy text-sm mb-2">My notes · {setup.academic_year}</h2>
+      <h2 className="font-heading font-bold text-navy text-sm mb-2">My Notes of Lessons · {setup.academic_year}</h2>
       {loading && !plans ? (
         <ContentSkeleton rows={3} />
       ) : (

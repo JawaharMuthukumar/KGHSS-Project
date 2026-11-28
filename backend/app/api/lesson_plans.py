@@ -7,6 +7,7 @@ whole year) for printing or for the government report.
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from io import BytesIO
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.responses import StreamingResponse
@@ -44,7 +45,7 @@ def plan_out(p: LessonPlan, codes: dict, teachers: dict, deciders: dict) -> dict
     return {"id": p.id, "teacher_id": p.teacher_id, "teacher_name": teachers.get(p.teacher_id), "class_code": codes.get(p.class_id),
             "subject": p.subject, "week_start": p.week_start, "week_label": week_label(p.week_start), "topic": p.topic,
             "file_name": p.file_name, "file_size": p.file_size, "status": p.status, "note": p.note,
-            "decided_by_name": deciders.get(p.decided_by), "decided_at": p.decided_at, "uploaded_at": p.uploaded_at}
+            "decided_by_name": deciders.get(p.decided_by), "decided_at": p.decided_at, "uploaded_at": p.uploaded_at, "batch": p.batch}
 
 
 def out_many(db: Session, plans: list[LessonPlan]) -> list[dict]:
@@ -102,14 +103,19 @@ def list_plans(teacher_id: int | None = None, class_code: str | None = None, sub
     return out_many(db, plans)
 
 
-@router.post("", status_code=201, summary="Teacher uploads (or replaces) a week's lesson plan PDF for one of their classes")
-async def upload_plan(class_code: str = Form(...), subject: str = Form(...), week_start: date = Form(...),
-                      topic: str = Form(..., min_length=2, max_length=200), file: UploadFile = File(...),
+@router.post("", status_code=201, summary="Teacher uploads (or replaces) a week's lesson plan PDF for one or more of their classes")
+async def upload_plan(slots: str = Form(..., description='Comma-separated "class_code|subject" pairs, e.g. "9A|Science,9B|Science"'),
+                      week_start: date = Form(...), topic: str = Form(..., min_length=2, max_length=200), file: UploadFile = File(...),
                       db: Session = Depends(get_db), account: Account = Depends(require_roles("teacher"))):
-    teacher = teacher_profile(db, account)
-    cls = get_class(db, class_code); year = current_academic_year(db)
-    if not db.query(SubjectTeacherAssignment).filter_by(class_id=cls.id, subject=subject, teacher_id=teacher.id, academic_year=year).first():
-        raise HTTPException(403, f"You are not the {subject} teacher of {cls.code}")
+    teacher = teacher_profile(db, account); year = current_academic_year(db)
+    pairs = list(dict.fromkeys(tuple(x.split("|", 1)) for x in slots.split(",") if "|" in x))
+    if not pairs: raise HTTPException(422, "Choose at least one class")
+    targets = []
+    for class_code, subject in pairs:
+        cls = get_class(db, class_code)
+        if not db.query(SubjectTeacherAssignment).filter_by(class_id=cls.id, subject=subject, teacher_id=teacher.id, academic_year=year).first():
+            raise HTTPException(403, f"You are not the {subject} teacher of {cls.code}")
+        targets.append((cls, subject))
     week = monday(week_start)
     if week not in weeks_now(db): raise HTTPException(422, f"Pick a week of the {year} school year")
     if week > monday(date.today()) + timedelta(days=21): raise HTTPException(422, "You can upload up to three weeks ahead only")
@@ -119,16 +125,26 @@ async def upload_plan(class_code: str = Form(...), subject: str = Form(...), wee
     try: PdfReader(BytesIO(data))
     except (PdfReadError, ValueError) as exc: raise HTTPException(422, "That PDF could not be read. Save it again as PDF and retry.") from exc
 
-    plan = db.query(LessonPlan).filter_by(class_id=cls.id, subject=subject, week_start=week).first()
-    if plan and plan.status == "approved": raise HTTPException(409, "This week's plan is already approved by the HM")
-    if plan and plan.teacher_id != teacher.id: raise HTTPException(409, "Another teacher has uploaded this class's plan for that week")
-    if not plan:
-        plan = LessonPlan(teacher_id=teacher.id, class_id=cls.id, subject=subject, academic_year=year, week_start=week); db.add(plan)
-    plan.topic = topic.strip(); plan.file_name = (file.filename or "lesson-plan.pdf")[:200]; plan.file_size = len(data); plan.pdf = data
-    plan.status = "pending"; plan.note = None; plan.decided_by = None; plan.decided_at = None; plan.uploaded_at = datetime.utcnow()
-    db.commit(); db.refresh(plan)
-    notify(db, admins(db), "Lesson plan to approve", f"{account.full_name} · {cls.code} {subject}", "/admin/notes-of-lessons", f"notes-{plan.id}")
-    return out_many(db, [plan])[0]
+    # Check every class first, so nothing is saved when one of them can't take the upload
+    existing = {}
+    for cls, subject in targets:
+        plan = db.query(LessonPlan).filter_by(class_id=cls.id, subject=subject, week_start=week).first()
+        if plan and plan.status == "approved": raise HTTPException(409, f"{cls.code} {subject}: this week's plan is already approved by the HM")
+        if plan and plan.teacher_id != teacher.id: raise HTTPException(409, f"{cls.code} {subject}: another teacher has uploaded this class's plan for that week")
+        existing[(cls.id, subject)] = plan
+    batch = str(uuid4()) if len(targets) > 1 else None
+    now = datetime.utcnow(); saved = []
+    for cls, subject in targets:
+        plan = existing[(cls.id, subject)]
+        if not plan:
+            plan = LessonPlan(teacher_id=teacher.id, class_id=cls.id, subject=subject, academic_year=year, week_start=week); db.add(plan)
+        plan.topic = topic.strip(); plan.file_name = (file.filename or "lesson-plan.pdf")[:200]; plan.file_size = len(data); plan.pdf = data
+        plan.status = "pending"; plan.note = None; plan.decided_by = None; plan.decided_at = None; plan.uploaded_at = now; plan.batch = batch
+        saved.append(plan)
+    db.commit()
+    label = ", ".join(c.code for c, _ in targets) + " " + " / ".join(dict.fromkeys(s for _, s in targets))
+    notify(db, admins(db), "Lesson plan to approve", f"{account.full_name} · {label}", "/admin/notes-of-lessons", f"notes-{saved[0].id}")
+    return out_many(db, saved)
 
 
 def _readable(db: Session, account: Account, plan_id: int) -> LessonPlan:
@@ -151,16 +167,49 @@ class DecisionIn(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class BatchDecisionIn(DecisionIn):
+    ids: list[int] = Field(min_length=1, max_length=50)
+
+
+@router.patch("/decision", summary="HM approves or returns several lesson plans at once (one upload sent to several classes)")
+def decide_plans(data: BatchDecisionIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin"))):
+    plans = db.query(LessonPlan).filter(LessonPlan.id.in_(data.ids)).order_by(LessonPlan.id).all()
+    if not plans: raise HTTPException(404, "Lesson plans not found")
+    if not data.approve and not (data.note or "").strip(): raise HTTPException(422, "Give the teacher a reason for returning it")
+    for plan in plans:
+        if not (data.approve and plan.status == "approved"): _decide(db, account, plan, data, datetime.utcnow())
+    db.commit()
+    _notify_decision(db, plans)
+    return out_many(db, plans)
+
+
+def _notify_decision(db: Session, plans: list[LessonPlan]) -> None:
+    """One notification per teacher, naming every class decided together."""
+    by_teacher = defaultdict(list)
+    for p in plans: by_teacher[p.teacher_id].append(p)
+    for tid, ps in by_teacher.items():
+        teacher = db.get(Teacher, tid); p = ps[0]
+        label = ", ".join(db.get(AcademicClass, x.class_id).code for x in ps) + f" {p.subject}"
+        if p.status == "approved": notify(db, [teacher.account_id], "Lesson plan approved", f"{label} · {week_label(p.week_start)}", "/teacher/notes-of-lessons", f"notes-{p.id}")
+        else: notify(db, [teacher.account_id], "Lesson plan returned by HM", f"{label} · {p.note}", "/teacher/notes-of-lessons", f"notes-{p.id}")
+
+
 @router.patch("/{plan_id}/decision", summary="HM approves or returns a lesson plan")
 def decide_plan(plan_id: int, data: DecisionIn, db: Session = Depends(get_db), account: Account = Depends(require_roles("admin"))):
     plan = db.get(LessonPlan, plan_id)
     if not plan: raise HTTPException(404, "Lesson plan not found")
     if not data.approve and not (data.note or "").strip(): raise HTTPException(422, "Give the teacher a reason for returning it")
-    now = datetime.utcnow()
+    if data.approve and plan.status == "approved": raise HTTPException(409, "This plan is already approved")
+    _decide(db, account, plan, data, datetime.utcnow())
+    db.commit()
+    _notify_decision(db, [plan])
+    return out_many(db, [plan])[0]
+
+
+def _decide(db: Session, account: Account, plan: LessonPlan, data: DecisionIn, now: datetime) -> None:
     if data.approve:
         # Approving stamps the HM's signature, "APPROVED" and the date/time (IST) on the PDF's last page; the stamped
         # PDF replaces the upload (no second copy kept), so the signature it was approved with never changes.
-        if plan.status == "approved": raise HTTPException(409, "This plan is already approved")
         signature = hm_signature(db, account)
         if not signature: raise HTTPException(409, "Add your signature first (profile menu → My Signature) — it is stamped on approved plans")
         original = db.query(LessonPlan.pdf).filter(LessonPlan.id == plan.id).scalar()
@@ -171,11 +220,6 @@ def decide_plan(plan_id: int, data: DecisionIn, db: Session = Depends(get_db), a
         plan.pdf = stamped; plan.file_size = len(stamped)
     plan.status = "approved" if data.approve else "returned"; plan.note = None if data.approve else data.note.strip()
     plan.decided_by = account.id; plan.decided_at = now
-    db.commit()
-    teacher = db.get(Teacher, plan.teacher_id); code = db.get(AcademicClass, plan.class_id).code
-    if plan.status == "approved": notify(db, [teacher.account_id], "Lesson plan approved", f"{code} {plan.subject} · {week_label(plan.week_start)}", "/teacher/notes-of-lessons", f"notes-{plan.id}")
-    else: notify(db, [teacher.account_id], "Lesson plan returned by HM", f"{code} {plan.subject} · {plan.note}", "/teacher/notes-of-lessons", f"notes-{plan.id}")
-    return out_many(db, [plan])[0]
 
 
 def _pdf_response(data: bytes, filename: str) -> StreamingResponse:
